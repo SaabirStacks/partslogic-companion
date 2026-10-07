@@ -36,10 +36,12 @@ to `eas.json` or `app.json`.** Anything in the app can be read by whoever instal
 ```bash
 npx eas-cli@latest login
 npx eas-cli@latest init
+npx eas-cli@latest update:configure
 ```
 
-`init` creates the project on expo.dev and adds `extra.eas.projectId` and `owner` to `app.json`. Commit
-that change.
+`init` creates the project on expo.dev and adds `extra.eas.projectId` and `owner` to `app.json`.
+`update:configure` adds `updates.url`, the address phones check for fixes (see
+[Shipping fixes without a new build](#shipping-fixes-without-a-new-build)). Commit both changes.
 
 Then store the two values for both environments. Copy them from your `.env.local`:
 
@@ -64,8 +66,10 @@ npx eas-cli@latest build --platform android --profile preview
 3. Send the link to staff. On each phone, open it, download the APK and allow installs from that source
    when Android asks.
 
-To update the app, run the same command again and share the new link. Installing over the top keeps the
-phone's data, including anything waiting in the Outbox, because the signing key stays the same.
+Most later changes reach phones on their own (see
+[Shipping fixes without a new build](#shipping-fixes-without-a-new-build)). When a new build is needed,
+run the same command and share the new link. Installing over the top keeps the phone's data, including
+anything waiting in the Outbox, because the signing key stays the same.
 
 ## iPhone: TestFlight
 
@@ -105,11 +109,37 @@ Then, on a phone with the new build, check the following:
 4. Receive and count with the signal off.
 5. Turn the signal back on and check the Outbox empties.
 
+## Shipping fixes without a new build
+
+The app includes EAS Update, so most changes reach phones without anyone reinstalling. Each build
+profile listens on its own channel:
+
+```bash
+npx eas-cli@latest update --channel preview --message "Fix the count total"      # Android APK builds
+npx eas-cli@latest update --channel production --message "Fix the count total"   # TestFlight builds
+```
+
+A phone downloads the fix in the background when the app opens and uses it the next time the app starts.
+Work waiting in the Outbox is kept, because it's stored on the phone, not in the app code.
+
+An update can only change the app's JavaScript code and its images. **Some changes need a new build
+instead:**
+
+- adding or removing a native package
+- upgrading the Expo SDK
+- changing `app.json` (icon, name, permissions, plugins)
+
+For those, raise `version` in `app.json` (for example `1.0.0` to `1.1.0`), then build and share again.
+`runtimeVersion` follows `version`, so an update published for `1.1.0` never reaches a `1.0.0` build it
+might break.
+
+If an update causes problems, `npx eas-cli@latest update:rollback` puts the previous one back.
+
 ## Versions
 
 `eas.json` uses `appVersionSource: remote`, so EAS keeps the build numbers (Android `versionCode`, iOS
 `buildNumber`), and `production` raises them on every build. The version people see, `1.0.0`, comes from
-`version` in `app.json`. Change it there when you want a new visible version.
+`version` in `app.json`. It also decides which builds an update can reach (see above).
 
 ## Later: the stores
 
