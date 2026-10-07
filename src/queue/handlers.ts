@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
+import { conflictMessage } from '@/features/quick-add/wording';
 import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
+import { DataError } from '@/vendor/partslogic/shared/errors';
 import {
   closeStockDocument,
   commitBinCount,
@@ -37,12 +39,20 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
     case 'close_receipt':
       return closeStockDocument(supabase, item.documentId);
     case 'quick_add':
-      return quickAddPart(supabase, {
-        brandId: item.brandId,
-        brandName: item.brandName,
-        number: item.number,
-        code: item.code,
-        confirmNewBrand: item.confirmNewBrand,
-      });
+      return sendQuickAdd(item);
   }
+}
+
+// A code another part holds comes back as an answer, not an error. Queued work surfaces it as needing
+// attention (with the holder named), so it is seen and never sent again on its own.
+async function sendQuickAdd(item: Extract<QueueItem, { kind: 'quick_add' }>) {
+  const result = await quickAddPart(supabase, {
+    brandId: item.brandId,
+    brandName: item.brandName,
+    number: item.number,
+    code: item.code,
+    confirmNewBrand: item.confirmNewBrand,
+  });
+  if (result.status === 'conflict') throw new DataError(conflictMessage(result), 'P0001');
+  return result;
 }

@@ -84,6 +84,12 @@ function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
           iconColour="reorder"
           title={`No part has the code ${view.code}`}
           body={barcodeProblem(view.code) ?? 'It may be a supplier code PartsLogic hasn’t seen yet. Try the part number instead.'}>
+          {canCount ? (
+            <Button
+              label="Add as new part"
+              onPress={() => router.push({ pathname: '/quick-add', params: { code: view.code } })}
+            />
+          ) : null}
           <Button label="Search instead" variant="secondary" onPress={() => lookUp.search(view.code)} />
         </Panel>
       );
