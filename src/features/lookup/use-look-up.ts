@@ -52,7 +52,7 @@ export function useLookUp() {
   async function lookUp(code: string, typed: boolean) {
     setView({ kind: 'working', code });
     try {
-      const hit = await resolveCode(code, location?.id ?? null);
+      const hit = await resolveCode(code, location);
       if (hit.type === 'part') {
         scanFeedback.found();
         setView({ kind: 'idle' });

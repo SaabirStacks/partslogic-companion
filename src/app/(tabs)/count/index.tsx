@@ -1,13 +1,13 @@
-import { ScrollView } from 'react-native';
 
 import { NeedsLocation } from '@/features/location/needs-location';
 import { useWorkingLocation } from '@/session/location-provider';
 import { EmptyState } from '@/ui/empty-state';
+import { Screen } from '@/ui/screen';
 
 export default function Count() {
   const { location } = useWorkingLocation();
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerClassName="flex-grow">
+    <Screen>
       {location ? (
         <EmptyState
           icon="count"
@@ -17,6 +17,6 @@ export default function Count() {
       ) : (
         <NeedsLocation reason="Bin labels are read in the location you're working in." />
       )}
-    </ScrollView>
+    </Screen>
   );
 }

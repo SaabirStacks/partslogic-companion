@@ -27,3 +27,7 @@ export const workingLocationPref = pref<WorkingLocation>('working-location');
 
 export type RecentPart = { partId: number; brand: string; number: string; description: string | null };
 export const recentPartsPref = pref<RecentPart[]>('recent-parts');
+
+export const installIdPref = pref<string>('install-id');
+export type ScanIndexState = { version: string; syncedAt: string; codes: number };
+export const scanIndexPref = pref<ScanIndexState>('scan-index');

@@ -1,11 +1,11 @@
-import { ScrollView } from 'react-native';
 
 import { AccountSection } from '@/features/account/account-section';
+import { Screen } from '@/ui/screen';
 
 export default function Account() {
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic">
+    <Screen>
       <AccountSection />
-    </ScrollView>
+    </Screen>
   );
 }

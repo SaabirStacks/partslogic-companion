@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Alert, Pressable, Text, View } from 'react-native';
 
+import { useOutbox } from '@/queue/outbox-provider';
 import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import { ListGroup, ListRow } from '@/ui/list';
@@ -12,10 +13,16 @@ const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slic
 export function AccountSection() {
   const { state, signOut } = useSession();
   const { location } = useWorkingLocation();
+  const { waiting, needsAttention } = useOutbox();
   if (state.status !== 'member') return null;
 
   function confirmSignOut() {
-    Alert.alert('Sign out of PartsLogic?', "You'll need your email and password to sign back in.", [
+    const unsent = waiting + needsAttention;
+    const message =
+      unsent > 0
+        ? `${unsent} ${unsent === 1 ? 'item hasn’t' : 'items haven’t'} been sent yet. ${unsent === 1 ? 'It stays' : 'They stay'} on this phone and send when you sign back in.`
+        : "You'll need your email and password to sign back in.";
+    Alert.alert('Sign out of PartsLogic?', message, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
     ]);

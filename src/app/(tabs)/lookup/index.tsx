@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 
 import { useLookUp, type LookUpView } from '@/features/lookup/use-look-up';
 import { PartRow } from '@/features/part/part-row';
@@ -9,6 +9,7 @@ import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
 import { ListGroup } from '@/ui/list';
 import { Panel } from '@/ui/panel';
+import { Screen } from '@/ui/screen';
 import { useColour } from '@/ui/theme';
 import { barcodeProblem } from '@/vendor/partslogic/shared/gtin';
 import { roleAtLeast } from '@/vendor/partslogic/shared/members';
@@ -18,7 +19,7 @@ export default function LookUp() {
   const { view, recent } = lookUp;
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
+    <Screen>
       <View className="gap-3 px-4 pb-10 pt-2">
         <CameraScanner className="h-56" enabled={!lookUp.busy} onScan={lookUp.scan} />
         <ScanField placeholder="Part number or barcode" onSubmit={lookUp.type} editable={!lookUp.busy} />
@@ -39,7 +40,7 @@ export default function LookUp() {
           </View>
         ) : null}
       </View>
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -85,7 +86,10 @@ function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
       );
     case 'offline':
       return (
-        <Panel icon="offline" title="No signal" body={`${view.code} couldn’t be checked. Try again when you’re back online.`}>
+        <Panel
+          icon="offline"
+          title="No signal"
+          body={`${view.code} isn’t in the scan list saved on this phone, so it can’t be checked until you’re back online.`}>
           <Button label="Try again" variant="secondary" onPress={() => lookUp.retry(view.code, view.typed)} />
         </Panel>
       );

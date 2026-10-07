@@ -1,13 +1,13 @@
-import { ScrollView } from 'react-native';
 
 import { NeedsLocation } from '@/features/location/needs-location';
 import { useWorkingLocation } from '@/session/location-provider';
 import { EmptyState } from '@/ui/empty-state';
+import { Screen } from '@/ui/screen';
 
 export default function Receive() {
   const { location } = useWorkingLocation();
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerClassName="flex-grow">
+    <Screen>
       {location ? (
         <EmptyState
           icon="receive"
@@ -17,6 +17,6 @@ export default function Receive() {
       ) : (
         <NeedsLocation reason="A delivery is booked into the location you're working in." />
       )}
-    </ScrollView>
+    </Screen>
   );
 }
