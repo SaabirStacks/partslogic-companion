@@ -127,6 +127,10 @@ created: `SaabirStacks/partslogic-companion`.
   SDK 57 template uses), each tab a folder with its own native `Stack`; icons are `expo-symbols`, SF
   Symbols on iOS and Material symbols on Android (`src/ui/icons.ts`); colours live once in
   `src/ui/palette.ts` and reach NativeWind through `vars()`.
+- **Settled in Phase 2:** a scan's bin or unknown result appears in place under the camera (a panel),
+  not in a sheet, so the camera stays in view; the part card is pushed inside the Look up tab
+  (`/lookup/part/[id]`); a repeat read of the same code only counts after it has been out of view for
+  1.2 s (`src/scan/scan-gate.ts`).
 - **Still open (verify in docs, don't invent):** the tab label "Outbox" or "Sync"; whether `part_detail`
   already returns only the prices each role may see; how many viewed part cards to cache offline
   (proposed: 200).
