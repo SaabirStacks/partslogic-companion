@@ -10,8 +10,11 @@ the PartsLogic back office and calls the same database functions; it never reimp
 | Path | What it is |
 |---|---|
 | `docs/MOBILE_PLAN.md` | The approved build plan: decisions, screens and workflows, phases |
-| `src/app/` | Screens (Expo Router: every file is a route) |
-| `src/lib/` | Supabase client and other app services |
+| `src/app/` | Screens (Expo Router: every file is a route). `(tabs)/` holds the job tabs |
+| `src/session/` | Who is signed in, their role, the working location, which tabs they see |
+| `src/features/` | Pieces of screens shared between routes |
+| `src/ui/` | The palette (PartsLogic's colours, light and dark), icons and shared components |
+| `src/lib/` | Supabase client and device preferences |
 | `src/scan/` | Scanning helpers |
 | `src/vendor/partslogic/` | A copy of PartsLogic's shared code and database types. **Never edit it** |
 | `scripts/sync-partslogic.mjs` | Refreshes that copy from a PartsLogic commit |

@@ -69,8 +69,9 @@ created: `SaabirStacks/partslogic-companion`.
   Type, native controls and sheets, and light and dark modes both designed.
 - **Focal moment:** the scan. Live camera, a firm haptic and a result strip near the viewfinder
   ("+1 BOSCH 0 986 494 104" with Undo), with no full-screen interruption.
-- **Who sees which tabs:** viewer sees Look up only; counter and above see all four. Tabs a role can't use
-  are hidden, not greyed out.
+- **Who sees which tabs:** viewer sees Look up and **Account** (their sign-out, since they have no
+  Outbox); counter and above see Look up, Receive, Count and Outbox, with the account section at the foot
+  of Outbox. Tabs a role can't use are hidden, not greyed out. *(Settled in Phase 1.)*
 - **The roll:** dealt Job board / Today's ledger / Job tabs (impeccable roll ran degraded: no challengers,
   the roll service is blocked by the network proxy). The user locked Job tabs.
 
@@ -122,10 +123,13 @@ created: `SaabirStacks/partslogic-companion`.
   100k+ codes, so the first download shows progress.
 - **Anti-goals:** not a port of the web back office (no tables, reviews, reversals, price edits or
   reports); no hover; no custom navigation; no gamification; never show expected quantities in a count.
-- **Open decisions for the build (verify in docs, don't invent):** Expo Router's native tab bar
-  (`NativeTabs`) if stable in SDK 57, else standard Tabs; the cross-platform icon set (`expo-symbols`
-  on Android in SDK 57?); the tab label "Outbox" or "Sync"; whether `part_detail` already returns only
-  the prices each role may see; how many viewed part cards to cache offline (proposed: 200).
+- **Settled in Phase 1:** the tab bar is `NativeTabs` from `expo-router/unstable-native-tabs` (what the
+  SDK 57 template uses), each tab a folder with its own native `Stack`; icons are `expo-symbols`, SF
+  Symbols on iOS and Material symbols on Android (`src/ui/icons.ts`); colours live once in
+  `src/ui/palette.ts` and reach NativeWind through `vars()`.
+- **Still open (verify in docs, don't invent):** the tab label "Outbox" or "Sync"; whether `part_detail`
+  already returns only the prices each role may see; how many viewed part cards to cache offline
+  (proposed: 200).
 
 ## Setup: official commands only
 

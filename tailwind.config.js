@@ -1,4 +1,5 @@
-// Colours come from CSS variables in src/global.css, so light and dark mode switch in one place.
+// Colours come from CSS variables that src/ui/palette.ts sets at the root, so light and dark mode switch
+// in one place.
 // Names follow PartsLogic's DESIGN.md: tint is Stock Blue (the action colour), reorder is the amber that
 // only ever means "needs reordering", out is the red for out of stock and errors.
 const token = (name) => `rgb(var(--color-${name}) / <alpha-value>)`;
