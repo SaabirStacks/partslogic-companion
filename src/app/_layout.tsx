@@ -58,6 +58,10 @@ function RootStack() {
           options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true }}
         />
         <Stack.Screen
+          name="move"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true }}
+        />
+        <Stack.Screen
           name="quick-add"
           options={{ presentation: 'formSheet', sheetAllowedDetents: [0.85, 1], sheetGrabberVisible: true }}
         />
