@@ -24,4 +24,25 @@ export const MIGRATIONS: string[] = [
   CREATE TABLE scan_codes_next (code_key TEXT PRIMARY KEY NOT NULL, entries TEXT NOT NULL) WITHOUT ROWID;
   CREATE TABLE part_cache (part_id INTEGER PRIMARY KEY NOT NULL, detail TEXT NOT NULL, cached_at TEXT NOT NULL);
   `,
+  // 2: deliveries being received, and every line scanned into them (append-only, like the server).
+  `
+  CREATE TABLE deliveries (
+    document_id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    location_id INTEGER,
+    location_name TEXT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT
+  );
+  CREATE TABLE delivery_lines (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_line_id TEXT NOT NULL UNIQUE,
+    document_id TEXT NOT NULL,
+    code TEXT NOT NULL,
+    qty REAL NOT NULL,
+    label TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX delivery_lines_document ON delivery_lines (document_id, seq);
+  `,
 ];
