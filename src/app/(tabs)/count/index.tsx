@@ -49,8 +49,11 @@ type CountingApi = ReturnType<typeof useBinCount>;
 function Start({ counting }: { counting: CountingApi }) {
   const { location } = useWorkingLocation();
   const colourOf = useColour();
-  const unbinned = useRemote(location && counting.online ? `unbinned:${location.id}` : null, () =>
-    unlocatedStockSummary(supabase, location!.id),
+  // Read the id here, not inside the loader: the React Compiler reads what a callback uses while the screen
+  // renders, so `location!.id` in the callback crashed before a location was chosen.
+  const locationId = location?.id ?? null;
+  const unbinned = useRemote(locationId !== null && counting.online ? `unbinned:${locationId}` : null, () =>
+    unlocatedStockSummary(supabase, locationId),
   );
   const { start } = counting;
 
