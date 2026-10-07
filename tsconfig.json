@@ -8,13 +8,20 @@
       ],
       "@/assets/*": [
         "./assets/*"
+      ],
+      "@partslogic/db-types": [
+        "./src/vendor/partslogic/db-types/database.ts"
       ]
-    }
+    },
+    "types": [
+      "jest"
+    ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
   ]
 }
