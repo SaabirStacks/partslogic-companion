@@ -24,3 +24,6 @@ export type CachedMember = { userId: string; role: string; workspaceName: string
 export const memberPref = pref<CachedMember>('member');
 export const locationsPref = pref<WorkingLocation[]>('locations');
 export const workingLocationPref = pref<WorkingLocation>('working-location');
+
+export type RecentPart = { partId: number; brand: string; number: string; description: string | null };
+export const recentPartsPref = pref<RecentPart[]>('recent-parts');

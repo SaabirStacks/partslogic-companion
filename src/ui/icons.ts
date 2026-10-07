@@ -11,6 +11,7 @@ export const ICONS = {
   barcode: { ios: 'barcode.viewfinder', android: 'barcode_scanner' },
   location: { ios: 'mappin.and.ellipse', android: 'location_on' },
   chevron: { ios: 'chevron.down', android: 'expand_more' },
+  forward: { ios: 'chevron.right', android: 'chevron_right' },
   check: { ios: 'checkmark', android: 'check' },
   sent: { ios: 'checkmark.circle', android: 'check_circle' },
   offline: { ios: 'wifi.slash', android: 'wifi_off' },

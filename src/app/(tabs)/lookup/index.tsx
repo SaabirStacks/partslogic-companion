@@ -1,15 +1,134 @@
-import { ScrollView } from 'react-native';
+import { router } from 'expo-router';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 
-import { EmptyState } from '@/ui/empty-state';
+import { useLookUp, type LookUpView } from '@/features/lookup/use-look-up';
+import { PartRow } from '@/features/part/part-row';
+import { CameraScanner } from '@/scan/camera-scanner';
+import { ScanField } from '@/scan/scan-field';
+import { useSession } from '@/session/session-provider';
+import { Button } from '@/ui/button';
+import { ListGroup } from '@/ui/list';
+import { Panel } from '@/ui/panel';
+import { useColour } from '@/ui/theme';
+import { barcodeProblem } from '@/vendor/partslogic/shared/gtin';
+import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 
 export default function LookUp() {
+  const lookUp = useLookUp();
+  const { view, recent } = lookUp;
+
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerClassName="flex-grow">
-      <EmptyState
-        icon="barcode"
-        title="Look up a part"
-        body="Scan a barcode or type a part number to see its stock, price and where it sits. Scanning arrives in the next build."
-      />
+    <ScrollView contentInsetAdjustmentBehavior="automatic" keyboardShouldPersistTaps="handled">
+      <View className="gap-3 px-4 pb-10 pt-2">
+        <CameraScanner className="h-56" enabled={!lookUp.busy} onScan={lookUp.scan} />
+        <ScanField placeholder="Part number or barcode" onSubmit={lookUp.type} editable={!lookUp.busy} />
+        <Answer view={view} lookUp={lookUp} />
+        {view.kind === 'results' ? <Results view={view} lookUp={lookUp} /> : null}
+        {view.kind !== 'results' && recent.length > 0 ? (
+          <View className="mt-3">
+            <ListGroup title="Recent">
+              {recent.map((part, index) => (
+                <PartRow
+                  key={part.partId}
+                  {...part}
+                  onPress={() => lookUp.openPart(part)}
+                  last={index === recent.length - 1}
+                />
+              ))}
+            </ListGroup>
+          </View>
+        ) : null}
+      </View>
     </ScrollView>
+  );
+}
+
+type LookUpApi = ReturnType<typeof useLookUp>;
+
+function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
+  const { state } = useSession();
+  const colourOf = useColour();
+  const canCount = state.status === 'member' && roleAtLeast(state.member.role, 'counter');
+
+  switch (view.kind) {
+    case 'working':
+      return (
+        <View className="flex-row items-center gap-3 px-1 py-2">
+          <ActivityIndicator color={colourOf('quiet-ink')} />
+          <Text className="text-base tabular-nums text-quiet-ink">Looking up {view.code}</Text>
+        </View>
+      );
+    case 'bin':
+      return (
+        <Panel icon="count" iconColour="tint" title={`Bin ${view.bin}`} body={`In ${view.location}.`}>
+          {canCount ? (
+            <Button
+              label="Count this bin"
+              onPress={() => {
+                lookUp.clear();
+                router.navigate({ pathname: '/count', params: { binId: String(view.binId) } });
+              }}
+            />
+          ) : null}
+          <Button label="Done" variant="secondary" onPress={lookUp.clear} />
+        </Panel>
+      );
+    case 'unknown':
+      return (
+        <Panel
+          icon="warning"
+          iconColour="reorder"
+          title={`No part has the code ${view.code}`}
+          body={barcodeProblem(view.code) ?? 'It may be a supplier code PartsLogic hasn’t seen yet. Try the part number instead.'}>
+          <Button label="Search instead" variant="secondary" onPress={() => lookUp.search(view.code)} />
+        </Panel>
+      );
+    case 'offline':
+      return (
+        <Panel icon="offline" title="No signal" body={`${view.code} couldn’t be checked. Try again when you’re back online.`}>
+          <Button label="Try again" variant="secondary" onPress={() => lookUp.retry(view.code, view.typed)} />
+        </Panel>
+      );
+    case 'error':
+      return (
+        <Panel icon="warning" iconColour="out" title="That didn’t work" body={view.message}>
+          <Button label="Try again" variant="secondary" onPress={() => lookUp.retry(view.code, view.typed)} />
+        </Panel>
+      );
+    default:
+      return null;
+  }
+}
+
+function Results({ view, lookUp }: { view: Extract<LookUpView, { kind: 'results' }>; lookUp: LookUpApi }) {
+  if (view.results.length === 0) {
+    return (
+      <Panel
+        icon="lookup"
+        title={`No match for ${view.query}`}
+        body="Check the number, or scan the barcode on the box."
+      />
+    );
+  }
+  return (
+    <ListGroup title={`${view.results.length === 30 ? 'First 30' : view.results.length} ${view.results.length === 1 ? 'match' : 'matches'}`}>
+      {view.results.map((result, index) => (
+        <PartRow
+          key={result.partId}
+          brand={result.brand}
+          number={result.number}
+          description={result.description}
+          onPress={() =>
+            lookUp.openPart({
+              partId: result.partId,
+              brand: result.brand,
+              number: result.number,
+              description: result.description,
+            })
+          }
+          last={index === view.results.length - 1}
+        />
+      ))}
+    </ListGroup>
   );
 }
