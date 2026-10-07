@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Alert, Pressable, Text, View } from 'react-native';
 
 import { NeedsLocation } from '@/features/location/needs-location';
+import { AddPartLink } from '@/features/quick-add/add-part-link';
 import type { LineGroup } from '@/features/receive/lines';
 import { statusText } from '@/features/receive/status-text';
 import { useDelivery } from '@/features/receive/use-delivery';
@@ -171,6 +172,7 @@ function GroupRow({
         </Text>
         {group.label ? <Text className="text-sm tabular-nums text-quiet-ink">{group.code}</Text> : null}
         <Text className={cx('text-sm', status.problem ? 'text-out' : 'text-quiet-ink')}>{status.text}</Text>
+        {group.status === 'unknown' ? <AddPartLink code={group.code} /> : null}
       </View>
       <Quantity
         total={group.total}

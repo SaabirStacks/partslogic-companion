@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { countResultText } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
 import { NeedsLocation } from '@/features/location/needs-location';
+import { AddPartLink } from '@/features/quick-add/add-part-link';
 import { useRemote } from '@/lib/use-remote';
 import { supabase } from '@/lib/supabase';
 import { CameraScanner } from '@/scan/camera-scanner';
@@ -189,7 +190,10 @@ function Counting({ counting }: { counting: CountingApi }) {
                     </Text>
                     {name !== line.code ? <Text className="text-sm tabular-nums text-quiet-ink">{line.code}</Text> : null}
                     {unknown ? (
-                      <Text className="text-sm text-quiet-ink">Unknown code: kept for the office to match</Text>
+                      <>
+                        <Text className="text-sm text-quiet-ink">Unknown code: kept for the office to match</Text>
+                        <AddPartLink code={line.code} />
+                      </>
                     ) : null}
                   </View>
                   <Quantity

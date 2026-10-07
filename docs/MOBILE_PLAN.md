@@ -131,6 +131,11 @@ created: `SaabirStacks/partslogic-companion`.
   not in a sheet, so the camera stays in view; the part card is pushed inside the Look up tab
   (`/lookup/part/[id]`); a repeat read of the same code only counts after it has been out of view for
   1.2 s (`src/scan/scan-gate.ts`).
+- **Settled in Phases 4–6:** Receive and Count record a scan instantly and name it from the phone's own
+  scan list (no network wait); a bin label scanned while receiving is refused. Quick add calls
+  PartsLogic straight away when there's signal (so a conflict or a new-brand question is answered on the
+  spot) and queues when there isn't; a queued quick add that hits a conflict lands in Needs attention
+  with the holder named, never retried on its own. Creating a bin needs signal.
 - **Still open (verify in docs, don't invent):** the tab label "Outbox" or "Sync"; whether `part_detail`
   already returns only the prices each role may see; how many viewed part cards to cache offline
   (proposed: 200).
