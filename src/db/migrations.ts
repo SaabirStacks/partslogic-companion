@@ -45,4 +45,20 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX delivery_lines_document ON delivery_lines (document_id, seq);
   `,
+  // 3: bin counts in progress or finished on this phone. session is the vendored BinSession (running
+  // totals per scanned code); labels maps a code to the part name shown for it.
+  `
+  CREATE TABLE bin_counts (
+    stocktake_id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    bin_id INTEGER NOT NULL,
+    bin_code TEXT NOT NULL,
+    location TEXT,
+    started_at TEXT NOT NULL,
+    session TEXT NOT NULL,
+    labels TEXT NOT NULL DEFAULT '{}',
+    finished_at TEXT,
+    discarded INTEGER NOT NULL DEFAULT 0
+  );
+  `,
 ];
