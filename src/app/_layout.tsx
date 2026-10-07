@@ -5,6 +5,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 
+import { OutboxProvider } from '@/queue/outbox-provider';
+import { ScanIndexProvider } from '@/scan/scan-index-provider';
 import { LocationProvider } from '@/session/location-provider';
 import { SessionProvider, useSession } from '@/session/session-provider';
 import { themeVars } from '@/ui/palette';
@@ -19,7 +21,11 @@ export default function RootLayout() {
       <View style={themeVars(scheme)} className="flex-1 bg-canvas">
         <SessionProvider>
           <LocationProvider>
-            <RootStack />
+            <OutboxProvider>
+              <ScanIndexProvider>
+                <RootStack />
+              </ScanIndexProvider>
+            </OutboxProvider>
           </LocationProvider>
         </SessionProvider>
       </View>

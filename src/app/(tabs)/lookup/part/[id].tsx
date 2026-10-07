@@ -3,6 +3,8 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
+import { db } from '@/db/database';
+import { savedPart, savePart } from '@/features/part/part-cache';
 import { PartRow } from '@/features/part/part-row';
 import { formatMoney, formatQty, stockBadge } from '@/features/part/stock';
 import { supabase } from '@/lib/supabase';
@@ -20,15 +22,13 @@ export default function PartCard() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const partId = Number(id);
   const valid = Number.isInteger(partId) && partId > 0;
-  const { data, error, loading, reload } = useRemote(valid ? `part:${partId}` : null, () =>
-    getPartDetail(supabase, partId),
-  );
+  const { data, error, loading, reload } = useRemote(valid ? `part:${partId}` : null, () => loadPart(partId));
 
   let body;
   if (!valid || data === null) {
     body = <EmptyState icon="lookup" title="Part not found" body="It may have been merged or removed." />;
   } else if (data) {
-    body = <Detail detail={data} />;
+    body = <Detail detail={data.detail} savedAt={data.savedAt} />;
   } else if (error && !loading) {
     const offline = classifyQueueError(error as { code?: string; message?: string }) === 'retry';
     body = (
@@ -45,7 +45,9 @@ export default function PartCard() {
 
   return (
     <>
-      <Stack.Screen options={{ title: data ? `${data.part.brand} ${data.part.number}` : '', headerLargeTitle: false }} />
+      <Stack.Screen
+        options={{ title: data ? `${data.detail.part.brand} ${data.detail.part.number}` : '', headerLargeTitle: false }}
+      />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerClassName="flex-grow">
         {body}
       </ScrollView>
@@ -53,7 +55,24 @@ export default function PartCard() {
   );
 }
 
-function Detail({ detail }: { detail: PartDetail }) {
+// Fresh from PartsLogic when there's signal (and saved for later); the copy saved on this phone when not.
+async function loadPart(partId: number): Promise<{ detail: PartDetail; savedAt: string | null } | null> {
+  try {
+    const detail = await getPartDetail(supabase, partId);
+    if (detail) await savePart(db(), detail);
+    return detail ? { detail, savedAt: null } : null;
+  } catch (error) {
+    if (classifyQueueError(error as { code?: string; message?: string }) !== 'retry') throw error;
+    const saved = await savedPart(db(), partId);
+    if (!saved) throw error;
+    return { detail: saved.detail, savedAt: saved.cachedAt };
+  }
+}
+
+const timeOf = (iso: string) =>
+  new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+function Detail({ detail, savedAt }: { detail: PartDetail; savedAt: string | null }) {
   const { state } = useSession();
   const currency = state.status === 'member' ? state.member.currency : 'GBP';
   const seesCost = state.status === 'member' && roleAtLeast(state.member.role, 'editor');
@@ -67,6 +86,11 @@ function Detail({ detail }: { detail: PartDetail }) {
 
   return (
     <View className="gap-6 px-4 pb-10 pt-4">
+      {savedAt ? (
+        <Text accessibilityRole="alert" className="rounded-xl bg-mist px-4 py-3 text-sm text-mist-ink">
+          No signal. This is the copy saved on this phone on {timeOf(savedAt)}; stock may have changed since.
+        </Text>
+      ) : null}
       <View className="flex-row gap-4">
         {image ? (
           <Image
