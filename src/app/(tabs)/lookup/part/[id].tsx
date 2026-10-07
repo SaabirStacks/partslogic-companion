@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
 import { db } from '@/db/database';
@@ -23,6 +23,18 @@ export default function PartCard() {
   const partId = Number(id);
   const valid = Number.isInteger(partId) && partId > 0;
   const { data, error, loading, reload } = useRemote(valid ? `part:${partId}` : null, () => loadPart(partId));
+
+  // Coming back from Move (or anywhere else) shows the stock as it is now.
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      reload();
+    }, [reload]),
+  );
 
   let body;
   if (!valid || data === null) {
@@ -76,6 +88,8 @@ function Detail({ detail, savedAt }: { detail: PartDetail; savedAt: string | nul
   const { state } = useSession();
   const currency = state.status === 'member' ? state.member.currency : 'GBP';
   const seesCost = state.status === 'member' && roleAtLeast(state.member.role, 'editor');
+  // Moving needs signal and the counter role; a card saved for offline use can't start one.
+  const canMove = state.status === 'member' && roleAtLeast(state.member.role, 'counter') && !savedAt;
   const { part, item } = detail;
   const image = detail.images.find((candidate) => candidate.size !== 'thumb') ?? detail.images[0];
   const name = detail.displayName ?? part.description;
@@ -131,6 +145,11 @@ function Detail({ detail, savedAt }: { detail: PartDetail; savedAt: string | nul
                 label={line.place}
                 value={formatQty(line.qty)}
                 tabular
+                onPress={
+                  canMove && line.qty > 0
+                    ? () => router.push({ pathname: '/move', params: { partId: String(part.id), fromBinId: String(line.binId) } })
+                    : undefined
+                }
                 last={index === item.stock.length - 1}
               />
             ))
@@ -138,11 +157,15 @@ function Detail({ detail, savedAt }: { detail: PartDetail; savedAt: string | nul
             <ListRow label="Not in any bin" last />
           )}
         </ListGroup>
-      ) : (
+      ) : null}
+      {item && canMove && item.stock.some((line) => line.qty > 0) ? (
+        <Text className="-mt-4 px-4 text-sm text-quiet-ink">Tap a bin to move stock from it.</Text>
+      ) : null}
+      {!item ? (
         <ListGroup title="Stock">
           <ListRow label="Not in your range" detail="This part is in the catalogue, but it isn't stocked here." last />
         </ListGroup>
-      )}
+      ) : null}
 
       {sell || trade || cost ? (
         <ListGroup title="Prices">

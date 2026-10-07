@@ -252,7 +252,11 @@ pointing at the SQL and has a test.
 | 5 | Bin count | Scan or pick a bin, open the count, scan with running totals, ± corrections, commit (confirm empty), result summary (put away, returned, found, partial) | counter |
 | 6 | Quick add | From an unknown scan: brand picker (`brandOptions`) and number → `quickAddPart`; show conflicts with the holder, never retry them | counter |
 
-**Later, not in this build:** move stock (`transferStock`), labels (`register_label`, editor), full
+**Built after the plan:** move stock, from a bin row on the part card (counters and up). It's online only
+and never queued or retried: `transfer_stock` takes no id made on the phone, so a move resent after a
+lost reply could happen twice. After a lost reply the app says the move may or may not have happened.
+
+**Later, not in this build:** labels (`register_label`, editor), full
 stock take (`record_count`), registration lookup (the VRM Edge Function doesn't exist in PartsLogic
 yet), creating a new bin while offline (needs the queue to pass the new bin's id to the items after it),
 and EAS builds for TestFlight and Play.
