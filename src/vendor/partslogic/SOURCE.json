@@ -67,6 +67,10 @@
     {
       "from": "packages/db-types/src/database.ts",
       "to": "db-types/database.ts"
+    },
+    {
+      "from": "lib/inventory-display.ts",
+      "to": "web/inventory-display.ts"
     }
   ]
 }

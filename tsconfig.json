@@ -11,6 +11,9 @@
       ],
       "@partslogic/db-types": [
         "./src/vendor/partslogic/db-types/database.ts"
+      ],
+      "@partslogic/shared": [
+        "./src/vendor/partslogic/shared/index.ts"
       ]
     },
     "types": [

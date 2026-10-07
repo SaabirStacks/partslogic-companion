@@ -1,4 +1,4 @@
-import { formatMoney, stockBadge } from '../stock';
+import { formatPrice, formatQty, stockBadge } from '../stock';
 
 describe('stockBadge', () => {
   it('shows Out for a stocked part at or below zero, even when also below reorder', () => {
@@ -16,9 +16,10 @@ describe('stockBadge', () => {
   });
 });
 
-describe('formatMoney', () => {
-  it('formats pounds and leaves missing prices empty', () => {
-    expect(formatMoney(12.5, 'GBP')).toBe('£12.50');
-    expect(formatMoney(null, 'GBP')).toBeNull();
+describe('formatPrice and formatQty', () => {
+  it('format like the back office and leave missing prices empty', () => {
+    expect(formatPrice(12.5, 'GBP')).toBe('£12.50');
+    expect(formatPrice(null, 'GBP')).toBeNull();
+    expect(formatQty(2.125)).toBe('2.125');
   });
 });

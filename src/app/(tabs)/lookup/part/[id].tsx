@@ -6,7 +6,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { db } from '@/db/database';
 import { savedPart, savePart } from '@/features/part/part-cache';
 import { PartRow } from '@/features/part/part-row';
-import { formatMoney, formatQty, stockBadge } from '@/features/part/stock';
+import { formatPrice, formatQty, stockBadge } from '@/features/part/stock';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
 import { useSession } from '@/session/session-provider';
@@ -79,9 +79,9 @@ function Detail({ detail, savedAt }: { detail: PartDetail; savedAt: string | nul
   const { part, item } = detail;
   const image = detail.images.find((candidate) => candidate.size !== 'thumb') ?? detail.images[0];
   const name = detail.displayName ?? part.description;
-  const sell = item ? formatMoney(item.sellPrice, currency) : null;
-  const trade = item ? formatMoney(item.pricing.tradePrice, currency) : null;
-  const cost = item && seesCost ? formatMoney(item.bestCost, item.bestCurrency ?? currency) : null;
+  const sell = item ? formatPrice(item.sellPrice, currency) : null;
+  const trade = item ? formatPrice(item.pricing.tradePrice, currency) : null;
+  const cost = item && seesCost ? formatPrice(item.bestCost, item.bestCurrency ?? currency) : null;
   const barcodes = detail.barcodes.map((barcode) => barcode.display);
 
   return (
@@ -193,7 +193,7 @@ function Alternatives({ partId, currency }: { partId: number; currency: string }
           number={alternative.number}
           description={
             alternative.inRange
-              ? [`${formatQty(alternative.onHand)} on hand`, formatMoney(alternative.sellPrice, currency)]
+              ? [`${formatQty(alternative.onHand)} on hand`, formatPrice(alternative.sellPrice, currency)]
                   .filter(Boolean)
                   .join(' · ')
               : 'Not stocked here'
