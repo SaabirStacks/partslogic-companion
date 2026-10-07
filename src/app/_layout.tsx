@@ -1,13 +1,57 @@
 import '@/global.css';
 
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+
+import { LocationProvider } from '@/session/location-provider';
+import { SessionProvider, useSession } from '@/session/session-provider';
+import { themeVars } from '@/ui/palette';
+import { navigationTheme, useScheme } from '@/ui/theme';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const scheme = useScheme();
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }} />
+    <ThemeProvider value={navigationTheme(scheme)}>
+      <View style={themeVars(scheme)} className="flex-1 bg-canvas">
+        <SessionProvider>
+          <LocationProvider>
+            <RootStack />
+          </LocationProvider>
+        </SessionProvider>
+      </View>
     </ThemeProvider>
+  );
+}
+
+// Which screens exist depends on who is signed in; Expo Router moves between the groups as it changes.
+function RootStack() {
+  const { state } = useSession();
+  const status = state.status;
+
+  useEffect(() => {
+    if (status !== 'loading') SplashScreen.hideAsync();
+  }, [status]);
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={status === 'signed-out' || status === 'loading'}>
+        <Stack.Screen name="sign-in" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'not-member' || status === 'unavailable'}>
+        <Stack.Screen name="no-access" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === 'member'}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="location"
+          options={{ presentation: 'formSheet', sheetAllowedDetents: [0.5, 1], sheetGrabberVisible: true }}
+        />
+      </Stack.Protected>
+    </Stack>
   );
 }
