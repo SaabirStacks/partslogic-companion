@@ -10,6 +10,8 @@ the PartsLogic back office and calls the same database functions; it never reimp
 | Path | What it is |
 |---|---|
 | `docs/MOBILE_PLAN.md` | The approved build plan: decisions, screens and workflows, phases |
+| `docs/DEPLOY.md` | Building and sharing the app: Android APK link, iPhone TestFlight |
+| `eas.json` | EAS Build profiles (`preview`, `production`) |
 | `src/app/` | Screens (Expo Router: every file is a route). `(tabs)/` holds the job tabs |
 | `src/session/` | Who is signed in, their role, the working location, which tabs they see |
 | `src/features/` | Pieces of screens shared between routes |
@@ -35,6 +37,16 @@ npx expo-doctor     # dependency and config health
 ```
 
 Add packages with `npx expo install <package>` so versions match the Expo SDK.
+
+## Deploying
+
+See [`docs/DEPLOY.md`](docs/DEPLOY.md). In short, after `npx eas-cli@latest login`, `init` and storing the
+two Supabase values with `env:set`:
+
+```bash
+npx eas-cli@latest build --platform android --profile preview   # APK, shared by link
+npx eas-cli@latest build --platform ios --profile production    # then: eas submit --platform ios --latest
+```
 
 ## Updating the PartsLogic code
 
