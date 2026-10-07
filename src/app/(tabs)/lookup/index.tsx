@@ -67,7 +67,10 @@ function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
               label="Count this bin"
               onPress={() => {
                 lookUp.clear();
-                router.navigate({ pathname: '/count', params: { binId: String(view.binId) } });
+                router.navigate({
+                  pathname: '/count',
+                  params: { binId: String(view.binId), bin: view.bin, location: view.location },
+                });
               }}
             />
           ) : null}

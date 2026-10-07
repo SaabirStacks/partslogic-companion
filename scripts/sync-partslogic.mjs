@@ -21,6 +21,8 @@ const target = path.join(root, 'src', 'vendor', 'partslogic');
 const SOURCES = [
   ['packages/shared/src', 'shared'],
   ['packages/db-types/src/database.ts', 'db-types/database.ts'],
+  // The web app's display formatters (money, quantities, dates), so both apps show figures the same way.
+  ['lib/inventory-display.ts', 'web/inventory-display.ts'],
 ];
 
 function option(name, fallback) {

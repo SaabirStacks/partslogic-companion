@@ -252,8 +252,22 @@ stock take (`record_count`), registration lookup (the VRM Edge Function doesn't 
 yet), creating a new bin while offline (needs the queue to pass the new bin's id to the items after it),
 and EAS builds for TestFlight and Play.
 
-**Upstream follow-ups to raise for PartsLogic (I won't change it):** a `part_card` wrapper in
-`packages/shared` (the phone uses `getPartDetail` until then). `brand_options` now has the right grant
+**Checked against the live Supabase project (`tarupsxdpaubfhjpsyku`, 7 Oct 2026, read-only via the
+Supabase connector; the CLI can't reach Supabase from the cloud session):**
+- Every migration in PartsLogic up to `20261007110000_floor_reads` is applied, so the live database
+  matches the vendored commit `5c888ee`.
+- All 23 functions the app calls exist with the arguments the vendored wrappers send, and signed-in
+  users can execute them. `cancel_stale_bin_counts` and `close_stale_receipts` are not callable from
+  the app (they run on a timer), so the app never calls them.
+- No Edge Functions are deployed (the repo's `enrichment-runner` isn't live). The app doesn't need any.
+- `part_card` exists but has no sell or trade price, reorder flag, SKU or photo, so the part card keeps
+  using `part_detail` through the vendored `getPartDetail`.
+- The web app's money, quantity and date formatters (`lib/inventory-display.ts`) are vendored and used,
+  instead of the app's own copies.
+
+**Upstream follow-ups to raise for PartsLogic (I won't change it):** the Out/Reorder badge rule lives
+inline in the web's React components; moving it into `packages/shared` would let the phone vendor it
+instead of mirroring it (`src/features/part/stock.ts`). `brand_options` now has the right grant
 for counters, but `docs/DB_API.md` still lists its role as editor.
 
 ## Verification
