@@ -50,7 +50,7 @@ export function ScanResultCard({
       </View>
       <View className="flex-row items-end gap-3">
         <View className="flex-1 gap-1">
-          <SignText size="headline" weight="heavy" ink={on} numberOfLines={2}>
+          <SignText size="headline" weight="heavy" ink={on} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.75}>
             {title}
           </SignText>
           {detail ? (

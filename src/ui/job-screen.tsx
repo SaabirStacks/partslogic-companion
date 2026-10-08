@@ -43,7 +43,7 @@ export function JobScreen({
     <View className="flex-1 bg-ground">
       <OfflineBanner />
       {banner}
-      <View style={{ height: Math.max(220, Math.round(height * 0.4)) }}>
+      <View style={{ height: Math.max(200, Math.round(height * 0.34)) }}>
         <CameraScanner enabled={scanEnabled} onScan={onScan} />
         <View className="absolute inset-x-3 top-3 flex-row items-start justify-end gap-2">
           {typing ? (

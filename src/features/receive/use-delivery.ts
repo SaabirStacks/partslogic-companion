@@ -31,7 +31,8 @@ export function useDelivery() {
   const [lines, setLines] = useState<DeliveryLine[]>([]);
   const [recent, setRecent] = useState<Delivery[]>([]);
   const [finished, setFinished] = useState<{ delivery: Delivery; units: number } | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // A scan that wasn't added: a bin label (deliveries go into Unbinned, not onto shelves).
+  const [notice, setNotice] = useState<{ kind: 'bin'; bin: string } | null>(null);
   const [lastLine, setLastLine] = useState<DeliveryLine | null>(null);
 
   const load = useCallback(async () => {
@@ -74,6 +75,27 @@ export function useDelivery() {
     setLastLine(line);
   }
 
+  // Opens a new delivery in the working location and returns it, so the scan that started it can be added
+  // straight away.
+  async function start(): Promise<Delivery | null> {
+    if (!userId || !location) return null;
+    const opened: Delivery = {
+      documentId: Crypto.randomUUID(),
+      userId,
+      locationId: location.id,
+      locationName: location.name,
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+    };
+    await store.start(opened);
+    setDelivery(opened);
+    setLines([]);
+    setFinished(null);
+    setNotice(null);
+    setLastLine(null);
+    return opened;
+  }
+
   const documentId = delivery?.documentId ?? null;
   const states = useMemo(() => (documentId ? lineStates(outbox.items, documentId) : new Map()), [outbox.items, documentId]);
   const groups = useMemo(() => groupLines(lines, states), [lines, states]);
@@ -88,39 +110,27 @@ export function useDelivery() {
     units,
     recent,
     finished,
+    // The receipt number of the delivery just finished, once PartsLogic has given it one.
+    finishedNumber: finished ? receiptNumber(outbox.items, finished.delivery.documentId) : null,
     notice,
     lastLine,
     waiting: [...states.values()].filter((s) => s.outcome === 'waiting').length,
     problems: [...states.values()].filter((s) => s.outcome === 'attention' || s.outcome === 'refused').length,
 
-    async start() {
-      if (!userId || !location) return;
-      await store.start({
-        documentId: Crypto.randomUUID(),
-        userId,
-        locationId: location.id,
-        locationName: location.name,
-        startedAt: new Date().toISOString(),
-        finishedAt: null,
-      });
-      setFinished(null);
-      setNotice(null);
-      setLastLine(null);
-      await load();
-    },
-
+    // The first scan of a box starts the delivery, so there's no separate start step.
     async scan(code: string) {
-      if (!delivery) return;
-      const sameLocation = location && location.id === delivery.locationId ? location.code : null;
+      const sameLocation = location && (!delivery || location.id === delivery.locationId) ? location.code : null;
       const local = await localLabel(code, sameLocation);
       if (local.type === 'bin') {
         scanFeedback.unknown();
-        setNotice(`${local.bin} is a bin label. Deliveries go into Unbinned; put stock on shelves from the Count tab.`);
+        setNotice({ kind: 'bin', bin: local.bin });
         return;
       }
+      const current = delivery ?? (await start());
+      if (!current) return;
       setNotice(null);
       scanFeedback.found();
-      await addLine(delivery, code, 1, local.type === 'part' ? local.label : null);
+      await addLine(current, code, 1, local.type === 'part' ? local.label : null);
     },
 
     async change(code: string, qty: number, name: string | null) {
