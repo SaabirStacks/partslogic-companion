@@ -42,7 +42,7 @@ export function useQuickAdd(code: string) {
     );
     setOutcome({
       kind: 'queued',
-      message: `Saved. ${brand.name} ${number} is added when you’re back online, and scans of ${code} are booked to it then.`,
+      message: `${brand.name} ${number} adds when you’re back online`,
     });
   }
 

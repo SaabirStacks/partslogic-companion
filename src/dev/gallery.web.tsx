@@ -11,6 +11,7 @@ import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
 import { PartRow } from '@/features/part/part-row';
 import { PartView } from '@/features/part/part-view';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
+import { AddForm } from '@/features/quick-add/add-part-screens';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
 import { NotSetUp } from '@/features/setup/not-set-up';
@@ -241,6 +242,40 @@ const SCREENS: Record<string, () => ReactNode> = {
       </View>
     );
   },
+  move: () => (
+    <View className="flex-1">
+      <StackHeader title="Move stock" />
+      <JobScreen
+        placeholder="Part number, barcode or bin"
+        onScan={noop}
+        banner={<JobBanner title="Mann HU 816 x" detail="From A-01" />}
+        result={<ScanResultCard tone="safe" status={{ icon: 'sent', label: 'Bin scanned' }} title="B-12" />}
+        action={<ActionBar label="Move 4 · A-01 → B-12" icon="move" onPress={noop} />}>
+        <SectionLabel>From</SectionLabel>
+        <View className="flex-row flex-wrap gap-2">
+          <BinChip code="A-01" qty={8} selected onPress={noop} />
+          <BinChip code="C-03" qty={4} onPress={noop} />
+        </View>
+        <SectionLabel>To</SectionLabel>
+        <View className="flex-row flex-wrap gap-2">
+          <BinChip code="B-12" selected onPress={noop} />
+        </View>
+        <SectionLabel>How many</SectionLabel>
+        <Plate className="flex-row items-center justify-between gap-3 px-3 py-2">
+          <Quantity total={4} name="Mann HU 816 x" onStep={noop} onSet={noop} />
+          <Button label="All 8" variant="secondary" compact onPress={noop} />
+        </Plate>
+      </JobScreen>
+    </View>
+  ),
+  add: () => (
+    <Fixtures>
+      <View className="flex-1">
+        <StackHeader title="Add part" quickLookUp={false} />
+        <AddForm code="5010415305187" />
+      </View>
+    </Fixtures>
+  ),
   'receive-done': () => (
     <View className="flex-1 bg-ground">
       <StackHeader title="Receive" />
