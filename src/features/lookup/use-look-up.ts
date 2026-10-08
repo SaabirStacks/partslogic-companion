@@ -14,6 +14,8 @@ import { addRecent } from './recent';
 export type LookUpView =
   | { kind: 'idle' }
   | { kind: 'working'; code: string }
+  // A part, shown on the result plate. at is when it was scanned, so scanning it again lands afresh.
+  | { kind: 'part'; code: string; part: RecentPart; at: number }
   | { kind: 'bin'; code: string; binId: number; bin: string; location: string }
   | { kind: 'unknown'; code: string }
   | { kind: 'results'; query: string; results: PartSearchResult[] }
@@ -22,17 +24,22 @@ export type LookUpView =
 
 const isConnectionProblem = (error: unknown) => classifyQueueError(error as { code?: string; message?: string }) === 'retry';
 
-// Everything the Look up tab does with a code: a part opens its card, a bin offers a count, anything
-// else is searched (typed) or reported as unknown (scanned). The server decides; nothing is guessed.
+// Everything Look up does with a code: a part lands on the result plate (tap it for the full part), a bin
+// offers a count, anything else is searched (typed) or reported as unknown (scanned). The server decides;
+// nothing is guessed.
 export function useLookUp() {
   const { location } = useWorkingLocation();
   const [view, setView] = useState<LookUpView>({ kind: 'idle' });
   const [recent, setRecent] = useState<RecentPart[]>(() => recentPartsPref.get() ?? []);
 
-  function openPart(part: RecentPart) {
+  function remember(part: RecentPart) {
     const next = addRecent(recent, part);
     recentPartsPref.set(next);
     setRecent(next);
+  }
+
+  function openPart(part: RecentPart) {
+    remember(part);
     router.push(`/part/${part.partId}`);
   }
 
@@ -55,8 +62,9 @@ export function useLookUp() {
       const hit = await resolveCode(code, location);
       if (hit.type === 'part') {
         scanFeedback.found();
-        setView({ kind: 'idle' });
-        openPart({ partId: hit.partId, brand: hit.brand, number: hit.number, description: null });
+        const part = { partId: hit.partId, brand: hit.brand, number: hit.number, description: null };
+        remember(part);
+        setView({ kind: 'part', code, part, at: Date.now() });
       } else if (hit.type === 'bin') {
         scanFeedback.found();
         setView({ kind: 'bin', code, binId: hit.binId, bin: hit.bin, location: hit.location });
