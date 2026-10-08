@@ -1,11 +1,8 @@
 import * as Haptics from 'expo-haptics';
-import { cssInterop } from 'nativewind';
 import type { ReactNode } from 'react';
 import { Pressable, View, type GestureResponderEvent, type PressableProps, type ViewProps } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { cx } from './cx';
-import { EASE_OUT, PRESS_IN_MS, PRESS_OUT_MS } from './motion';
 import type { ColourName, Tone } from './palette';
 
 // A sign plate: flat colour, a darker edge, 6 px corners, no shadow. Everything with a state is a plate in
@@ -68,12 +65,9 @@ export function Plate({ tone, heavy, className, ...props }: ViewProps & PlateSty
   return <View className={plateClass({ tone, heavy, className })} {...props} />;
 }
 
-// Pressable with NativeWind classes and an animated style together.
-const AnimatedPressable = cssInterop(Animated.createAnimatedComponent(Pressable), { className: 'style' });
-
-// A plate you can press. It sinks slightly while held and springs back on release (with Reduce Motion it
-// only dims). Main actions add a light tap you can feel. A disabled plate fades back to read as
-// unavailable.
+// A plate you can press. While held it dims and sinks slightly, through NativeWind's active: state on a
+// plain Pressable (an animated wrapper lost every plate style on phones, so the response is instant).
+// Main actions add a light tap you can feel. A disabled plate fades back to read as unavailable.
 export function PressablePlate({
   tone,
   heavy,
@@ -81,40 +75,21 @@ export function PressablePlate({
   disabled,
   haptic = false,
   children,
-  onPressIn,
-  onPressOut,
   onPress,
   ...props
 }: Omit<PressableProps, 'children' | 'style'> & PlateStyle & { haptic?: boolean; children: ReactNode }) {
-  const reduceMotion = useReducedMotion();
-  const pressed = useSharedValue(0);
-  const rest = disabled ? 0.4 : 1;
-  const style = useAnimatedStyle(() => ({
-    opacity: rest * (1 - pressed.get() * 0.2),
-    transform: [{ scale: reduceMotion ? 1 : 1 - pressed.get() * 0.03 }],
-  }));
-
   return (
-    <AnimatedPressable
+    <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
-      onPressIn={(event: GestureResponderEvent) => {
-        pressed.set(withTiming(1, { duration: PRESS_IN_MS }));
-        onPressIn?.(event);
-      }}
-      onPressOut={(event: GestureResponderEvent) => {
-        pressed.set(withTiming(0, { duration: PRESS_OUT_MS, easing: EASE_OUT }));
-        onPressOut?.(event);
-      }}
       onPress={(event: GestureResponderEvent) => {
         if (haptic) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress?.(event);
       }}
-      style={style}
-      className={plateClass({ tone, heavy, className })}
+      className={plateClass({ tone, heavy, className: cx('active:scale-[0.98] active:opacity-80', disabled && 'opacity-40', className) })}
       {...props}>
       {children}
-    </AnimatedPressable>
+    </Pressable>
   );
 }
