@@ -130,8 +130,8 @@ function RootStack({ scheme }: { scheme: Scheme }) {
         <Stack.Screen name="sync" options={jobHeader(scheme, 'Sync', false)} />
         <Stack.Screen name="account" options={{ ...SHEET, sheetAllowedDetents: [0.6, 1] }} />
         <Stack.Screen name="location" options={{ ...SHEET, sheetAllowedDetents: [0.5, 1] }} />
-        <Stack.Screen name="move" options={{ ...SHEET, sheetAllowedDetents: [0.85, 1] }} />
-        <Stack.Screen name="quick-add" options={{ ...SHEET, sheetAllowedDetents: [0.85, 1] }} />
+        <Stack.Screen name="move" options={jobHeader(scheme, 'Move stock')} />
+        <Stack.Screen name="quick-add" options={jobHeader(scheme, 'Add part')} />
       </Stack.Protected>
     </Stack>
   );

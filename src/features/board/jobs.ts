@@ -4,7 +4,7 @@ import type { IconName } from '@/ui/icons';
 import { roleAtLeast, type AppRole } from '@/vendor/partslogic/shared/members';
 
 export type Job = {
-  id: 'lookup' | 'receive' | 'count';
+  id: 'lookup' | 'receive' | 'count' | 'move' | 'add';
   label: string;
   icon: IconName;
   href: Href;
@@ -19,6 +19,8 @@ export const JOBS: readonly Job[] = [
   { id: 'lookup', label: 'Look up', icon: 'lookup', href: '/lookup', tone: 'mandatory', minRole: 'viewer' },
   { id: 'receive', label: 'Receive', icon: 'receive', href: '/receive', tone: 'mandatory', minRole: 'counter' },
   { id: 'count', label: 'Put away & count', icon: 'count', href: '/count', tone: 'mandatory', minRole: 'counter' },
+  { id: 'move', label: 'Move stock', icon: 'move', href: '/move', tone: 'mandatory', minRole: 'counter' },
+  { id: 'add', label: 'Add part', icon: 'add', href: '/quick-add', tone: 'plain', minRole: 'counter' },
 ];
 
 // Viewers can only look parts up; counters and above get every job.
