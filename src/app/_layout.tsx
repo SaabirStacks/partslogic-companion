@@ -5,6 +5,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { View } from 'react-native';
 
+import { NotSetUp } from '@/features/setup/not-set-up';
+import { publicConfig } from '@/lib/config';
 import { OutboxProvider } from '@/queue/outbox-provider';
 import { ScanIndexProvider } from '@/scan/scan-index-provider';
 import { LocationProvider } from '@/session/location-provider';
@@ -19,15 +21,19 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={navigationTheme(scheme)}>
       <View style={themeVars(scheme)} className="flex-1 bg-canvas">
-        <SessionProvider>
-          <LocationProvider>
-            <OutboxProvider>
-              <ScanIndexProvider>
-                <RootStack />
-              </ScanIndexProvider>
-            </OutboxProvider>
-          </LocationProvider>
-        </SessionProvider>
+        {publicConfig.ok ? (
+          <SessionProvider>
+            <LocationProvider>
+              <OutboxProvider>
+                <ScanIndexProvider>
+                  <RootStack />
+                </ScanIndexProvider>
+              </OutboxProvider>
+            </LocationProvider>
+          </SessionProvider>
+        ) : (
+          <NotSetUp problems={publicConfig.problems} />
+        )}
       </View>
     </ThemeProvider>
   );

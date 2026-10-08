@@ -11,3 +11,7 @@ jobs:
     params:
       channel: preview
       platform: android
+    hooks:
+      # Refuses to publish an update without the app's public settings (it would close on launch).
+      before_update:
+        - run: npm run check:env

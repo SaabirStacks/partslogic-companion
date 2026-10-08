@@ -19,17 +19,26 @@ The profiles live in `eas.json`:
 
 ## Keys in the build
 
-`.env.local` is git-ignored, so EAS never receives it, and this repo doesn't hold the values either. The
-app needs two values, which are stored as **EAS environment variables** (set once, below):
+The app needs two values, kept in the committed **`.env`** file:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
-Both are public by design. They end up inside the app either way, and row-level security protects the
-data. A build made without them opens to an error saying which one is missing.
+EAS builds and over-the-air updates both read `.env` when they bundle the app. That's why the values live
+there rather than in `eas.json`, which only builds read. Both values are public by design: they end up
+inside the app either way, and row-level security protects the data. On your own computer, a git-ignored
+`.env.local` with the same names overrides `.env`.
 
-**Never add a secret key, a service-role key or any third-party API key as an `EXPO_PUBLIC_` variable, or
-to `eas.json` or `app.json`.** Anything in the app can be read by whoever installs it.
+Two checks stop an app without these values from reaching anyone. The values used to go missing this
+way, and the app then closed as soon as it opened.
+
+| Check | When it runs | What happens |
+|---|---|---|
+| `npm run check:env` (`scripts/check-public-env.mjs`) | On EAS before every build (the `eas-build-post-install` script), and before every update (`.eas/workflows/update-preview.yml`) | The build or update fails with a message naming the missing value |
+| `checkPublicConfig` (`src/lib/config.ts`) | When the app starts | The app shows "PartsLogic isn't set up on this phone" instead of closing |
+
+**Never add a secret key, a service-role key or any third-party API key to `.env`, to an `EXPO_PUBLIC_`
+variable, or to `eas.json` or `app.json`.** Anything in the app can be read by whoever installs it.
 
 ## One-time setup (done)
 
@@ -49,18 +58,9 @@ computer you only need `npx eas-cli@latest login`.
 The GitHub repo is linked to the project, so builds and updates can also start from GitHub (see
 [From GitHub or the Expo connector](#from-github-or-the-expo-connector)).
 
-The two Supabase values are stored for both environments. To change them, copy the new values from your
-`.env.local`:
-
-```bash
-npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL --value <url> --environment preview --visibility plaintext
-npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL --value <url> --environment production --visibility plaintext
-npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <key> --environment preview --visibility plaintext
-npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY --value <key> --environment production --visibility plaintext
-npx eas-cli@latest env:list --environment preview
-```
-
-You can also add them on expo.dev, under the project's **Environment variables** page.
+To point builds at a different Supabase project without changing `.env`, set the same names as EAS
+environment variables, on expo.dev under the project's **Environment variables** page or with
+`npx eas-cli@latest env:set`. Variables set there override `.env`.
 
 ## Android: internal APK
 
@@ -145,8 +145,8 @@ npx eas-cli@latest update --channel preview --environment preview --message "Fix
 npx eas-cli@latest update --channel production --environment production --message "Fix the count total"   # TestFlight builds
 ```
 
-`--environment` matters: it bakes that environment's Supabase values into the update. Without it, the CLI
-asks you which environment to use.
+`--environment` picks which EAS environment's variables go into the update. The Supabase values come from
+`.env` unless that environment overrides them. Without the flag, the CLI asks you which environment to use.
 
 A phone downloads the fix in the background when the app opens and uses it the next time the app starts.
 Work waiting in the Outbox is kept, because it's stored on the phone, not in the app code.

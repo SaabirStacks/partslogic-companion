@@ -60,7 +60,9 @@
     "lint": "expo lint",
     "sync:partslogic": "node scripts/sync-partslogic.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "check:env": "node scripts/check-public-env.mjs",
+    "test": "jest",
+    "eas-build-post-install": "npm run check:env"
   },
   "private": true,
   "jest": {
