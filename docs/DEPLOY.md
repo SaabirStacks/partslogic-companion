@@ -31,19 +31,26 @@ data. A build made without them opens to an error saying which one is missing.
 **Never add a secret key, a service-role key or any third-party API key as an `EXPO_PUBLIC_` variable, or
 to `eas.json` or `app.json`.** Anything in the app can be read by whoever installs it.
 
-## One-time setup
+## One-time setup (done)
 
-```bash
-npx eas-cli@latest login
-npx eas-cli@latest init
-npx eas-cli@latest update:configure
-```
+The Expo project is **`@prodz/partslogic-mobile`**. `app.json` holds the following, which is what
+`eas init` and `eas update:configure` would write:
 
-`init` creates the project on expo.dev and adds `extra.eas.projectId` and `owner` to `app.json`.
-`update:configure` adds `updates.url`, the address phones check for fixes (see
-[Shipping fixes without a new build](#shipping-fixes-without-a-new-build)). Commit both changes.
+| Field | Value |
+|---|---|
+| `owner` | `prodz` |
+| `slug` | `partslogic-mobile` |
+| `extra.eas.projectId` | the project ID |
+| `updates.url` | the address phones check for fixes |
 
-Then store the two values for both environments. Copy them from your `.env.local`:
+The slug must match the project's slug on expo.dev; the name people see is still **PartsLogic**. On a new
+computer you only need `npx eas-cli@latest login`.
+
+The GitHub repo is linked to the project, so builds and updates can also start from GitHub (see
+[From GitHub or the Expo connector](#from-github-or-the-expo-connector)).
+
+The two Supabase values are stored for both environments. To change them, copy the new values from your
+`.env.local`:
 
 ```bash
 npx eas-cli@latest env:set --name EXPO_PUBLIC_SUPABASE_URL --value <url> --environment preview --visibility plaintext
@@ -115,9 +122,12 @@ The app includes EAS Update, so most changes reach phones without anyone reinsta
 profile listens on its own channel:
 
 ```bash
-npx eas-cli@latest update --channel preview --message "Fix the count total"      # Android APK builds
-npx eas-cli@latest update --channel production --message "Fix the count total"   # TestFlight builds
+npx eas-cli@latest update --channel preview --environment preview --message "Fix the count total"         # Android APK builds
+npx eas-cli@latest update --channel production --environment production --message "Fix the count total"   # TestFlight builds
 ```
+
+`--environment` matters: it bakes that environment's Supabase values into the update. Without it, the CLI
+asks you which environment to use.
 
 A phone downloads the fix in the background when the app opens and uses it the next time the app starts.
 Work waiting in the Outbox is kept, because it's stored on the phone, not in the app code.
@@ -134,6 +144,18 @@ For those, raise `version` in `app.json` (for example `1.0.0` to `1.1.0`), then 
 might break.
 
 If an update causes problems, `npx eas-cli@latest update:rollback` puts the previous one back.
+
+## From GitHub or the Expo connector
+
+Because the repo is linked to the Expo project, nobody needs to run commands on a computer:
+
+| To | Do |
+|---|---|
+| Build an APK | On expo.dev, open the project's **Builds** page, choose **Build from GitHub**, then pick `main`, Android and `preview`. Claude can start the same build through the Expo connector. |
+| Send a fix to the APKs | Run the workflow `.eas/workflows/update-preview.yml` on `main`: from the project's **Workflows** page, with `npx eas-cli@latest workflow:run .eas/workflows/update-preview.yml`, or through the Expo connector. |
+
+Builds from GitHub need `"image": "latest"` in each profile, which `eas.json` sets. They also make the
+Android signing key themselves the first time.
 
 ## Versions
 

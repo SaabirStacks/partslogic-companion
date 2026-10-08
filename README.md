@@ -40,13 +40,13 @@ Add packages with `npx expo install <package>` so versions match the Expo SDK.
 
 ## Deploying
 
-See [`docs/DEPLOY.md`](docs/DEPLOY.md). In short, after `npx eas-cli@latest login`, `init`,
-`update:configure` and storing the two Supabase values with `env:set`:
+See [`docs/DEPLOY.md`](docs/DEPLOY.md). The Expo project is `@prodz/partslogic-mobile`, linked to this
+repo. After `npx eas-cli@latest login`:
 
 ```bash
-npx eas-cli@latest build --platform android --profile preview   # APK, shared by link
-npx eas-cli@latest build --platform ios --profile production    # then: eas submit --platform ios --latest
-npx eas-cli@latest update --channel preview --message "…"       # later fixes, no reinstall
+npx eas-cli@latest build --platform android --profile preview                         # APK, shared by link
+npx eas-cli@latest build --platform ios --profile production                          # then: eas submit --platform ios --latest
+npx eas-cli@latest update --channel preview --environment preview --message "…"       # later fixes, no reinstall
 ```
 
 ## Updating the PartsLogic code

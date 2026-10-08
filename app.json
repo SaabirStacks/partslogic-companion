@@ -1,10 +1,14 @@
 {
   "expo": {
     "name": "PartsLogic",
-    "slug": "partslogic",
+    "slug": "partslogic-mobile",
+    "owner": "prodz",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/f238837d-ceae-40c7-9950-4ed68ebccf3f"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -54,6 +58,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f238837d-ceae-40c7-9950-4ed68ebccf3f"
+      }
     }
   }
 }
