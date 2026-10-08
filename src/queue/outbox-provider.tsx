@@ -11,7 +11,7 @@ import { backoffMs, runOutbox } from './runner';
 import { SqliteOutboxStore } from './sqlite-store';
 import type { Coalesce, OutboxItem } from './types';
 
-type OutboxContextValue = {
+export type OutboxContextValue = {
   // Saves the work on the phone first, then sends it when it can.
   enqueue: (payload: QueueItem, label: string, coalesce?: Coalesce) => Promise<void>;
   // Unsent work, and work sent in the last 24 hours, newest first.
@@ -25,7 +25,8 @@ type OutboxContextValue = {
   sendNow: () => void;
 };
 
-const OutboxContext = createContext<OutboxContextValue | null>(null);
+// Exported so the dev review gallery can supply a fixture outbox.
+export const OutboxContext = createContext<OutboxContextValue | null>(null);
 const DAY_MS = 24 * 3600 * 1000;
 
 export function OutboxProvider({ children }: { children: ReactNode }) {

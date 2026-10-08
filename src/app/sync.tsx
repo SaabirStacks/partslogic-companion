@@ -1,6 +1,5 @@
 import { Text, View } from 'react-native';
 
-import { AccountSection } from '@/features/account/account-section';
 import { outboxSummary } from '@/features/outbox/status';
 import { useOnline } from '@/lib/network';
 import { useOutbox } from '@/queue/outbox-provider';
@@ -98,10 +97,6 @@ export default function Outbox() {
             <ListRow label="Update now" onPress={scanIndex.update} last />
           ) : null}
         </ListGroup>
-      </View>
-
-      <View className="mt-6">
-        <AccountSection />
       </View>
     </Screen>
   );

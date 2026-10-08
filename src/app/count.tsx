@@ -57,7 +57,7 @@ function Start({ counting }: { counting: CountingApi }) {
   );
   const { start } = counting;
 
-  if (!location) return <Screen><NeedsLocation reason="Bin labels are read in the location you’re working in." /></Screen>;
+  if (!location) return <Screen><NeedsLocation /></Screen>;
 
   return (
     <Screen>

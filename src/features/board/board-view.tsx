@@ -1,8 +1,10 @@
 import { ScrollView, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/ui/icon';
 import { JobTile } from '@/ui/job-tile';
+import { APPEAR, SETTLE } from '@/ui/motion';
 import { Plate, PressablePlate } from '@/ui/plate';
 import { SignText } from '@/ui/sign-text';
 import { LocationPlate, SyncPlate } from '@/ui/status-plates';
@@ -48,42 +50,49 @@ export function BoardView({ jobs, openWork, location, sync, onJob, onResume, onL
 
       <View className="flex-row gap-2">
         <LocationPlate name={location} onPress={onLocation} />
-        <SyncPlate state={sync} onPress={onSync} />
+        {/* Keyed by its words, so a change of state fades in rather than snapping. */}
+        <Animated.View key={sync.label} entering={APPEAR} style={{ flex: 1 }}>
+          <SyncPlate state={sync} onPress={onSync} />
+        </Animated.View>
       </View>
 
       {openWork.map((work) => {
         const text = resumeText(work);
         return (
-          <PressablePlate
-            key={work.kind}
-            tone="warning"
-            heavy
-            accessibilityLabel={`Resume ${text.title}, ${text.detail}`}
-            onPress={() => onResume(work)}
-            className="min-h-[72px] flex-row items-center gap-3 px-4 py-3">
-            <Icon name={work.kind === 'delivery' ? 'receive' : 'count'} size={30} colour="on-warning" />
-            <View className="flex-1">
-              <SignText size="title" weight="heavy" ink="text-on-warning" numberOfLines={1}>
-                {`Resume · ${text.title}`}
-              </SignText>
-              <SignText size="tag" ink="text-on-warning" numberOfLines={1}>
-                {text.detail}
-              </SignText>
-            </View>
-            <Icon name="forward" size={20} colour="on-warning" />
-          </PressablePlate>
+          <Animated.View key={work.kind} entering={APPEAR} layout={SETTLE}>
+            <PressablePlate
+              tone="warning"
+              heavy
+              accessibilityLabel={`Resume ${text.title}, ${text.detail}`}
+              onPress={() => onResume(work)}
+              className="min-h-[72px] flex-row items-center gap-3 px-4 py-3">
+              <Icon name={work.kind === 'delivery' ? 'receive' : 'count'} size={30} colour="on-warning" />
+              <View className="flex-1">
+                <SignText size="title" weight="heavy" ink="text-on-warning" numberOfLines={1}>
+                  {`Resume · ${text.title}`}
+                </SignText>
+                <SignText size="tag" ink="text-on-warning" numberOfLines={1}>
+                  {text.detail}
+                </SignText>
+              </View>
+              <Icon name="forward" size={20} colour="on-warning" />
+            </PressablePlate>
+          </Animated.View>
         );
       })}
 
-      {lead ? <JobTile wide label={lead.label} icon={lead.icon} tone={lead.tone} onPress={() => onJob(lead)} /> : null}
-      {rows.map((row) => (
-        <View key={row.map((job) => job.id).join()} className="flex-row gap-3">
-          {row.map((job) => (
-            <JobTile key={job.id} label={job.label} icon={job.icon} tone={job.tone} onPress={() => onJob(job)} />
-          ))}
-          {row.length === 1 ? <View className="flex-1" /> : null}
-        </View>
-      ))}
+      {/* The jobs slide down to make room when a resume plate arrives. */}
+      <Animated.View layout={SETTLE} style={{ gap: 12 }}>
+        {lead ? <JobTile wide label={lead.label} icon={lead.icon} tone={lead.tone} onPress={() => onJob(lead)} /> : null}
+        {rows.map((row) => (
+          <View key={row.map((job) => job.id).join()} className="flex-row gap-3">
+            {row.map((job) => (
+              <JobTile key={job.id} label={job.label} icon={job.icon} tone={job.tone} onPress={() => onJob(job)} />
+            ))}
+            {row.length === 1 ? <View className="flex-1" /> : null}
+          </View>
+        ))}
+      </Animated.View>
     </ScrollView>
   );
 }

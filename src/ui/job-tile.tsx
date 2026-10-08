@@ -25,6 +25,7 @@ export function JobTile({
     <PressablePlate
       tone={tone}
       heavy
+      haptic
       accessibilityLabel={label}
       onPress={onPress}
       className={cx(

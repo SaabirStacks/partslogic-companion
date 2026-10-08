@@ -1,11 +1,11 @@
+import { ScrollView } from 'react-native';
 
 import { AccountSection } from '@/features/account/account-section';
-import { Screen } from '@/ui/screen';
 
 export default function Account() {
   return (
-    <Screen>
+    <ScrollView className="bg-ground">
       <AccountSection />
-    </Screen>
+    </ScrollView>
   );
 }

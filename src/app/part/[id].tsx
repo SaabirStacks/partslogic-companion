@@ -11,8 +11,8 @@ import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
 import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
-import { EmptyState } from '@/ui/empty-state';
 import { ListGroup, ListRow } from '@/ui/list';
+import { Notice } from '@/ui/notice';
 import { StockBadge } from '@/ui/stock-badge';
 import { getPartAlternatives, getPartDetail, type PartDetail } from '@/vendor/partslogic/shared/catalogue';
 import { classifyQueueError } from '@/vendor/partslogic/shared/errors';
@@ -38,18 +38,19 @@ export default function PartCard() {
 
   let body;
   if (!valid || data === null) {
-    body = <EmptyState icon="lookup" title="Part not found" body="It may have been merged or removed." />;
+    body = <Notice icon="lookup" tone="warning" title="Part not found" line="It may have been merged or removed." />;
   } else if (data) {
     body = <Detail detail={data.detail} savedAt={data.savedAt} />;
   } else if (error && !loading) {
     const offline = classifyQueueError(error as { code?: string; message?: string }) === 'retry';
     body = (
-      <EmptyState
-        icon={offline ? 'offline' : 'warning'}
-        title={offline ? 'No signal' : 'Couldn’t load this part'}
-        body={offline ? 'Part details need a connection. Try again when you’re back online.' : (error as Error).message}>
-        <Button label="Try again" variant="secondary" onPress={reload} />
-      </EmptyState>
+      <Notice
+        icon={offline ? 'offline' : 'stop'}
+        tone={offline ? 'warning' : 'stop'}
+        title={offline ? 'No signal' : 'Didn’t load'}
+        line={offline ? 'This part isn’t saved on this phone yet.' : (error as Error).message}>
+        <Button label="Try again" icon="retry" variant="secondary" onPress={reload} />
+      </Notice>
     );
   } else {
     body = <Skeleton />;

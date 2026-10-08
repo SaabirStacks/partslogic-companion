@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 
 import { useWorkingLocation } from '@/session/location-provider';
 import { Button } from '@/ui/button';
-import { cx } from '@/ui/cx';
 import { Icon } from '@/ui/icon';
+import { PressablePlate, TEXT_ON } from '@/ui/plate';
+import { SignText } from '@/ui/sign-text';
+import { StatusStrip } from '@/ui/status-strip';
 import { useColour } from '@/ui/theme';
 
 // Sheet for picking the working location. This phone remembers the choice.
@@ -13,65 +15,55 @@ export default function LocationSheet() {
   const colourOf = useColour();
 
   return (
-    <ScrollView contentContainerClassName="gap-4 px-4 pb-10 pt-6">
-      <View className="gap-1 px-2">
-        <Text accessibilityRole="header" className="text-xl font-semibold text-ink">
-          Where are you working?
-        </Text>
-        <Text className="text-base leading-6 text-quiet-ink">
-          Deliveries and bin counts use this location. This phone remembers it.
-        </Text>
-      </View>
+    <ScrollView className="bg-ground" contentContainerClassName="gap-3 px-4 pb-10 pt-6">
+      <SignText accessibilityRole="header" size="headline" weight="heavy">
+        Location
+      </SignText>
 
       {status === 'loading' && locations.length === 0 ? (
         <ActivityIndicator accessibilityLabel="Loading locations" color={colourOf('quiet-ink')} className="py-8" />
       ) : null}
-
-      {status === 'stale' ? (
-        <View className="gap-3 px-2">
-          <Text accessibilityRole="alert" className="text-base text-quiet-ink">
-            {locations.length > 0
-              ? "Couldn't refresh the list, so this is the one saved on this phone."
-              : "Couldn't load the locations. Check your signal and try again."}
-          </Text>
-          {locations.length === 0 ? <Button label="Try again" variant="secondary" onPress={refresh} /> : null}
-        </View>
+      {status === 'stale' && locations.length > 0 ? (
+        <StatusStrip tone="warning" icon="offline" text="Saved list · no signal" />
       ) : null}
-
+      {status === 'stale' && locations.length === 0 ? (
+        <>
+          <StatusStrip tone="stop" icon="offline" text="Locations didn’t load" />
+          <Button label="Try again" icon="retry" variant="secondary" onPress={refresh} />
+        </>
+      ) : null}
       {status === 'ready' && locations.length === 0 ? (
-        <Text className="px-2 text-base text-quiet-ink">
-          There are no locations yet. An editor can add them in the PartsLogic back office.
-        </Text>
+        <StatusStrip tone="warning" icon="location" text="No locations yet · an editor adds them in the back office" />
       ) : null}
 
-      {locations.length > 0 ? (
-        <View className="overflow-hidden rounded-xl bg-plate">
-          {locations.map((item, index) => {
-            const selected = item.id === location?.id;
-            return (
-              <Pressable
-                key={item.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={`${item.name}, ${item.code}`}
-                onPress={() => {
-                  choose(item);
-                  router.back();
-                }}
-                className={cx(
-                  'min-h-14 flex-row items-center gap-3 px-4 py-3 active:bg-ground',
-                  index < locations.length - 1 && 'border-b border-rule',
-                )}>
-                <View className="flex-1 gap-0.5">
-                  <Text className="text-base text-ink">{item.name}</Text>
-                  <Text className="text-sm text-quiet-ink">{item.code}</Text>
-                </View>
-                {selected ? <Icon name="check" size={18} colour="mandatory-ink" /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : null}
+      {locations.map((item) => {
+        const selected = item.id === location?.id;
+        const tone = selected ? 'mandatory' : 'surface';
+        return (
+          <PressablePlate
+            key={item.id}
+            tone={tone}
+            accessibilityState={{ selected }}
+            accessibilityLabel={`${item.name}, ${item.code}`}
+            onPress={() => {
+              choose(item);
+              router.back();
+            }}
+            className="min-h-16 flex-row items-center gap-3 px-4 py-2">
+            <View className="flex-1">
+              <SignText size="title" weight="heavy" ink={TEXT_ON[tone]} numberOfLines={1}>
+                {item.name}
+              </SignText>
+              {item.code.toLowerCase() !== item.name.toLowerCase() ? (
+                <SignText size="tag" ink={selected ? TEXT_ON[tone] : 'text-quiet-ink'}>
+                  {item.code}
+                </SignText>
+              ) : null}
+            </View>
+            {selected ? <Icon name="check" size={24} colour="on-mandatory" /> : null}
+          </PressablePlate>
+        );
+      })}
     </ScrollView>
   );
 }

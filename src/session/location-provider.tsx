@@ -11,7 +11,7 @@ import { useSession } from './session-provider';
 // one this phone saved last time (possibly empty).
 export type LocationsStatus = 'loading' | 'ready' | 'stale';
 
-type LocationContextValue = {
+export type LocationContextValue = {
   location: WorkingLocation | null;
   locations: WorkingLocation[];
   status: LocationsStatus;
@@ -19,7 +19,8 @@ type LocationContextValue = {
   refresh: () => void;
 };
 
-const LocationContext = createContext<LocationContextValue | null>(null);
+// Exported so the dev review gallery can supply a fixture location.
+export const LocationContext = createContext<LocationContextValue | null>(null);
 
 export function LocationProvider({ children }: { children: ReactNode }) {
   const { state } = useSession();

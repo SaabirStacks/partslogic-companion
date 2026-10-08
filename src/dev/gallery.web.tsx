@@ -1,7 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
+import Account from '@/app/account';
+import LocationSheet from '@/app/location';
+import NoAccess from '@/app/no-access';
+import SignIn from '@/app/sign-in';
 import { BoardView } from '@/features/board/board-view';
+import { NotSetUp } from '@/features/setup/not-set-up';
 import { jobsFor } from '@/features/board/jobs';
 import { syncState } from '@/features/board/sync-state';
 import { ActionBar } from '@/ui/action-bar';
@@ -16,6 +21,8 @@ import { ScanResultCard } from '@/ui/scan-result-card';
 import { Detail, SignText } from '@/ui/sign-text';
 import { Tally } from '@/ui/tally';
 import { useScheme } from '@/ui/theme';
+
+import { Fixtures } from './fixtures';
 
 // Dev-only: every screen of the redesign drawn from fixture data, so it can be captured in a browser at
 // phone size for review (?screen=board). Light or dark follows the browser's colour scheme. The native
@@ -196,6 +203,27 @@ const SCREENS: Record<string, () => ReactNode> = {
   job: () => <SampleJob />,
   confirm: () => <SampleJob confirming />,
   parts: () => <Parts />,
+  'sign-in': () => (
+    <Fixtures session={{ status: 'signed-out' }}>
+      <SignIn />
+    </Fixtures>
+  ),
+  'no-access': () => (
+    <Fixtures session={{ status: 'not-member', email: 'new.starter@example.com' }}>
+      <NoAccess />
+    </Fixtures>
+  ),
+  'not-set-up': () => <NotSetUp problems={['EXPO_PUBLIC_SUPABASE_URL is not set']} />,
+  location: () => (
+    <Fixtures>
+      <LocationSheet />
+    </Fixtures>
+  ),
+  account: () => (
+    <Fixtures waiting={2}>
+      <Account />
+    </Fixtures>
+  ),
 };
 
 export function Gallery() {

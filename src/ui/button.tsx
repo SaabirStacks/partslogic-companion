@@ -32,6 +32,7 @@ export function Button({ label, onPress, variant = 'primary', icon, busy = false
   return (
     <PressablePlate
       tone={tone}
+      haptic={variant === 'primary'}
       accessibilityLabel={label}
       accessibilityState={{ disabled, busy }}
       disabled={disabled}

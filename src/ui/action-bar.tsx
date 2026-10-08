@@ -46,6 +46,7 @@ export function ActionBar({
       <PressablePlate
         tone={tone}
         heavy
+        haptic
         accessibilityLabel={label}
         accessibilityState={{ disabled, busy }}
         disabled={disabled}

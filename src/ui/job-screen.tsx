@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { ScrollView, useWindowDimensions, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { CameraScanner } from '@/scan/camera-scanner';
 import { ScanField } from '@/scan/scan-field';
 
 import { Icon } from './icon';
+import { APPEAR } from './motion';
 import { OfflineBanner } from './offline-banner';
 import { PressablePlate } from './plate';
 
@@ -45,9 +47,9 @@ export function JobScreen({
         <CameraScanner enabled={scanEnabled} onScan={onScan} />
         <View className="absolute inset-x-3 top-3 flex-row items-start justify-end gap-2">
           {typing ? (
-            <View className="flex-1">
+            <Animated.View entering={APPEAR} style={{ flex: 1 }}>
               <ScanField autoFocus placeholder={placeholder} editable={scanEnabled} onSubmit={onType ?? onScan} />
-            </View>
+            </Animated.View>
           ) : null}
           <PressablePlate
             accessibilityLabel={typing ? 'Close typing' : 'Type a code'}

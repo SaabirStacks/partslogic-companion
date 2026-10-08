@@ -8,7 +8,7 @@ import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 
 import { syncScanIndex } from './scan-index';
 
-type ScanIndexContextValue = {
+export type ScanIndexContextValue = {
   saved: ScanIndexState | null;
   // Codes downloaded so far while an update runs, otherwise null.
   progress: number | null;
@@ -16,7 +16,8 @@ type ScanIndexContextValue = {
   update: () => void;
 };
 
-const ScanIndexContext = createContext<ScanIndexContextValue | null>(null);
+// Exported so the dev review gallery can supply a fixture scan list.
+export const ScanIndexContext = createContext<ScanIndexContextValue | null>(null);
 const EVERY_MS = 15 * 60 * 1000;
 
 // Keeps this phone's offline scan list in step with PartsLogic: on start, when the signal comes back, and

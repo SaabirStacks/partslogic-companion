@@ -7,7 +7,7 @@ import { getCurrentMember } from '@/vendor/partslogic/shared/members';
 
 import { fromCache, signInProblem, stateAfterLookup, type MemberLookup, type SessionState } from './session-state';
 
-type SessionContextValue = {
+export type SessionContextValue = {
   state: SessionState;
   // True while the member lookup is running (after sign-in, or "Check again").
   checking: boolean;
@@ -19,7 +19,8 @@ type SessionContextValue = {
 
 type Lookup = { userId: string; attempt: number; result: MemberLookup };
 
-const SessionContext = createContext<SessionContextValue | null>(null);
+// Exported so the dev review gallery can supply a fixture session.
+export const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   // undefined until the stored session has been read.

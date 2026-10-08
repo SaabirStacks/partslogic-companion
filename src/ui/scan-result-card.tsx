@@ -1,15 +1,13 @@
 import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
-import Animated, { Easing, FadeInDown, ReduceMotion } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { Icon } from './icon';
 import type { IconName } from './icons';
+import { RISE } from './motion';
 import type { Tone } from './palette';
 import { ON_TONE, plateClass, TEXT_ON } from './plate';
 import { Detail, SignText } from './sign-text';
-
-// The rise every scan lands with: 160 ms, easing out fast. With Reduce Motion on it just appears.
-const RISE = FadeInDown.duration(160).easing(Easing.out(Easing.exp)).reduceMotion(ReduceMotion.System);
 
 export type ResultStatus = { icon: IconName; label: string };
 
