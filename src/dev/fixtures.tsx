@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { OutboxContext, type OutboxContextValue } from '@/queue/outbox-provider';
+import type { OutboxItem } from '@/queue/types';
 import { ScanIndexContext, type ScanIndexContextValue } from '@/scan/scan-index-provider';
 import { LocationContext, type LocationContextValue } from '@/session/location-provider';
 import { SessionContext, type SessionContextValue } from '@/session/session-provider';
@@ -28,21 +29,23 @@ export function Fixtures({
   session = MEMBER,
   waiting = 0,
   needsAttention = 0,
+  items = [],
   children,
 }: {
   session?: SessionState;
   waiting?: number;
   needsAttention?: number;
+  items?: OutboxItem[];
   children: ReactNode;
 }) {
   const sessionValue: SessionContextValue = { state: session, checking: false, signIn: async () => null, signOut: later, retry: noop };
   const locationValue: LocationContextValue = { location: LOCATIONS[0], locations: LOCATIONS, status: 'ready', choose: noop, refresh: noop };
   const outboxValue: OutboxContextValue = {
     enqueue: later,
-    items: [],
+    items,
     waiting,
     needsAttention,
-    lastSentAt: null,
+    lastSentAt: items.find((item) => item.status === 'done')?.updatedAt ?? null,
     lastProblem: null,
     retry: later,
     sendNow: noop,
@@ -91,4 +94,16 @@ export const RECENT = [
   { partId: 7, brand: 'Mann', number: 'HU 816 x', description: 'Oil filter' },
   { partId: 8, brand: 'Bosch', number: '0 986 494 119', description: 'Brake pad set, front axle' },
   { partId: 9, brand: 'NGK', number: 'BKR6E', description: 'Spark plug' },
+];
+
+const at = (hour: number, minute: number) => new Date(new Date().setHours(hour, minute, 0, 0)).toISOString();
+const item = (clientId: string, label: string, status: OutboxItem['status'], updatedAt: string, lastError: string | null = null) =>
+  ({ clientId, label, status, updatedAt, createdAt: updatedAt, lastError, attempts: 1, seq: 0, userId: 'fixture', streamKey: 's', kind: 'receipt_lines', payload: {}, result: null }) as unknown as OutboxItem;
+
+// A morning's work: one count refused, a delivery waiting, and what went earlier.
+export const OUTBOX_ITEMS: OutboxItem[] = [
+  item('a', 'Finish count of bin C-03', 'attention', at(10, 2), 'Bin C-03 is inactive'),
+  item('b', 'Delivery started 09:14 · 12 lines', 'pending', at(10, 5)),
+  item('c', 'Count of bin A-01 started 09:40', 'done', at(9, 52)),
+  item('d', 'Add part MANN HU 816 x', 'done', at(9, 31)),
 ];

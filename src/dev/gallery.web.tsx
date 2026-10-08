@@ -5,6 +5,7 @@ import Account from '@/app/account';
 import LocationSheet from '@/app/location';
 import NoAccess from '@/app/no-access';
 import SignIn from '@/app/sign-in';
+import Sync from '@/app/sync';
 import { BoardView } from '@/features/board/board-view';
 import { partAnswer } from '@/features/lookup/answer';
 import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
@@ -35,7 +36,7 @@ import { SignText } from '@/ui/sign-text';
 import { Tally } from '@/ui/tally';
 import { useScheme } from '@/ui/theme';
 
-import { Fixtures, OIL_FILTER, RECENT } from './fixtures';
+import { Fixtures, OIL_FILTER, OUTBOX_ITEMS, RECENT } from './fixtures';
 
 // Dev-only: every screen of the redesign drawn from fixture data, so it can be captured in a browser at
 // phone size for review (?screen=board). Light or dark follows the browser's colour scheme. The native
@@ -326,6 +327,22 @@ const SCREENS: Record<string, () => ReactNode> = {
       <View className="flex-1">
         <StackHeader title="Part" />
         <PartView detail={OIL_FILTER} savedAt={null} />
+      </View>
+    </Fixtures>
+  ),
+  sync: () => (
+    <Fixtures waiting={1} needsAttention={1} items={OUTBOX_ITEMS}>
+      <View className="flex-1">
+        <StackHeader title="Sync" quickLookUp={false} />
+        <Sync />
+      </View>
+    </Fixtures>
+  ),
+  'sync-clear': () => (
+    <Fixtures items={OUTBOX_ITEMS.filter((item) => item.status === 'done')}>
+      <View className="flex-1">
+        <StackHeader title="Sync" quickLookUp={false} />
+        <Sync />
       </View>
     </Fixtures>
   ),
