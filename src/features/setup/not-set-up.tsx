@@ -1,8 +1,9 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { EmptyState } from '@/ui/empty-state';
+import { Detail } from '@/ui/sign-text';
+import { Notice } from '@/ui/notice';
 
 // Shown instead of the app when it was built without its connection settings, so staff see what to do
 // rather than the app closing on launch.
@@ -12,13 +13,12 @@ export function NotSetUp({ problems }: { problems: string[] }) {
   }, []);
 
   return (
-    <EmptyState
-      icon="warning"
-      title="PartsLogic isn’t set up on this phone"
-      body="This copy of the app was built without its connection settings. Ask whoever sent you the app for the latest version.">
-      <Text selectable className="text-center text-sm text-mandatory-ink">
-        {problems.join('\n')}
-      </Text>
-    </EmptyState>
+    <SafeAreaView className="flex-1 bg-ground">
+      <Notice icon="stop" tone="stop" title="Not set up" line="Ask for the latest version of the app.">
+        <Detail selectable className="text-center">
+          {problems.join('\n')}
+        </Detail>
+      </Notice>
+    </SafeAreaView>
   );
 }

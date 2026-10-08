@@ -1,17 +1,17 @@
 import { useNetworkState } from 'expo-network';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
-import { useColour } from '@/ui/theme';
-
-const FIELD = 'h-12 rounded-xl border border-rule bg-plate px-4 text-base text-ink focus:border-focus';
+import { EntranceBoard } from '@/ui/entrance-board';
+import { Field } from '@/ui/field';
+import { Detail, SignText } from '@/ui/sign-text';
+import { StatusStrip } from '@/ui/status-strip';
 
 export default function SignIn() {
   const { checking, signIn } = useSession();
-  const colourOf = useColour();
   const offline = useNetworkState().isInternetReachable === false;
   const passwordRef = useRef<TextInput>(null);
 
@@ -35,26 +35,19 @@ export default function SignIn() {
   return (
     <SafeAreaView className="flex-1 bg-ground">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerClassName="flex-grow justify-center gap-8 px-6 py-12">
-          <View className="gap-2">
-            <Text accessibilityRole="header" className="text-3xl font-bold text-ink">
-              PartsLogic
-            </Text>
-            <Text className="text-base leading-6 text-quiet-ink">
-              Sign in with the email and password you use for the back office.
-            </Text>
-          </View>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="flex-grow justify-between gap-8 px-5 py-6">
+          <View className="gap-8">
+            <EntranceBoard />
 
-          <View className="gap-4">
-            <View className="gap-1.5">
-              <Text nativeID="email-label" className="text-sm font-semibold text-ink">
-                Email
-              </Text>
-              <TextInput
-                accessibilityLabelledBy="email-label"
-                accessibilityLabel="Email"
+            <View className="gap-4">
+              <View className="gap-1">
+                <SignText accessibilityRole="header" size="display" weight="heavy">
+                  Sign in
+                </SignText>
+                <Detail>Same email and password as the back office.</Detail>
+              </View>
+              <Field
+                label="Email"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -63,20 +56,13 @@ export default function SignIn() {
                 keyboardType="email-address"
                 textContentType="username"
                 returnKeyType="next"
+                submitBehavior="submit"
                 onSubmitEditing={() => passwordRef.current?.focus()}
                 editable={!busy}
-                placeholderTextColor={colourOf('quiet-ink')}
-                className={FIELD}
               />
-            </View>
-            <View className="gap-1.5">
-              <Text nativeID="password-label" className="text-sm font-semibold text-ink">
-                Password
-              </Text>
-              <TextInput
+              <Field
                 ref={passwordRef}
-                accessibilityLabelledBy="password-label"
-                accessibilityLabel="Password"
+                label="Password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -85,19 +71,10 @@ export default function SignIn() {
                 returnKeyType="go"
                 onSubmitEditing={submit}
                 editable={!busy}
-                className={FIELD}
               />
+              {offline ? <StatusStrip tone="warning" icon="offline" text="Offline · connect to sign in" /> : null}
+              {problem ? <StatusStrip tone="stop" icon="stop" text={problem} /> : null}
             </View>
-            {offline ? (
-              <Text accessibilityRole="alert" className="text-base text-stop-ink">
-                You’re offline. Connect to sign in.
-              </Text>
-            ) : null}
-            {problem ? (
-              <Text accessibilityRole="alert" className="text-base text-stop-ink">
-                {problem}
-              </Text>
-            ) : null}
           </View>
 
           <Button label={busy ? 'Signing in' : 'Sign in'} onPress={submit} busy={busy} disabled={!ready} />

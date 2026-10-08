@@ -22,19 +22,21 @@ const WEIGHT = { semi: 'font-sign', bold: 'font-sign-bold', heavy: 'font-sign-he
 // rest; the layout stays whole at the largest settings.
 const MAX_SCALE: Record<SignSize, number> = { hero: 1.3, display: 1.4, headline: 1.5, title: 1.6, label: 1.8, tag: 2 };
 
-// Colour is its own prop (a text-* class, ink by default) rather than part of className, because two
-// colour classes on one element don't reliably resolve in the order they're written.
+// Colour (a text-* class, ink by default) and capitals are props rather than part of className, because
+// two classes for the same property don't reliably resolve in the order they're written. caps={false}
+// is for values that must keep their case, such as an email address.
 export function SignText({
   size = 'label',
   weight = 'bold',
   ink = 'text-ink',
+  caps = true,
   className,
   ...props
-}: TextProps & { size?: SignSize; weight?: keyof typeof WEIGHT; ink?: string; className?: string }) {
+}: TextProps & { size?: SignSize; weight?: keyof typeof WEIGHT; ink?: string; caps?: boolean; className?: string }) {
   return (
     <Text
       maxFontSizeMultiplier={MAX_SCALE[size]}
-      className={cx('uppercase tabular-nums', SIZE[size], WEIGHT[weight], ink, className)}
+      className={cx('tabular-nums', caps && 'uppercase', SIZE[size], WEIGHT[weight], ink, className)}
       {...props}
     />
   );

@@ -11,8 +11,8 @@ import { ScanField } from '@/scan/scan-field';
 import { useWorkingLocation } from '@/session/location-provider';
 import { Button } from '@/ui/button';
 import { cx } from '@/ui/cx';
-import { EmptyState } from '@/ui/empty-state';
 import { ListGroup, ListRow } from '@/ui/list';
+import { Notice } from '@/ui/notice';
 import { Panel } from '@/ui/panel';
 import { Quantity } from '@/ui/quantity';
 import { Screen } from '@/ui/screen';
@@ -45,15 +45,12 @@ export default function Receive() {
   }
 
   if (!delivery) {
-    if (!location) return <Screen><NeedsLocation reason="A delivery is booked into the location you’re working in." /></Screen>;
+    if (!location) return <Screen><NeedsLocation /></Screen>;
     return (
       <Screen>
-        <EmptyState
-          icon="receive"
-          title="No delivery open"
-          body={`Scan each box as it comes in. Stock goes into ${location.name}’s Unbinned bin, ready to put away. It works with no signal.`}>
+        <Notice icon="receive" title="No delivery open">
           <Button label="Start a delivery" onPress={() => void receiving.start()} />
-        </EmptyState>
+        </Notice>
         {receiving.recent.length > 0 ? (
           <View className="px-4 pb-10">
             <ListGroup title="Finished on this phone">
