@@ -73,6 +73,25 @@ npx eas-cli@latest build --platform android --profile preview
 3. Send the link to staff. On each phone, open it, download the APK and allow installs from that source
    when Android asks.
 
+### If Play Protect warns
+
+Google Play Protect warns about apps that come from a link rather than the Play Store, because it hasn't
+seen this developer before. That's expected for an internal app and nothing is wrong with it. Each phone
+only needs to get past it once:
+
+1. On the warning, tap **More details**, then **Install anyway**.
+2. If it offers **Scan app**, run the scan, then tap **Install**.
+3. If it only offers **OK** or **Uninstall**:
+   1. Open the **Play Store**, tap your profile picture, then **Play Protect**, then ⚙️.
+   2. Turn off **Scan apps with Play Protect**.
+   3. Install the APK.
+   4. Turn scanning back on straight away.
+
+Fixes sent with EAS Update arrive inside the app, so they don't trigger the warning again. Google's
+developer verification for apps installed from a link goes global in 2027. Before then, either verify the
+developer account or move staff to Google Play's internal testing track (see
+[Later: the stores](#later-the-stores)).
+
 Most later changes reach phones on their own (see
 [Shipping fixes without a new build](#shipping-fixes-without-a-new-build)). When a new build is needed,
 run the same command and share the new link. Installing over the top keeps the phone's data, including
