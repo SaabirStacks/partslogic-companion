@@ -1,21 +1,16 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
-import { cx } from './cx';
+import { Icon } from './icon';
+import { plateClass, PressablePlate } from './plate';
+import { SignText } from './sign-text';
 import { useColour } from './theme';
 
-function Step({ label, symbol, onPress, disabled }: { label: string; symbol: string; onPress: () => void; disabled?: boolean }) {
+function Step({ label, icon, onPress, disabled }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      hitSlop={4}
-      onPress={onPress}
-      className={cx('h-12 w-12 items-center justify-center rounded-plate border-2 border-plate-edge bg-plate active:opacity-70', disabled && 'opacity-40')}>
-      <Text className="text-xl font-semibold text-ink">{symbol}</Text>
-    </Pressable>
+    <PressablePlate accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-12 w-12 items-center justify-center">
+      <Icon name={icon} size={22} />
+    </PressablePlate>
   );
 }
 
@@ -38,32 +33,30 @@ export function Quantity({
 
   if (editing) {
     return (
-      <View className="flex-row items-center gap-2">
-        <TextInput
-          autoFocus
-          accessibilityLabel={`Total for ${name}`}
-          value={text}
-          onChangeText={setText}
-          keyboardType="number-pad"
-          returnKeyType="done"
-          selectTextOnFocus
-          placeholder={String(total)}
-          placeholderTextColor={colourOf('quiet-ink')}
-          onSubmitEditing={() => {
-            const target = Number(text);
-            setEditing(false);
-            if (text.trim() !== '' && Number.isFinite(target)) onSet(target);
-          }}
-          onBlur={() => setEditing(false)}
-          className="h-11 w-20 rounded-xl border border-focus bg-plate px-3 text-center text-lg tabular-nums text-ink"
-        />
-      </View>
+      <TextInput
+        autoFocus
+        accessibilityLabel={`Total for ${name}`}
+        value={text}
+        onChangeText={setText}
+        keyboardType="number-pad"
+        returnKeyType="done"
+        selectTextOnFocus
+        placeholder={String(total)}
+        placeholderTextColor={colourOf('quiet-ink')}
+        onSubmitEditing={() => {
+          const target = Number(text);
+          setEditing(false);
+          if (text.trim() !== '' && Number.isFinite(target)) onSet(target);
+        }}
+        onBlur={() => setEditing(false)}
+        className={plateClass({ className: 'h-12 w-24 border-focus text-center font-sign-heavy text-[28px] text-ink' })}
+      />
     );
   }
 
   return (
     <View className="flex-row items-center gap-1">
-      <Step label={`One fewer ${name}`} symbol="−" onPress={() => onStep(-1)} disabled={total <= 0} />
+      <Step label={`One fewer ${name}`} icon="minus" onPress={() => onStep(-1)} disabled={total <= 0} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${total} of ${name}. Type a total`}
@@ -71,10 +64,12 @@ export function Quantity({
           setText(String(total));
           setEditing(true);
         }}
-        className="h-11 min-w-12 items-center justify-center px-1">
-        <Text className="text-lg font-semibold tabular-nums text-ink">{total}</Text>
+        className="h-12 min-w-12 items-center justify-center px-1">
+        <SignText size="display" weight="heavy">
+          {total}
+        </SignText>
       </Pressable>
-      <Step label={`One more ${name}`} symbol="+" onPress={() => onStep(1)} />
+      <Step label={`One more ${name}`} icon="plus" onPress={() => onStep(1)} />
     </View>
   );
 }

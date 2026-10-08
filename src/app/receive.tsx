@@ -1,184 +1,194 @@
 import { router } from 'expo-router';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { View } from 'react-native';
 
 import { NeedsLocation } from '@/features/location/needs-location';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
 import type { LineGroup } from '@/features/receive/lines';
 import { statusText } from '@/features/receive/status-text';
 import { useDelivery } from '@/features/receive/use-delivery';
-import { CameraScanner } from '@/scan/camera-scanner';
-import { ScanField } from '@/scan/scan-field';
+import { clock, plural } from '@/lib/format';
 import { useWorkingLocation } from '@/session/location-provider';
+import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
-import { cx } from '@/ui/cx';
-import { ListGroup, ListRow } from '@/ui/list';
+import { ConfirmSheet } from '@/ui/confirm-sheet';
+import { JobBanner } from '@/ui/job-banner';
+import { JobScreen } from '@/ui/job-screen';
+import { LineRow } from '@/ui/line-row';
 import { Notice } from '@/ui/notice';
-import { Panel } from '@/ui/panel';
+import { Plate } from '@/ui/plate';
 import { Quantity } from '@/ui/quantity';
-import { Screen } from '@/ui/screen';
+import { ScanResultCard } from '@/ui/scan-result-card';
+import { SectionLabel } from '@/ui/section-label';
+import { Detail, SignText } from '@/ui/sign-text';
+import { StatusStrip } from '@/ui/status-strip';
+import { Tally } from '@/ui/tally';
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+type Receiving = ReturnType<typeof useDelivery>;
 
+// Receive: scan box after box. The first scan opens the delivery; every scan lands as a green plate (or
+// yellow for a code PartsLogic may not know) and adds to its line. Finish books it all into Unbinned.
 export default function Receive() {
   const { location } = useWorkingLocation();
   const receiving = useDelivery();
-  const { delivery, finished } = receiving;
+  const [confirming, setConfirming] = useState(false);
+  const { delivery, groups, units, lastLine } = receiving;
 
-  if (!receiving.loaded) return <Screen>{null}</Screen>;
+  if (!receiving.loaded) return <View className="flex-1 bg-ground" />;
+  if (receiving.finished && !delivery) return <Finished receiving={receiving} />;
+  if (!location && !delivery) return <NeedsLocation />;
 
-  if (finished && !delivery) {
-    return (
-      <Screen>
-        <View className="gap-4 px-4 pt-2">
-          <Panel
-            icon="sent"
-            iconColour="mandatory-ink"
-            title="Delivery finished"
-            body={`${plural(finished.units, 'unit goes', 'units go')} into ${finished.delivery.locationName ?? 'the'} Unbinned bin. Put them on the shelves by counting each bin.`}>
-            <Button label="Put away now" onPress={() => router.navigate('/count')} />
-            <Button label="Start another delivery" variant="secondary" onPress={() => void receiving.start()} />
-          </Panel>
-        </View>
-      </Screen>
-    );
-  }
-
-  if (!delivery) {
-    if (!location) return <Screen><NeedsLocation /></Screen>;
-    return (
-      <Screen>
-        <Notice icon="receive" title="No delivery open">
-          <Button label="Start a delivery" onPress={() => void receiving.start()} />
-        </Notice>
-        {receiving.recent.length > 0 ? (
-          <View className="px-4 pb-10">
-            <ListGroup title="Finished on this phone">
-              {receiving.recent.map((item, index) => (
-                <ListRow
-                  key={item.documentId}
-                  label={`Started ${time(item.startedAt)}`}
-                  detail={item.locationName}
-                  value={item.finishedAt ? `Finished ${time(item.finishedAt)}` : undefined}
-                  last={index === receiving.recent.length - 1}
-                />
-              ))}
-            </ListGroup>
-          </View>
-        ) : null}
-      </Screen>
-    );
-  }
-
-  function confirmFinish() {
-    const unknown = receiving.groups.filter((group) => group.status === 'unknown').length;
-    Alert.alert(
-      'Finish this delivery?',
-      [
-        `${plural(receiving.groups.length, 'code', 'codes')}, ${plural(receiving.units, 'unit', 'units')}.`,
-        unknown > 0 ? `${plural(unknown, 'unknown barcode stays', 'unknown barcodes stay')} for the office to match.` : null,
-        'Anything scanned later starts a new delivery.',
-      ]
-        .filter(Boolean)
-        .join(' '),
-      [
-        { text: 'Keep scanning', style: 'cancel' },
-        { text: 'Finish', onPress: () => void receiving.finish() },
-      ],
-    );
-  }
+  const unknown = groups.filter((group) => group.status === 'unknown').length;
+  const toCheck = groups.filter((group) => statusText(group.status, group.reason).tone !== 'safe' && group.status !== 'waiting').length;
 
   return (
-    <Screen>
-      <View className="gap-3 px-4 pb-10 pt-2">
-        <View accessible className="gap-0.5 px-1">
-          <Text accessibilityRole="header" className="text-lg font-semibold text-ink">
-            {receiving.number ? `Delivery ${receiving.number}` : `Delivery started ${time(delivery.startedAt)}`}
-          </Text>
-          <Text className="text-sm tabular-nums text-quiet-ink">
-            {[delivery.locationName, plural(receiving.groups.length, 'code', 'codes'), plural(receiving.units, 'unit', 'units')]
-              .filter(Boolean)
-              .join(' · ')}
-          </Text>
-          <Text className={cx('text-sm', receiving.problems > 0 ? 'text-stop-ink' : 'text-quiet-ink')}>
-            {receiving.problems > 0
-              ? `${plural(receiving.problems, 'line needs', 'lines need')} attention`
-              : receiving.waiting > 0
-                ? `${plural(receiving.waiting, 'line', 'lines')} saved, waiting to send`
-                : receiving.groups.length > 0
-                  ? 'Everything scanned has reached PartsLogic'
-                  : 'Scan the first box'}
-          </Text>
-        </View>
-
-        <View className="h-40 overflow-hidden rounded-plate">
-          <CameraScanner onScan={(code) => void receiving.scan(code)} />
-        </View>
-        <ScanField placeholder="Barcode or part number" onSubmit={(code) => void receiving.scan(code)} />
-
-        {receiving.notice ? <Panel icon="warning" title="Not added" body={receiving.notice} /> : null}
-
-        {receiving.lastLine && receiving.lastLine.qty > 0 ? (
-          <View className="flex-row items-center justify-between gap-3 rounded-xl bg-plate px-4 py-2">
-            <Text numberOfLines={1} className="shrink text-base tabular-nums text-mandatory-ink">
-              +1 {receiving.lastLine.label ?? receiving.lastLine.code}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Undo the last scan"
-              hitSlop={8}
-              onPress={() => {
-                const line = receiving.lastLine;
-                if (line) void receiving.change(line.code, -1, line.label);
-              }}
-              className="h-11 justify-center px-2 active:opacity-70">
-              <Text className="text-base font-semibold text-mandatory-ink">Undo</Text>
-            </Pressable>
-          </View>
+    <>
+      <JobScreen
+        placeholder="Barcode or part number"
+        onScan={(code) => void receiving.scan(code)}
+        banner={
+          delivery ? (
+            <JobBanner
+              title={receiving.number ?? `Delivery ${clock(delivery.startedAt)}`}
+              detail={delivery.locationName ? `Into ${delivery.locationName} Unbinned` : null}
+            />
+          ) : null
+        }
+        result={<LastScan receiving={receiving} />}
+        action={
+          groups.length > 0 ? (
+            <ActionBar
+              label={`Finish · ${plural(units, 'unit', 'units')}`}
+              icon="check"
+              onPress={() => setConfirming(true)}
+              secondary={
+                lastLine && lastLine.qty > 0
+                  ? { label: 'Undo the last scan', icon: 'undo', onPress: () => void receiving.change(lastLine.code, -1, lastLine.label) }
+                  : undefined
+              }
+            />
+          ) : null
+        }>
+        <Tally
+          items={[
+            { value: units, label: 'Units' },
+            { value: groups.length, label: 'Codes' },
+            { value: toCheck, label: 'To check', tone: toCheck > 0 ? 'warning' : undefined },
+          ]}
+        />
+        {receiving.problems > 0 ? (
+          <StatusStrip tone="stop" icon="stop" text={`${plural(receiving.problems, 'line', 'lines')} not sent · see Sync`} />
         ) : null}
-
-        {receiving.groups.length > 0 ? (
+        {groups.map((group) => (
+          <GroupRow key={group.code} group={group} receiving={receiving} />
+        ))}
+        {!delivery && receiving.recent.length > 0 ? (
           <>
-            <Button label="Finish delivery" onPress={confirmFinish} />
-            <ListGroup title="Scanned">
-              {receiving.groups.map((group, index) => (
-                <GroupRow key={group.code} group={group} receiving={receiving} last={index === receiving.groups.length - 1} />
-              ))}
-            </ListGroup>
+            <SectionLabel>Finished on this phone</SectionLabel>
+            {receiving.recent.map((item) => (
+              <Plate key={item.documentId} className="min-h-14 flex-row items-center gap-3 px-3 py-2">
+                <SignText size="label" weight="heavy" className="flex-1">
+                  {`Delivery ${clock(item.startedAt)}`}
+                </SignText>
+                {item.finishedAt ? <Detail>{`Finished ${clock(item.finishedAt)}`}</Detail> : null}
+              </Plate>
+            ))}
           </>
         ) : null}
-      </View>
-    </Screen>
+      </JobScreen>
+      <ConfirmSheet
+        visible={confirming}
+        title="Finish delivery?"
+        facts={[
+          { value: units, label: 'Units' },
+          { value: groups.length, label: 'Codes' },
+        ]}
+        note={unknown > 0 ? `${plural(unknown, 'unknown code stays', 'unknown codes stay')} for the office to match.` : null}
+        confirm={{
+          label: `Finish · ${plural(units, 'unit', 'units')}`,
+          onPress: () => {
+            setConfirming(false);
+            void receiving.finish();
+          },
+        }}
+        cancelLabel="Keep scanning"
+        onCancel={() => setConfirming(false)}
+      />
+    </>
   );
 }
 
-function GroupRow({
-  group,
-  receiving,
-  last,
-}: {
-  group: LineGroup;
-  receiving: ReturnType<typeof useDelivery>;
-  last: boolean;
-}) {
+// The plate for the scan that just landed: what was added and how many of it are in the delivery now.
+function LastScan({ receiving }: { receiving: Receiving }) {
+  const { notice, lastLine, groups } = receiving;
+  if (notice) {
+    return (
+      <ScanResultCard key={notice.bin} tone="warning" status={{ icon: 'bin', label: 'Bin label · not added' }} title={notice.bin} detail="Deliveries go into Unbinned" />
+    );
+  }
+  if (!lastLine) return null;
+  const group = groups.find((candidate) => candidate.code === lastLine.code);
+  const total = group?.total ?? lastLine.qty;
+  if (lastLine.qty < 0) {
+    return (
+      <ScanResultCard
+        key={lastLine.clientLineId}
+        tone="surface"
+        status={{ icon: 'undo', label: 'Taken off' }}
+        title={lastLine.label ?? lastLine.code}
+        quantity={{ value: String(lastLine.qty).replace('-', '−'), label: `${total} in delivery` }}
+      />
+    );
+  }
+  const known = lastLine.label !== null;
+  return (
+    <ScanResultCard
+      key={lastLine.clientLineId}
+      tone={known ? 'safe' : 'warning'}
+      status={known ? { icon: 'sent', label: 'Added' } : { icon: 'warning', label: 'Added · unknown code' }}
+      title={lastLine.label ?? lastLine.code}
+      detail={known ? lastLine.code : null}
+      quantity={{ value: `+${lastLine.qty}`, label: `${total} in delivery` }}>
+      {known ? null : <AddPartLink code={lastLine.code} />}
+    </ScanResultCard>
+  );
+}
+
+function GroupRow({ group, receiving }: { group: LineGroup; receiving: Receiving }) {
   const status = statusText(group.status, group.reason);
   const name = group.label ?? group.code;
   return (
-    <View className={cx('flex-row items-center gap-3 px-4 py-3', !last && 'border-b border-rule')}>
-      <View className="flex-1 gap-0.5">
-        <Text numberOfLines={1} className="text-base tabular-nums text-ink">
-          {name}
-        </Text>
-        {group.label ? <Text className="text-sm tabular-nums text-quiet-ink">{group.code}</Text> : null}
-        <Text className={cx('text-sm', status.problem ? 'text-stop-ink' : 'text-quiet-ink')}>{status.text}</Text>
-        {group.status === 'unknown' ? <AddPartLink code={group.code} /> : null}
-      </View>
-      <Quantity
-        total={group.total}
-        name={name}
-        onStep={(change) => void receiving.change(group.code, change, group.label)}
-        onSet={(target) => void receiving.setTotal(group.code, target, group.total, group.label)}
-      />
+    <LineRow
+      name={name}
+      code={group.label ? group.code : null}
+      status={status}
+      quantity={
+        <Quantity
+          total={group.total}
+          name={name}
+          onStep={(change) => void receiving.change(group.code, change, group.label)}
+          onSet={(target) => void receiving.setTotal(group.code, target, group.total, group.label)}
+        />
+      }>
+      {group.status === 'unknown' ? <AddPartLink code={group.code} /> : null}
+    </LineRow>
+  );
+}
+
+// After Finish: the receipt number, where the stock went, and the next job.
+function Finished({ receiving }: { receiving: Receiving }) {
+  const finished = receiving.finished!;
+  const place = finished.delivery.locationName ? `${finished.delivery.locationName} Unbinned` : 'Unbinned';
+  return (
+    <View className="flex-1 bg-ground">
+      <Notice
+        icon="sent"
+        tone="safe"
+        title={receiving.finishedNumber ?? 'Delivery finished'}
+        line={`${plural(finished.units, 'unit', 'units')} into ${place}`}>
+        <Button label="Put away now" icon="count" onPress={() => router.replace('/count')} />
+        <Button label="Next delivery" variant="secondary" onPress={receiving.dismissFinished} />
+      </Notice>
     </View>
   );
 }

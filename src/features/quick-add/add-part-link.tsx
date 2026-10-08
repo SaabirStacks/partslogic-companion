@@ -1,16 +1,21 @@
 import { router } from 'expo-router';
-import { Pressable, Text } from 'react-native';
 
-// Opens Quick add for an unknown code, from wherever it was scanned.
+import { Icon } from '@/ui/icon';
+import { PressablePlate } from '@/ui/plate';
+import { SignText } from '@/ui/sign-text';
+
+// Opens Add part for an unknown code, from wherever it was scanned: a small black sign.
 export function AddPartLink({ code }: { code: string }) {
   return (
-    <Pressable
-      accessibilityRole="button"
+    <PressablePlate
+      tone="plain"
       accessibilityLabel={`Add the part for ${code}`}
-      hitSlop={8}
       onPress={() => router.push({ pathname: '/quick-add', params: { code } })}
-      className="self-start py-1 active:opacity-70">
-      <Text className="text-sm font-semibold text-mandatory-ink">Add part</Text>
-    </Pressable>
+      className="h-12 flex-row items-center gap-1.5 self-start px-3">
+      <Icon name="add" size={18} colour="on-plain" />
+      <SignText size="label" ink="text-on-plain">
+        Add part
+      </SignText>
+    </PressablePlate>
   );
 }

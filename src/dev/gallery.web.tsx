@@ -10,6 +10,8 @@ import { partAnswer } from '@/features/lookup/answer';
 import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
 import { PartRow } from '@/features/part/part-row';
 import { PartView } from '@/features/part/part-view';
+import { AddPartLink } from '@/features/quick-add/add-part-link';
+import { statusText } from '@/features/receive/status-text';
 import { NotSetUp } from '@/features/setup/not-set-up';
 import { jobsFor } from '@/features/board/jobs';
 import { syncState } from '@/features/board/sync-state';
@@ -18,12 +20,16 @@ import { BinChip } from '@/ui/bin-chip';
 import { Button } from '@/ui/button';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { Icon } from '@/ui/icon';
+import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
+import { LineRow } from '@/ui/line-row';
+import { Notice } from '@/ui/notice';
+import { Quantity } from '@/ui/quantity';
 import { themeVars, type Tone } from '@/ui/palette';
 import { Plate, PressablePlate, TEXT_ON } from '@/ui/plate';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { SectionLabel } from '@/ui/section-label';
-import { Detail, SignText } from '@/ui/sign-text';
+import { SignText } from '@/ui/sign-text';
 import { Tally } from '@/ui/tally';
 import { useScheme } from '@/ui/theme';
 
@@ -52,52 +58,29 @@ function StackHeader({ title, quickLookUp = true }: { title: string; quickLookUp
   );
 }
 
-function Line({ name, code, qty, tone }: { name: string; code: string; qty: number; tone?: Tone }) {
-  return (
-    <Plate className="min-h-16 flex-row items-center gap-3 px-3 py-2">
-      <View className="flex-1">
-        <SignText size="label" weight="heavy" numberOfLines={1}>
-          {name}
-        </SignText>
-        <Detail numberOfLines={1}>{code}</Detail>
-      </View>
-      {tone ? (
-        <Plate tone={tone} className="px-2 py-0.5">
-          <SignText size="tag" ink={TEXT_ON[tone]}>
-            Check
-          </SignText>
-        </Plate>
-      ) : null}
-      <PressablePlate accessibilityLabel="One fewer" onPress={noop} className="h-12 w-12 items-center justify-center">
-        <Icon name="minus" size={22} />
-      </PressablePlate>
-      <SignText size="display" weight="heavy" className="min-w-10 text-center">
-        {qty}
-      </SignText>
-      <PressablePlate accessibilityLabel="One more" onPress={noop} className="h-12 w-12 items-center justify-center">
-        <Icon name="plus" size={22} />
-      </PressablePlate>
-    </Plate>
-  );
-}
-
 function SampleJob({ confirming = false }: { confirming?: boolean }) {
+  const lines = [
+    { name: 'Bosch 0 986 494 119', code: '4047025186913', qty: 4, status: statusText('booked', null) },
+    { name: '5010415305187', code: null, qty: 1, status: statusText('unknown', null), unknown: true },
+    { name: 'Mann HU 816 x', code: '4011558726304', qty: 6, status: statusText('waiting', null) },
+  ];
   return (
     <View className="flex-1">
       <StackHeader title="Receive" />
       <JobScreen
         placeholder="Barcode or part number"
         onScan={noop}
+        banner={<JobBanner title="GR-0042" detail="Into Main Unbinned" />}
         result={
           <ScanResultCard
             tone="safe"
             status={{ icon: 'sent', label: 'Added' }}
             title="Bosch 0 986 494 119"
-            detail="Brake pad set, front axle"
+            detail="4047025186913"
             quantity={{ value: '+1', label: '4 in delivery' }}
           />
         }
-        action={<ActionBar label="Finish · 24 units" onPress={noop} secondary={{ label: 'Undo', icon: 'undo', onPress: noop }} />}>
+        action={<ActionBar label="Finish · 24 units" icon="check" onPress={noop} secondary={{ label: 'Undo', icon: 'undo', onPress: noop }} />}>
         <Tally
           items={[
             { value: 24, label: 'Units' },
@@ -105,9 +88,16 @@ function SampleJob({ confirming = false }: { confirming?: boolean }) {
             { value: 1, label: 'To check', tone: 'warning' },
           ]}
         />
-        <Line name="Bosch 0 986 494 119" code="4047025186913" qty={4} />
-        <Line name="5010415305187" code="Unknown code" qty={1} tone="warning" />
-        <Line name="Mann HU 816 x" code="4011558726304" qty={6} />
+        {lines.map((line) => (
+          <LineRow
+            key={line.name}
+            name={line.name}
+            code={line.code}
+            status={line.status}
+            quantity={<Quantity total={line.qty} name={line.name} onStep={noop} onSet={noop} />}>
+            {line.unknown ? <AddPartLink code={line.name} /> : null}
+          </LineRow>
+        ))}
       </JobScreen>
       <ConfirmSheet
         visible={confirming}
@@ -206,6 +196,15 @@ const SCREENS: Record<string, () => ReactNode> = {
     />
   ),
   job: () => <SampleJob />,
+  'receive-done': () => (
+    <View className="flex-1 bg-ground">
+      <StackHeader title="Receive" />
+      <Notice icon="sent" tone="safe" title="GR-0042" line="24 units into Main Unbinned">
+        <Button label="Put away now" icon="count" onPress={noop} />
+        <Button label="Next delivery" variant="secondary" onPress={noop} />
+      </Notice>
+    </View>
+  ),
   confirm: () => <SampleJob confirming />,
   parts: () => <Parts />,
   lookup: () => (
