@@ -58,3 +58,37 @@ export function Fixtures({
     </SessionContext>
   );
 }
+
+// A stocked oil filter, as PartsLogic would return it (only the fields the screens read).
+export const OIL_FILTER = {
+  part: { id: 7, brandId: 1, brand: 'Mann', number: 'HU 816 x', kind: 'part', description: 'Oil filter', tecdocAlias: null, categoryId: null, redirectedFrom: null },
+  displayName: null,
+  categoryTrail: ['Filters', 'Oil filters'],
+  sourceCategory: null,
+  images: [],
+  barcodes: [{ display: '4011558726304' }],
+  prices: [],
+  oeNumbers: [],
+  enrichment: null,
+  item: {
+    isStocked: true,
+    onHand: 12,
+    belowReorder: false,
+    sellPrice: 9.5,
+    sku: 'MAN-HU816X',
+    bestCost: 4.2,
+    bestCurrency: 'GBP',
+    bestSupplierName: 'Euro Car Parts',
+    pricing: { source: 'rule', tradePrice: 7.6, minMargin: null, margin: null },
+    stock: [
+      { binId: 1, place: 'A-01', qty: 8 },
+      { binId: 2, place: 'C-03', qty: 4 },
+    ],
+  },
+} as unknown as import('@/vendor/partslogic/shared/catalogue').PartDetail;
+
+export const RECENT = [
+  { partId: 7, brand: 'Mann', number: 'HU 816 x', description: 'Oil filter' },
+  { partId: 8, brand: 'Bosch', number: '0 986 494 119', description: 'Brake pad set, front axle' },
+  { partId: 9, brand: 'NGK', number: 'BKR6E', description: 'Spark plug' },
+];

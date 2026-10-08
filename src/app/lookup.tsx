@@ -1,149 +1,148 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, Text, View } from 'react-native';
-
+import { partAnswer } from '@/features/lookup/answer';
+import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
 import { useLookUp, type LookUpView } from '@/features/lookup/use-look-up';
+import { loadPart } from '@/features/part/load-part';
 import { PartRow } from '@/features/part/part-row';
-import { CameraScanner } from '@/scan/camera-scanner';
-import { ScanField } from '@/scan/scan-field';
+import type { RecentPart } from '@/lib/prefs';
+import { useRemote } from '@/lib/use-remote';
 import { useSession } from '@/session/session-provider';
+import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
-import { ListGroup } from '@/ui/list';
-import { Panel } from '@/ui/panel';
-import { Screen } from '@/ui/screen';
-import { useColour } from '@/ui/theme';
+import { JobScreen } from '@/ui/job-screen';
+import { ScanResultCard } from '@/ui/scan-result-card';
+import { SectionLabel } from '@/ui/section-label';
 import { barcodeProblem } from '@/vendor/partslogic/shared/gtin';
 import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 
+type LookUpApi = ReturnType<typeof useLookUp>;
+
+// Look up: scan or type, and the answer lands on the result plate. A part shows its stock, bins and
+// price at a glance; the next scan replaces it, and tapping it opens the whole part.
 export default function LookUp() {
   const lookUp = useLookUp();
+  const { state } = useSession();
+  const member = state.status === 'member' ? state.member : null;
+  const canCount = member !== null && roleAtLeast(member.role, 'counter');
   const { view, recent } = lookUp;
 
   return (
-    <Screen>
-      <View className="gap-3 px-4 pb-10 pt-2">
-        <View className="h-56 overflow-hidden rounded-plate">
-          <CameraScanner enabled={!lookUp.busy} onScan={lookUp.scan} />
-        </View>
-        <ScanField placeholder="Part number or barcode" onSubmit={lookUp.type} editable={!lookUp.busy} />
-        <Answer view={view} lookUp={lookUp} />
-        {view.kind === 'results' ? <Results view={view} lookUp={lookUp} /> : null}
-        {view.kind !== 'results' && recent.length > 0 ? (
-          <View className="mt-3">
-            <ListGroup title="Recent">
-              {recent.map((part, index) => (
-                <PartRow
-                  key={part.partId}
-                  {...part}
-                  onPress={() => lookUp.openPart(part)}
-                  last={index === recent.length - 1}
-                />
-              ))}
-            </ListGroup>
-          </View>
-        ) : null}
-      </View>
-    </Screen>
+    <JobScreen
+      placeholder="Part number or barcode"
+      scanEnabled={!lookUp.busy}
+      onScan={lookUp.scan}
+      onType={lookUp.type}
+      result={<Answer view={view} lookUp={lookUp} currency={member?.currency ?? 'GBP'} />}
+      action={<Action view={view} lookUp={lookUp} canCount={canCount} />}>
+      {view.kind === 'results' && view.results.length > 0 ? (
+        <>
+          <SectionLabel>{`${view.results.length === 30 ? 'First 30' : view.results.length} ${view.results.length === 1 ? 'match' : 'matches'}`}</SectionLabel>
+          {view.results.map((result) => (
+            <PartRow
+              key={result.partId}
+              brand={result.brand}
+              number={result.number}
+              description={result.description}
+              onPress={() => lookUp.openPart({ partId: result.partId, brand: result.brand, number: result.number, description: result.description })}
+            />
+          ))}
+        </>
+      ) : null}
+      {view.kind !== 'results' && recent.length > 0 ? (
+        <>
+          <SectionLabel>Recent</SectionLabel>
+          {recent.map((part) => (
+            <PartRow key={part.partId} {...part} onPress={() => lookUp.openPart(part)} />
+          ))}
+        </>
+      ) : null}
+    </JobScreen>
   );
 }
 
-type LookUpApi = ReturnType<typeof useLookUp>;
-
-function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
-  const { state } = useSession();
-  const colourOf = useColour();
-  const canCount = state.status === 'member' && roleAtLeast(state.member.role, 'counter');
-
+function Answer({ view, lookUp, currency }: { view: LookUpView; lookUp: LookUpApi; currency: string }) {
   switch (view.kind) {
     case 'working':
-      return (
-        <View className="flex-row items-center gap-3 px-1 py-2">
-          <ActivityIndicator color={colourOf('quiet-ink')} />
-          <Text className="text-base tabular-nums text-quiet-ink">Looking up {view.code}</Text>
-        </View>
-      );
+      return <ScanResultCard tone="surface" status={{ icon: 'waiting', label: 'Looking up' }} title={view.code} />;
+    case 'part':
+      return <PartPlate key={view.at} part={view.part} currency={currency} onOpen={() => lookUp.openPart(view.part)} />;
     case 'bin':
-      return (
-        <Panel icon="count" iconColour="mandatory-ink" title={`Bin ${view.bin}`} body={`In ${view.location}.`}>
-          {canCount ? (
-            <Button
-              label="Count this bin"
-              onPress={() => {
-                lookUp.clear();
-                router.navigate({
-                  pathname: '/count',
-                  params: { binId: String(view.binId), bin: view.bin, location: view.location },
-                });
-              }}
-            />
-          ) : null}
-          <Button label="Done" variant="secondary" onPress={lookUp.clear} />
-        </Panel>
-      );
+      return <ScanResultCard tone="surface" status={{ icon: 'bin', label: 'Bin label' }} title={view.bin} detail={view.location} />;
     case 'unknown':
       return (
-        <Panel
-          icon="warning"
-          iconColour="warning-ink"
-          title={`No part has the code ${view.code}`}
-          body={barcodeProblem(view.code) ?? 'It may be a supplier code PartsLogic hasn’t seen yet. Try the part number instead.'}>
-          {canCount ? (
-            <Button
-              label="Add as new part"
-              onPress={() => router.push({ pathname: '/quick-add', params: { code: view.code } })}
-            />
-          ) : null}
-          <Button label="Search instead" variant="secondary" onPress={() => lookUp.search(view.code)} />
-        </Panel>
+        <ScanResultCard tone="warning" status={{ icon: 'warning', label: 'Unknown code' }} title={view.code} detail={barcodeProblem(view.code)}>
+          <Button label="Search instead" icon="lookup" variant="secondary" compact onPress={() => lookUp.search(view.code)} />
+        </ScanResultCard>
       );
     case 'offline':
       return (
-        <Panel
-          icon="offline"
-          title="No signal"
-          body={`${view.code} isn’t in the scan list saved on this phone, so it can’t be checked until you’re back online.`}>
-          <Button label="Try again" variant="secondary" onPress={() => lookUp.retry(view.code, view.typed)} />
-        </Panel>
+        <ScanResultCard tone="warning" status={{ icon: 'offline', label: 'No signal' }} title={view.code} detail="Not in the scan list on this phone">
+          <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => lookUp.retry(view.code, view.typed)} />
+        </ScanResultCard>
       );
     case 'error':
       return (
-        <Panel icon="warning" iconColour="stop-ink" title="That didn’t work" body={view.message}>
-          <Button label="Try again" variant="secondary" onPress={() => lookUp.retry(view.code, view.typed)} />
-        </Panel>
+        <ScanResultCard tone="stop" status={{ icon: 'stop', label: 'Didn’t work' }} title={view.code} detail={view.message}>
+          <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => lookUp.retry(view.code, view.typed)} />
+        </ScanResultCard>
       );
+    case 'results':
+      return view.results.length === 0 ? (
+        <ScanResultCard tone="warning" status={{ icon: 'lookup', label: 'No match' }} title={view.query} detail="Check the number, or scan the box" />
+      ) : null;
     default:
       return null;
   }
 }
 
-function Results({ view, lookUp }: { view: Extract<LookUpView, { kind: 'results' }>; lookUp: LookUpApi }) {
-  if (view.results.length === 0) {
-    return (
-      <Panel
-        icon="lookup"
-        title={`No match for ${view.query}`}
-        body="Check the number, or scan the barcode on the box."
+// A scanned part: stock and price from PartsLogic (or the copy saved on this phone), drawn as the stock
+// sign. Until they arrive it shows the part with a dash for the quantity.
+function PartPlate({ part, currency, onOpen }: { part: RecentPart; currency: string; onOpen: () => void }) {
+  const { data, error } = useRemote(`part:${part.partId}`, () => loadPart(part.partId));
+  const title = `${part.brand} ${part.number}`;
+
+  if (!data) {
+    return error ? (
+      <ScanResultCard tone="warning" status={{ icon: 'offline', label: 'No signal' }} title={title} detail="Stock shows when you’re back online" />
+    ) : (
+      <ScanResultCard
+        tone="surface"
+        status={{ icon: 'waiting', label: data === null ? 'Not found' : 'Checking stock' }}
+        title={title}
+        quantity={{ value: '–', label: 'On hand' }}
       />
     );
   }
-  return (
-    <ListGroup title={`${view.results.length === 30 ? 'First 30' : view.results.length} ${view.results.length === 1 ? 'match' : 'matches'}`}>
-      {view.results.map((result, index) => (
-        <PartRow
-          key={result.partId}
-          brand={result.brand}
-          number={result.number}
-          description={result.description}
-          onPress={() =>
-            lookUp.openPart({
-              partId: result.partId,
-              brand: result.brand,
-              number: result.number,
-              description: result.description,
-            })
-          }
-          last={index === view.results.length - 1}
-        />
-      ))}
-    </ListGroup>
-  );
+
+  return <PartAnswerPlate title={title} answer={partAnswer(data.detail, currency)} savedAt={data.savedAt} onOpen={onOpen} />;
+}
+
+// The one main action for what was scanned: open the part, count the bin, or add the unknown code.
+function Action({ view, lookUp, canCount }: { view: LookUpView; lookUp: LookUpApi; canCount: boolean }) {
+  if (view.kind === 'part') {
+    return <ActionBar label="Open part" icon="forward" onPress={() => lookUp.openPart(view.part)} />;
+  }
+  if (view.kind === 'bin' && canCount) {
+    return (
+      <ActionBar
+        label={`Count bin ${view.bin}`}
+        icon="count"
+        onPress={() => {
+          lookUp.clear();
+          router.navigate({ pathname: '/count', params: { binId: String(view.binId), bin: view.bin, location: view.location } });
+        }}
+      />
+    );
+  }
+  if (view.kind === 'unknown' && canCount) {
+    return (
+      <ActionBar
+        label="Add part"
+        icon="add"
+        tone="plain"
+        onPress={() => router.push({ pathname: '/quick-add', params: { code: view.code } })}
+      />
+    );
+  }
+  return null;
 }

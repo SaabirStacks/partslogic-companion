@@ -6,6 +6,10 @@ import LocationSheet from '@/app/location';
 import NoAccess from '@/app/no-access';
 import SignIn from '@/app/sign-in';
 import { BoardView } from '@/features/board/board-view';
+import { partAnswer } from '@/features/lookup/answer';
+import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
+import { PartRow } from '@/features/part/part-row';
+import { PartView } from '@/features/part/part-view';
 import { NotSetUp } from '@/features/setup/not-set-up';
 import { jobsFor } from '@/features/board/jobs';
 import { syncState } from '@/features/board/sync-state';
@@ -18,11 +22,12 @@ import { JobScreen } from '@/ui/job-screen';
 import { themeVars, type Tone } from '@/ui/palette';
 import { Plate, PressablePlate, TEXT_ON } from '@/ui/plate';
 import { ScanResultCard } from '@/ui/scan-result-card';
+import { SectionLabel } from '@/ui/section-label';
 import { Detail, SignText } from '@/ui/sign-text';
 import { Tally } from '@/ui/tally';
 import { useScheme } from '@/ui/theme';
 
-import { Fixtures } from './fixtures';
+import { Fixtures, OIL_FILTER, RECENT } from './fixtures';
 
 // Dev-only: every screen of the redesign drawn from fixture data, so it can be captured in a browser at
 // phone size for review (?screen=board). Light or dark follows the browser's colour scheme. The native
@@ -203,6 +208,48 @@ const SCREENS: Record<string, () => ReactNode> = {
   job: () => <SampleJob />,
   confirm: () => <SampleJob confirming />,
   parts: () => <Parts />,
+  lookup: () => (
+    <View className="flex-1">
+      <StackHeader title="Look up" quickLookUp={false} />
+      <JobScreen
+        placeholder="Part number or barcode"
+        onScan={noop}
+        result={<PartAnswerPlate title="Mann HU 816 x" answer={partAnswer(OIL_FILTER, 'GBP')} savedAt={null} onOpen={noop} />}
+        action={<ActionBar label="Open part" icon="forward" onPress={noop} />}>
+        <SectionLabel>Recent</SectionLabel>
+        {RECENT.map((part) => (
+          <PartRow key={part.partId} {...part} onPress={noop} />
+        ))}
+      </JobScreen>
+    </View>
+  ),
+  'lookup-unknown': () => (
+    <View className="flex-1">
+      <StackHeader title="Look up" quickLookUp={false} />
+      <JobScreen
+        placeholder="Part number or barcode"
+        onScan={noop}
+        result={
+          <ScanResultCard tone="warning" status={{ icon: 'warning', label: 'Unknown code' }} title="5010415305187">
+            <Button label="Search instead" icon="lookup" variant="secondary" compact onPress={noop} />
+          </ScanResultCard>
+        }
+        action={<ActionBar label="Add part" icon="add" tone="plain" onPress={noop} />}>
+        <SectionLabel>Recent</SectionLabel>
+        {RECENT.map((part) => (
+          <PartRow key={part.partId} {...part} onPress={noop} />
+        ))}
+      </JobScreen>
+    </View>
+  ),
+  part: () => (
+    <Fixtures>
+      <View className="flex-1">
+        <StackHeader title="Part" />
+        <PartView detail={OIL_FILTER} savedAt={null} />
+      </View>
+    </Fixtures>
+  ),
   'sign-in': () => (
     <Fixtures session={{ status: 'signed-out' }}>
       <SignIn />
