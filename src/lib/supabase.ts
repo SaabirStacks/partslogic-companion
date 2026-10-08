@@ -4,32 +4,31 @@ import type { Database } from '@partslogic/db-types';
 import { createClient } from '@supabase/supabase-js';
 import { AppState } from 'react-native';
 
+import { publicConfig } from './config';
 import { LargeSecureStore } from './large-secure-store';
 
-function required(name: string, value: string | undefined): string {
-  if (!value) throw new Error(`${name} is not set. Copy .env.example to .env.local and fill it in.`);
-  return value;
-}
+// Without its settings the app shows a set-up screen (src/app/_layout.tsx) and never uses this client.
+// The placeholders only stop this import from crashing the app before that screen can appear.
+const settings = publicConfig.ok
+  ? publicConfig
+  : { url: 'https://not-configured.invalid', publishableKey: 'not-configured' };
 
-// Expo inlines EXPO_PUBLIC_ variables at build time, so they must be read as written here (no destructuring).
-// Both are safe to ship: the publishable key only reaches what row-level security allows.
-const url = required('EXPO_PUBLIC_SUPABASE_URL', process.env.EXPO_PUBLIC_SUPABASE_URL);
-const publishableKey = required('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY', process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
-
-export const supabase = createClient<Database>(url, publishableKey, {
+export const supabase = createClient<Database>(settings.url, settings.publishableKey, {
   auth: {
     storage: new LargeSecureStore(),
-    autoRefreshToken: true,
+    autoRefreshToken: publicConfig.ok,
     persistSession: true,
     detectSessionInUrl: false,
   },
 });
 
 // From Supabase's React Native guide: refresh the session only while the app is in the foreground.
-AppState.addEventListener('change', (state) => {
-  if (state === 'active') {
-    supabase.auth.startAutoRefresh();
-  } else {
-    supabase.auth.stopAutoRefresh();
-  }
-});
+if (publicConfig.ok) {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+  });
+}

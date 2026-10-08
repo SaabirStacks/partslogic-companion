@@ -24,8 +24,11 @@ the PartsLogic back office and calls the same database functions; it never reimp
 ## Getting started
 
 1. `npm install`
-2. Copy `.env.example` to `.env.local` and fill in the Supabase URL and publishable key.
-3. `npx expo start`, then scan the QR code with Expo Go.
+2. `npx expo start`, then scan the QR code with Expo Go.
+
+The Supabase URL and publishable key are already in `.env`; both are public by design. To use another
+project, put the same names in `.env.local`, which is git-ignored and overrides `.env`. Never put a
+secret key in either file.
 
 ## Checks
 
@@ -33,6 +36,7 @@ the PartsLogic back office and calls the same database functions; it never reimp
 npm run typecheck   # tsc --noEmit
 npm run lint        # expo lint
 npm test            # jest
+npm run check:env   # the app's public settings are present (EAS runs this before builds and updates)
 npx expo-doctor     # dependency and config health
 ```
 
