@@ -1,0 +1,13 @@
+# Sends the app's current JavaScript to every build on the preview channel (the Android APKs).
+# Run it from expo.dev, with `npx eas-cli@latest workflow:run .eas/workflows/update-preview.yml`,
+# or through the Expo connector. Changes that need a new build are listed in docs/DEPLOY.md.
+name: Update preview builds
+
+jobs:
+  update_preview:
+    name: Publish update to preview
+    type: update
+    environment: preview
+    params:
+      channel: preview
+      platform: android
