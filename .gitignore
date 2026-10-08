@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# Impeccable review screenshots (from the dev gallery; not shipped)
+.impeccable/review/
