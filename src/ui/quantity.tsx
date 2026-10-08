@@ -13,7 +13,7 @@ function Step({ label, symbol, onPress, disabled }: { label: string; symbol: str
       disabled={disabled}
       hitSlop={4}
       onPress={onPress}
-      className={cx('h-11 w-11 items-center justify-center rounded-full bg-canvas active:opacity-70', disabled && 'opacity-40')}>
+      className={cx('h-12 w-12 items-center justify-center rounded-plate border-2 border-plate-edge bg-plate active:opacity-70', disabled && 'opacity-40')}>
       <Text className="text-xl font-semibold text-ink">{symbol}</Text>
     </Pressable>
   );
@@ -55,7 +55,7 @@ export function Quantity({
             if (text.trim() !== '' && Number.isFinite(target)) onSet(target);
           }}
           onBlur={() => setEditing(false)}
-          className="h-11 w-20 rounded-xl border border-focus bg-paper px-3 text-center text-lg tabular-nums text-ink"
+          className="h-11 w-20 rounded-xl border border-focus bg-plate px-3 text-center text-lg tabular-nums text-ink"
         />
       </View>
     );

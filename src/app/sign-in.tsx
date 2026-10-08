@@ -7,7 +7,7 @@ import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
 import { useColour } from '@/ui/theme';
 
-const FIELD = 'h-12 rounded-xl border border-hairline bg-paper px-4 text-base text-ink focus:border-focus';
+const FIELD = 'h-12 rounded-xl border border-rule bg-plate px-4 text-base text-ink focus:border-focus';
 
 export default function SignIn() {
   const { checking, signIn } = useSession();
@@ -33,7 +33,7 @@ export default function SignIn() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas">
+    <SafeAreaView className="flex-1 bg-ground">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -89,12 +89,12 @@ export default function SignIn() {
               />
             </View>
             {offline ? (
-              <Text accessibilityRole="alert" className="text-base text-out">
+              <Text accessibilityRole="alert" className="text-base text-stop-ink">
                 You’re offline. Connect to sign in.
               </Text>
             ) : null}
             {problem ? (
-              <Text accessibilityRole="alert" className="text-base text-out">
+              <Text accessibilityRole="alert" className="text-base text-stop-ink">
                 {problem}
               </Text>
             ) : null}

@@ -29,7 +29,7 @@ export default function Outbox() {
         <Icon
           name={summary.icon}
           size={36}
-          colour={summary.icon === 'warning' ? 'out' : summary.icon === 'sent' ? 'tint' : 'quiet-ink'}
+          colour={summary.icon === 'warning' ? 'stop-ink' : summary.icon === 'sent' ? 'safe-ink' : 'quiet-ink'}
         />
         <Text accessibilityRole="header" className="text-center text-xl font-semibold text-ink">
           {summary.title}
@@ -44,7 +44,7 @@ export default function Outbox() {
         {attention.length > 0 ? (
           <ListGroup title="Needs attention">
             {attention.map((item, index) => (
-              <View key={item.clientId} className={index < attention.length - 1 ? 'border-b border-hairline' : undefined}>
+              <View key={item.clientId} className={index < attention.length - 1 ? 'border-b border-rule' : undefined}>
                 <ListRow label={item.label} detail={item.lastError} last />
                 <View className="px-4 pb-3">
                   <Button label="Try again" variant="secondary" onPress={() => void outbox.retry(item.clientId)} />

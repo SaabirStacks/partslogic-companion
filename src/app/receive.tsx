@@ -33,7 +33,7 @@ export default function Receive() {
         <View className="gap-4 px-4 pt-2">
           <Panel
             icon="sent"
-            iconColour="tint"
+            iconColour="mandatory-ink"
             title="Delivery finished"
             body={`${plural(finished.units, 'unit goes', 'units go')} into ${finished.delivery.locationName ?? 'the'} Unbinned bin. Put them on the shelves by counting each bin.`}>
             <Button label="Put away now" onPress={() => router.navigate('/count')} />
@@ -103,7 +103,7 @@ export default function Receive() {
               .filter(Boolean)
               .join(' · ')}
           </Text>
-          <Text className={cx('text-sm', receiving.problems > 0 ? 'text-out' : 'text-quiet-ink')}>
+          <Text className={cx('text-sm', receiving.problems > 0 ? 'text-stop-ink' : 'text-quiet-ink')}>
             {receiving.problems > 0
               ? `${plural(receiving.problems, 'line needs', 'lines need')} attention`
               : receiving.waiting > 0
@@ -114,14 +114,16 @@ export default function Receive() {
           </Text>
         </View>
 
-        <CameraScanner className="h-40" onScan={(code) => void receiving.scan(code)} />
+        <View className="h-40 overflow-hidden rounded-plate">
+          <CameraScanner onScan={(code) => void receiving.scan(code)} />
+        </View>
         <ScanField placeholder="Barcode or part number" onSubmit={(code) => void receiving.scan(code)} />
 
         {receiving.notice ? <Panel icon="warning" title="Not added" body={receiving.notice} /> : null}
 
         {receiving.lastLine && receiving.lastLine.qty > 0 ? (
-          <View className="flex-row items-center justify-between gap-3 rounded-xl bg-mist px-4 py-2">
-            <Text numberOfLines={1} className="shrink text-base tabular-nums text-mist-ink">
+          <View className="flex-row items-center justify-between gap-3 rounded-xl bg-plate px-4 py-2">
+            <Text numberOfLines={1} className="shrink text-base tabular-nums text-mandatory-ink">
               +1 {receiving.lastLine.label ?? receiving.lastLine.code}
             </Text>
             <Pressable
@@ -133,7 +135,7 @@ export default function Receive() {
                 if (line) void receiving.change(line.code, -1, line.label);
               }}
               className="h-11 justify-center px-2 active:opacity-70">
-              <Text className="text-base font-semibold text-tint">Undo</Text>
+              <Text className="text-base font-semibold text-mandatory-ink">Undo</Text>
             </Pressable>
           </View>
         ) : null}
@@ -165,13 +167,13 @@ function GroupRow({
   const status = statusText(group.status, group.reason);
   const name = group.label ?? group.code;
   return (
-    <View className={cx('flex-row items-center gap-3 px-4 py-3', !last && 'border-b border-hairline')}>
+    <View className={cx('flex-row items-center gap-3 px-4 py-3', !last && 'border-b border-rule')}>
       <View className="flex-1 gap-0.5">
         <Text numberOfLines={1} className="text-base tabular-nums text-ink">
           {name}
         </Text>
         {group.label ? <Text className="text-sm tabular-nums text-quiet-ink">{group.code}</Text> : null}
-        <Text className={cx('text-sm', status.problem ? 'text-out' : 'text-quiet-ink')}>{status.text}</Text>
+        <Text className={cx('text-sm', status.problem ? 'text-stop-ink' : 'text-quiet-ink')}>{status.text}</Text>
         {group.status === 'unknown' ? <AddPartLink code={group.code} /> : null}
       </View>
       <Quantity

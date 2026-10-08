@@ -11,7 +11,7 @@ export default function NoAccess() {
   const email = state.status === 'not-member' || state.status === 'unavailable' ? state.email : '';
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas">
+    <SafeAreaView className="flex-1 bg-ground">
       <EmptyState
         icon={notMember ? 'account' : 'offline'}
         title={notMember ? 'Ask an owner to add you' : "Can't reach PartsLogic"}

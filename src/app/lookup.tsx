@@ -21,7 +21,9 @@ export default function LookUp() {
   return (
     <Screen>
       <View className="gap-3 px-4 pb-10 pt-2">
-        <CameraScanner className="h-56" enabled={!lookUp.busy} onScan={lookUp.scan} />
+        <View className="h-56 overflow-hidden rounded-plate">
+          <CameraScanner enabled={!lookUp.busy} onScan={lookUp.scan} />
+        </View>
         <ScanField placeholder="Part number or barcode" onSubmit={lookUp.type} editable={!lookUp.busy} />
         <Answer view={view} lookUp={lookUp} />
         {view.kind === 'results' ? <Results view={view} lookUp={lookUp} /> : null}
@@ -61,7 +63,7 @@ function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
       );
     case 'bin':
       return (
-        <Panel icon="count" iconColour="tint" title={`Bin ${view.bin}`} body={`In ${view.location}.`}>
+        <Panel icon="count" iconColour="mandatory-ink" title={`Bin ${view.bin}`} body={`In ${view.location}.`}>
           {canCount ? (
             <Button
               label="Count this bin"
@@ -81,7 +83,7 @@ function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
       return (
         <Panel
           icon="warning"
-          iconColour="reorder"
+          iconColour="warning-ink"
           title={`No part has the code ${view.code}`}
           body={barcodeProblem(view.code) ?? 'It may be a supplier code PartsLogic hasn’t seen yet. Try the part number instead.'}>
           {canCount ? (
@@ -104,7 +106,7 @@ function Answer({ view, lookUp }: { view: LookUpView; lookUp: LookUpApi }) {
       );
     case 'error':
       return (
-        <Panel icon="warning" iconColour="out" title="That didn’t work" body={view.message}>
+        <Panel icon="warning" iconColour="stop-ink" title="That didn’t work" body={view.message}>
           <Button label="Try again" variant="secondary" onPress={() => lookUp.retry(view.code, view.typed)} />
         </Panel>
       );

@@ -89,7 +89,7 @@ export default function Move() {
       <ScrollView contentContainerClassName="gap-4 px-4 pb-10 pt-6">
         <Panel
           icon={result.kind === 'moved' ? 'sent' : 'warning'}
-          iconColour={result.kind === 'moved' ? 'tint' : 'out'}
+          iconColour={result.kind === 'moved' ? 'safe-ink' : 'stop-ink'}
           title={result.kind === 'moved' ? 'Moved' : result.kind === 'unknown' ? 'Not sure it moved' : 'Not moved'}
           body={result.message}>
           {result.kind === 'refused' ? (
@@ -129,9 +129,11 @@ export default function Move() {
               <ListRow label={to.label} value="Change" onPress={() => setTo(null)} last />
             ) : (
               <>
-                <CameraScanner className="h-36" onScan={(code) => void chooseBin(code)} />
+                <View className="h-36 overflow-hidden rounded-plate">
+                  <CameraScanner onScan={(code) => void chooseBin(code)} />
+                </View>
                 <ScanField placeholder="Bin label, for example B-07" onSubmit={(code) => void chooseBin(code)} />
-                {notice ? <Text className="px-1 text-sm text-out">{notice}</Text> : null}
+                {notice ? <Text className="px-1 text-sm text-stop-ink">{notice}</Text> : null}
                 {otherBins.length > 0 ? (
                   <ListGroup title="Bins that already hold it">
                     {otherBins.map((line, index) => (

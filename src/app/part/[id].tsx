@@ -101,7 +101,7 @@ function Detail({ detail, savedAt }: { detail: PartDetail; savedAt: string | nul
   return (
     <View className="gap-6 px-4 pb-10 pt-4">
       {savedAt ? (
-        <Text accessibilityRole="alert" className="rounded-xl bg-mist px-4 py-3 text-sm text-mist-ink">
+        <Text accessibilityRole="alert" className="rounded-xl bg-plate px-4 py-3 text-sm text-mandatory-ink">
           No signal. This is the copy saved on this phone on {timeOf(savedAt)}; stock may have changed since.
         </Text>
       ) : null}
@@ -131,7 +131,7 @@ function Detail({ detail, savedAt }: { detail: PartDetail; savedAt: string | nul
           <View
             accessible
             accessibilityLabel={`On hand ${formatQty(item.onHand)}`}
-            className="flex-row items-center justify-between border-b border-hairline px-4 py-3">
+            className="flex-row items-center justify-between border-b border-rule px-4 py-3">
             <Text className="text-base text-ink">On hand</Text>
             <View className="flex-row items-center gap-2">
               <StockBadge badge={stockBadge(item)} />
@@ -221,7 +221,7 @@ function Alternatives({ partId, currency }: { partId: number; currency: string }
                   .join(' · ')
               : 'Not stocked here'
           }
-          onPress={() => router.push(`/lookup/part/${alternative.partId}`)}
+          onPress={() => router.push(`/part/${alternative.partId}`)}
           last={index === data.length - 1}
         />
       ))}
@@ -233,12 +233,12 @@ function Skeleton() {
   return (
     <View accessibilityLabel="Loading part" className="gap-6 px-4 pt-4">
       <View className="gap-2">
-        <View className="h-4 w-24 rounded bg-hairline" />
-        <View className="h-7 w-48 rounded bg-hairline" />
-        <View className="h-4 w-64 rounded bg-hairline" />
+        <View className="h-4 w-24 rounded bg-rule" />
+        <View className="h-7 w-48 rounded bg-rule" />
+        <View className="h-4 w-64 rounded bg-rule" />
       </View>
-      <View className="h-32 rounded-xl bg-paper" />
-      <View className="h-24 rounded-xl bg-paper" />
+      <View className="h-32 rounded-xl bg-plate" />
+      <View className="h-24 rounded-xl bg-plate" />
     </View>
   );
 }

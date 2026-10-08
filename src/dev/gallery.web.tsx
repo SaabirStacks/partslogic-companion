@@ -1,0 +1,221 @@
+import { useState, type ReactNode } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+
+import { BoardView } from '@/features/board/board-view';
+import { jobsFor } from '@/features/board/jobs';
+import { syncState } from '@/features/board/sync-state';
+import { ActionBar } from '@/ui/action-bar';
+import { BinChip } from '@/ui/bin-chip';
+import { Button } from '@/ui/button';
+import { ConfirmSheet } from '@/ui/confirm-sheet';
+import { Icon } from '@/ui/icon';
+import { JobScreen } from '@/ui/job-screen';
+import { themeVars, type Tone } from '@/ui/palette';
+import { Plate, PressablePlate, TEXT_ON } from '@/ui/plate';
+import { ScanResultCard } from '@/ui/scan-result-card';
+import { Detail, SignText } from '@/ui/sign-text';
+import { Tally } from '@/ui/tally';
+import { useScheme } from '@/ui/theme';
+
+// Dev-only: every screen of the redesign drawn from fixture data, so it can be captured in a browser at
+// phone size for review (?screen=board). Light or dark follows the browser's colour scheme. The native
+// header is drawn by StackHeader below, a stand-in for the platform's own.
+
+const noop = () => {};
+const startedAt = new Date(new Date().setHours(9, 14, 0, 0)).toISOString();
+
+function StackHeader({ title, quickLookUp = true }: { title: string; quickLookUp?: boolean }) {
+  return (
+    <View className="h-14 flex-row items-center gap-3 bg-ground px-3">
+      <Icon name="back" size={24} />
+      <SignText size="title" weight="heavy" className="flex-1">
+        {title}
+      </SignText>
+      {quickLookUp ? (
+        <PressablePlate accessibilityLabel="Look up a part" onPress={noop} className="h-11 w-11 items-center justify-center">
+          <Icon name="lookup" size={22} />
+        </PressablePlate>
+      ) : null}
+    </View>
+  );
+}
+
+function Line({ name, code, qty, tone }: { name: string; code: string; qty: number; tone?: Tone }) {
+  return (
+    <Plate className="min-h-16 flex-row items-center gap-3 px-3 py-2">
+      <View className="flex-1">
+        <SignText size="label" weight="heavy" numberOfLines={1}>
+          {name}
+        </SignText>
+        <Detail numberOfLines={1}>{code}</Detail>
+      </View>
+      {tone ? (
+        <Plate tone={tone} className="px-2 py-0.5">
+          <SignText size="tag" ink={TEXT_ON[tone]}>
+            Check
+          </SignText>
+        </Plate>
+      ) : null}
+      <PressablePlate accessibilityLabel="One fewer" onPress={noop} className="h-12 w-12 items-center justify-center">
+        <Icon name="minus" size={22} />
+      </PressablePlate>
+      <SignText size="display" weight="heavy" className="min-w-10 text-center">
+        {qty}
+      </SignText>
+      <PressablePlate accessibilityLabel="One more" onPress={noop} className="h-12 w-12 items-center justify-center">
+        <Icon name="plus" size={22} />
+      </PressablePlate>
+    </Plate>
+  );
+}
+
+function SampleJob({ confirming = false }: { confirming?: boolean }) {
+  return (
+    <View className="flex-1">
+      <StackHeader title="Receive" />
+      <JobScreen
+        placeholder="Barcode or part number"
+        onScan={noop}
+        result={
+          <ScanResultCard
+            tone="safe"
+            status={{ icon: 'sent', label: 'Added' }}
+            title="Bosch 0 986 494 119"
+            detail="Brake pad set, front axle"
+            quantity={{ value: '+1', label: '4 in delivery' }}
+          />
+        }
+        action={<ActionBar label="Finish · 24 units" onPress={noop} secondary={{ label: 'Undo', icon: 'undo', onPress: noop }} />}>
+        <Tally
+          items={[
+            { value: 24, label: 'Units' },
+            { value: 7, label: 'Codes' },
+            { value: 1, label: 'To check', tone: 'warning' },
+          ]}
+        />
+        <Line name="Bosch 0 986 494 119" code="4047025186913" qty={4} />
+        <Line name="5010415305187" code="Unknown code" qty={1} tone="warning" />
+        <Line name="Mann HU 816 x" code="4011558726304" qty={6} />
+      </JobScreen>
+      <ConfirmSheet
+        visible={confirming}
+        title="Finish delivery?"
+        facts={[
+          { value: 24, label: 'Units' },
+          { value: 7, label: 'Codes' },
+        ]}
+        note="1 unknown code stays for the office to match."
+        confirm={{ label: 'Finish · 24 units', onPress: noop }}
+        cancelLabel="Keep scanning"
+        onCancel={noop}
+      />
+    </View>
+  );
+}
+
+function Parts() {
+  const tones: Tone[] = ['mandatory', 'safe', 'warning', 'stop', 'plain', 'surface'];
+  return (
+    <ScrollView className="flex-1 bg-ground" contentContainerClassName="gap-4 p-3">
+      <View className="flex-row flex-wrap gap-2">
+        {tones.map((tone) => (
+          <Plate key={tone} tone={tone} className="px-3 py-2">
+            <SignText size="label" weight="heavy" ink={TEXT_ON[tone]}>
+              {tone}
+            </SignText>
+          </Plate>
+        ))}
+      </View>
+      <Button label="Start delivery" icon="receive" onPress={noop} />
+      <Button label="Keep scanning" variant="secondary" onPress={noop} />
+      <Button label="Discard count" variant="destructive" onPress={noop} />
+      <Button label="Sending" busy onPress={noop} />
+      <Button label="Not available" disabled onPress={noop} />
+      <View className="flex-row flex-wrap gap-2">
+        <BinChip code="A-01" qty={4} onPress={noop} />
+        <BinChip code="B-12" qty={2} selected onPress={noop} />
+        <BinChip code="Unbinned" qty={6} />
+      </View>
+      <ScanResultCard tone="surface" status={{ icon: 'check', label: 'In stock' }} title="Mann HU 816 x" detail="Oil filter" quantity={{ value: '12', label: 'On hand' }} onPress={noop}>
+        <View className="flex-row flex-wrap gap-2">
+          <BinChip code="A-01" qty={8} />
+          <BinChip code="C-03" qty={4} />
+        </View>
+      </ScanResultCard>
+      <ScanResultCard tone="warning" status={{ icon: 'warning', label: 'Unknown code' }} title="5010415305187" detail="Not in PartsLogic yet">
+        <Button label="Add part" icon="add" compact onPress={noop} />
+      </ScanResultCard>
+      <ScanResultCard tone="stop" status={{ icon: 'stop', label: 'Out of stock' }} title="Febi 12345" quantity={{ value: '0', label: 'On hand' }} />
+    </ScrollView>
+  );
+}
+
+const SCREENS: Record<string, () => ReactNode> = {
+  board: () => (
+    <BoardView
+      jobs={jobsFor('counter')}
+      openWork={[{ kind: 'delivery', units: 12, startedAt }]}
+      location="Main"
+      sync={syncState({ waiting: 3, needsAttention: 0, online: true })}
+      onJob={noop}
+      onResume={noop}
+      onLocation={noop}
+      onSync={noop}
+      onAccount={noop}
+    />
+  ),
+  'board-problem': () => (
+    <BoardView
+      jobs={jobsFor('counter')}
+      openWork={[
+        { kind: 'delivery', units: 12, startedAt },
+        { kind: 'count', bin: 'A-01', units: 7, startedAt },
+      ]}
+      location="Main"
+      sync={syncState({ waiting: 2, needsAttention: 1, online: true })}
+      onJob={noop}
+      onResume={noop}
+      onLocation={noop}
+      onSync={noop}
+      onAccount={noop}
+    />
+  ),
+  'board-viewer': () => (
+    <BoardView
+      jobs={jobsFor('viewer')}
+      openWork={[]}
+      location="Main"
+      sync={syncState({ waiting: 0, needsAttention: 0, online: true })}
+      onJob={noop}
+      onResume={noop}
+      onLocation={noop}
+      onSync={noop}
+      onAccount={noop}
+    />
+  ),
+  job: () => <SampleJob />,
+  confirm: () => <SampleJob confirming />,
+  parts: () => <Parts />,
+};
+
+export function Gallery() {
+  const scheme = useScheme();
+  const [screen, setScreen] = useState(() => new URLSearchParams(window.location.search).get('screen'));
+  const draw = screen ? SCREENS[screen] : undefined;
+
+  return (
+    <View style={themeVars(scheme)} className="flex-1 bg-ground">
+      {draw ? (
+        draw()
+      ) : (
+        <ScrollView contentContainerClassName="gap-2 p-4">
+          {Object.keys(SCREENS).map((name) => (
+            <Pressable key={name} onPress={() => setScreen(name)}>
+              <SignText size="title">{name}</SignText>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
