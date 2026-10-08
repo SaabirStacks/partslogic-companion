@@ -71,18 +71,19 @@ function Start({ counting }: { counting: CountingApi }) {
             away stock waiting in Unbinned.
           </Text>
           {unbinned.data && unbinned.data.parts > 0 ? (
-            <Text className="text-sm tabular-nums text-mist-ink">
+            <Text className="text-sm tabular-nums text-mandatory-ink">
               Unbinned in {location.name}: {plural(unbinned.data.parts, 'part', 'parts')} ·{' '}
               {plural(unbinned.data.qty, 'unit', 'units')}
             </Text>
           ) : null}
         </View>
 
-        <CameraScanner
-          className="h-48"
+        <View className="h-48 overflow-hidden rounded-plate">
+          <CameraScanner
           enabled={start.kind !== 'checking'}
           onScan={(code) => void counting.chooseBin(code)}
         />
+        </View>
         <ScanField placeholder="Bin label, for example A-01" onSubmit={(code) => void counting.chooseBin(code)} />
 
         {start.kind === 'checking' ? (
@@ -114,7 +115,7 @@ function Start({ counting }: { counting: CountingApi }) {
                     label={`Bin ${item.binCode}`}
                     value={item.finishedAt ? time(item.finishedAt) : undefined}
                     detail={result.text}
-                    onPress={result.problem ? () => router.navigate('/outbox') : undefined}
+                    onPress={result.problem ? () => router.navigate('/sync') : undefined}
                     last={index === counting.recent.length - 1}
                   />
                 );
@@ -167,11 +168,13 @@ function Counting({ counting }: { counting: CountingApi }) {
             {[count.location, 'Blind count', `started ${time(count.startedAt)}`].filter(Boolean).join(' · ')}
           </Text>
           {progress.stage === 'attention' ? (
-            <Text className="text-sm text-out">Not sent: {progress.reason ?? 'PartsLogic refused it'}</Text>
+            <Text className="text-sm text-stop-ink">Not sent: {progress.reason ?? 'PartsLogic refused it'}</Text>
           ) : null}
         </View>
 
-        <CameraScanner className="h-40" onScan={(code) => void counting.scan(code)} />
+        <View className="h-40 overflow-hidden rounded-plate">
+          <CameraScanner onScan={(code) => void counting.scan(code)} />
+        </View>
         <ScanField placeholder="Barcode or part number" onSubmit={(code) => void counting.scan(code)} />
 
         {counting.notice ? <Panel icon="warning" title="Not counted" body={counting.notice} /> : null}
@@ -186,7 +189,7 @@ function Counting({ counting }: { counting: CountingApi }) {
               return (
                 <View
                   key={line.clientCountId}
-                  className={cx('flex-row items-center gap-3 px-4 py-3', index < shown.length - 1 && 'border-b border-hairline')}>
+                  className={cx('flex-row items-center gap-3 px-4 py-3', index < shown.length - 1 && 'border-b border-rule')}>
                   <View className="flex-1 gap-0.5">
                     <Text numberOfLines={1} className="text-base tabular-nums text-ink">
                       {name}
@@ -216,7 +219,7 @@ function Counting({ counting }: { counting: CountingApi }) {
           accessibilityLabel="Discard this count"
           onPress={confirmDiscard}
           className="mt-4 h-12 items-center justify-center rounded-xl active:opacity-70">
-          <Text className="text-base font-semibold text-out">Discard count</Text>
+          <Text className="text-base font-semibold text-stop-ink">Discard count</Text>
         </Pressable>
       </View>
     </Screen>

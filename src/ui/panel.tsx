@@ -20,7 +20,7 @@ export function Panel({
   children?: ReactNode;
 }) {
   return (
-    <View accessibilityLiveRegion="polite" className="gap-3 rounded-xl bg-paper p-4">
+    <View accessibilityLiveRegion="polite" className="gap-3 rounded-plate border-2 border-plate-edge bg-plate p-4">
       <View className="flex-row items-start gap-3">
         <Icon name={icon} size={22} colour={iconColour} />
         <View className="flex-1 gap-1">

@@ -45,7 +45,7 @@ export default function LocationSheet() {
       ) : null}
 
       {locations.length > 0 ? (
-        <View className="overflow-hidden rounded-xl bg-paper">
+        <View className="overflow-hidden rounded-xl bg-plate">
           {locations.map((item, index) => {
             const selected = item.id === location?.id;
             return (
@@ -59,14 +59,14 @@ export default function LocationSheet() {
                   router.back();
                 }}
                 className={cx(
-                  'min-h-14 flex-row items-center gap-3 px-4 py-3 active:bg-canvas',
-                  index < locations.length - 1 && 'border-b border-hairline',
+                  'min-h-14 flex-row items-center gap-3 px-4 py-3 active:bg-ground',
+                  index < locations.length - 1 && 'border-b border-rule',
                 )}>
                 <View className="flex-1 gap-0.5">
                   <Text className="text-base text-ink">{item.name}</Text>
                   <Text className="text-sm text-quiet-ink">{item.code}</Text>
                 </View>
-                {selected ? <Icon name="check" size={18} colour="tint" /> : null}
+                {selected ? <Icon name="check" size={18} colour="mandatory-ink" /> : null}
               </Pressable>
             );
           })}

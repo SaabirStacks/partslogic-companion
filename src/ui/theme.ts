@@ -13,19 +13,19 @@ export function useColour(): (name: ColourName) => string {
   return (name) => colour(scheme, name);
 }
 
-// Native headers, sheets and the tab bar pick these up from the navigation theme.
+// Native headers and sheets pick these up from the navigation theme.
 export function navigationTheme(scheme: Scheme): Theme {
   const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
   return {
     ...base,
     colors: {
       ...base.colors,
-      primary: colour(scheme, 'tint'),
-      background: colour(scheme, 'canvas'),
-      card: colour(scheme, 'paper'),
+      primary: colour(scheme, 'mandatory-ink'),
+      background: colour(scheme, 'ground'),
+      card: colour(scheme, 'ground'),
       text: colour(scheme, 'ink'),
-      border: colour(scheme, 'hairline'),
-      notification: colour(scheme, 'out'),
+      border: colour(scheme, 'rule'),
+      notification: colour(scheme, 'stop'),
     },
   };
 }

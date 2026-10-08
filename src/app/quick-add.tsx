@@ -14,7 +14,7 @@ import { useColour } from '@/ui/theme';
 import { brandOptions } from '@/vendor/partslogic/shared/add-part';
 import { barcodeProblem, looksLikeBarcode } from '@/vendor/partslogic/shared/gtin';
 
-const FIELD = 'h-12 rounded-xl border border-hairline bg-paper px-4 text-base text-ink focus:border-focus';
+const FIELD = 'h-12 rounded-xl border border-rule bg-plate px-4 text-base text-ink focus:border-focus';
 
 // Sheet for adding the part behind an unknown code: brand and part number, and the code is kept on it.
 export default function QuickAdd() {
@@ -46,7 +46,7 @@ export default function QuickAdd() {
       <ScrollView contentContainerClassName="gap-4 px-4 pb-10 pt-6">
         <Panel
           icon={outcome.kind === 'conflict' ? 'warning' : 'sent'}
-          iconColour={outcome.kind === 'conflict' ? 'out' : 'tint'}
+          iconColour={outcome.kind === 'conflict' ? 'stop-ink' : 'safe-ink'}
           title={outcome.kind === 'conflict' ? 'Not added' : outcome.kind === 'queued' ? 'Saved on this phone' : 'Part added'}
           body={outcome.message}>
           {outcome.kind === 'added' || (outcome.kind === 'conflict' && outcome.holderId) ? (
@@ -55,7 +55,7 @@ export default function QuickAdd() {
               onPress={() => {
                 const id = outcome.kind === 'added' ? outcome.partId : outcome.holderId;
                 router.back();
-                router.navigate(`/lookup/part/${id}`);
+                router.navigate(`/part/${id}`);
               }}
             />
           ) : null}
@@ -75,7 +75,7 @@ export default function QuickAdd() {
           For <Text className="font-semibold tabular-nums text-ink">{code}</Text>. The code is kept on the part so it
           scans next time, and scans waiting on it are booked.
         </Text>
-        {problem ? <Text className="text-sm text-out">{problem}</Text> : null}
+        {problem ? <Text className="text-sm text-stop-ink">{problem}</Text> : null}
       </View>
 
       <View className="gap-1.5">
@@ -98,7 +98,7 @@ export default function QuickAdd() {
         />
         {brand ? (
           <View className="flex-row items-center gap-2 px-1">
-            <Icon name="check" size={14} colour="tint" />
+            <Icon name="check" size={14} colour="mandatory-ink" />
             <Text className="text-sm text-ink">
               {brand.brandId == null ? `New brand: ${brand.name}` : brand.name}
             </Text>
@@ -110,7 +110,7 @@ export default function QuickAdd() {
           </Text>
         ) : null}
         {!brand && adding.online && (brands.data?.length || query) ? (
-          <View className="overflow-hidden rounded-xl bg-paper">
+          <View className="overflow-hidden rounded-xl bg-plate">
             {(brands.data ?? []).slice(0, 6).map((option, index, shown) => (
               <Pressable
                 key={option.brandId}
@@ -118,8 +118,8 @@ export default function QuickAdd() {
                 accessibilityLabel={`${option.name}${option.alias ? `, also called ${option.alias}` : ''}`}
                 onPress={() => choose({ brandId: option.brandId, name: option.name })}
                 className={cx(
-                  'min-h-12 flex-row items-center justify-between gap-3 px-4 py-2.5 active:bg-canvas',
-                  (index < shown.length - 1 || (query && !exact)) && 'border-b border-hairline',
+                  'min-h-12 flex-row items-center justify-between gap-3 px-4 py-2.5 active:bg-ground',
+                  (index < shown.length - 1 || (query && !exact)) && 'border-b border-rule',
                 )}>
                 <View className="shrink">
                   <Text className="text-base text-ink">{option.name}</Text>
@@ -132,8 +132,8 @@ export default function QuickAdd() {
               <Pressable
                 accessibilityRole="button"
                 onPress={() => choose({ brandId: null, name: query.toUpperCase() })}
-                className="min-h-12 justify-center px-4 py-2.5 active:bg-canvas">
-                <Text className="text-base text-tint">Use “{query.toUpperCase()}” as a new brand</Text>
+                className="min-h-12 justify-center px-4 py-2.5 active:bg-ground">
+                <Text className="text-base text-mandatory-ink">Use “{query.toUpperCase()}” as a new brand</Text>
               </Pressable>
             ) : null}
           </View>
@@ -166,7 +166,7 @@ export default function QuickAdd() {
           />
         </Panel>
       ) : null}
-      {outcome?.kind === 'error' ? <Text accessibilityRole="alert" className="px-1 text-base text-out">{outcome.message}</Text> : null}
+      {outcome?.kind === 'error' ? <Text accessibilityRole="alert" className="px-1 text-base text-stop-ink">{outcome.message}</Text> : null}
 
       <Button
         label={adding.online ? 'Add part' : 'Save to add later'}

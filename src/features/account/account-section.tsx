@@ -40,8 +40,8 @@ export function AccountSection() {
         accessibilityRole="button"
         accessibilityLabel="Sign out"
         onPress={confirmSignOut}
-        className="h-12 items-center justify-center rounded-xl bg-paper active:opacity-70">
-        <Text className="text-base font-semibold text-out">Sign out</Text>
+        className="h-12 items-center justify-center rounded-xl bg-plate active:opacity-70">
+        <Text className="text-base font-semibold text-stop-ink">Sign out</Text>
       </Pressable>
     </View>
   );

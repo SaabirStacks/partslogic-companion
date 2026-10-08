@@ -1,48 +1,52 @@
-import { ActivityIndicator, Pressable, Text } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { cx } from './cx';
+import { Icon } from './icon';
+import type { IconName } from './icons';
+import type { Tone } from './palette';
+import { ON_TONE, PressablePlate, TEXT_ON } from './plate';
+import { SignText } from './sign-text';
 import { useColour } from './theme';
 
 type Variant = 'primary' | 'secondary' | 'destructive';
 
-const FRAME: Record<Variant, string> = {
-  primary: 'bg-tint',
-  secondary: 'border border-hairline bg-paper',
-  destructive: 'bg-paper',
-};
-
-const LABEL: Record<Variant, string> = {
-  primary: 'text-on-tint',
-  secondary: 'text-ink',
-  destructive: 'text-out',
-};
+// primary is the blue "do this" sign; secondary a plain white plate; destructive the red stop sign, kept
+// for actions that throw work away.
+const TONE: Record<Variant, Tone> = { primary: 'mandatory', secondary: 'surface', destructive: 'stop' };
 
 type ButtonProps = {
   label: string;
   onPress: () => void;
   variant?: Variant;
+  icon?: IconName;
   busy?: boolean;
   disabled?: boolean;
+  // 56 tall by default (gloves); compact is 48, for buttons inside a row or a plate.
+  compact?: boolean;
 };
 
-// 48 tall, full width of its container: thumb-sized on both platforms.
-export function Button({ label, onPress, variant = 'primary', busy = false, disabled = false }: ButtonProps) {
+export function Button({ label, onPress, variant = 'primary', icon, busy = false, disabled = false, compact = false }: ButtonProps) {
   const colourOf = useColour();
-  const inactive = disabled || busy;
+  const tone = TONE[variant];
+  // Busy keeps its full colour (it's working, not unavailable) but ignores presses.
   return (
-    <Pressable
-      accessibilityRole="button"
+    <PressablePlate
+      tone={tone}
       accessibilityLabel={label}
-      accessibilityState={{ disabled: inactive, busy }}
-      disabled={inactive}
-      onPress={onPress}
-      className={cx(
-        'h-12 flex-row items-center justify-center gap-2 rounded-xl px-5 active:opacity-80',
-        FRAME[variant],
-        inactive && 'opacity-50',
-      )}>
-      {busy ? <ActivityIndicator color={colourOf(variant === 'primary' ? 'on-tint' : 'ink')} /> : null}
-      <Text className={cx('text-base font-semibold', LABEL[variant])}>{label}</Text>
-    </Pressable>
+      accessibilityState={{ disabled, busy }}
+      disabled={disabled}
+      onPress={busy ? undefined : onPress}
+      className={cx('flex-row items-center justify-center gap-2 px-5', compact ? 'min-h-12' : 'min-h-14')}>
+      {busy ? (
+        <ActivityIndicator color={colourOf(ON_TONE[tone])} />
+      ) : icon ? (
+        <View>
+          <Icon name={icon} size={20} colour={ON_TONE[tone]} />
+        </View>
+      ) : null}
+      <SignText size="label" ink={TEXT_ON[tone]}>
+        {label}
+      </SignText>
+    </PressablePlate>
   );
 }

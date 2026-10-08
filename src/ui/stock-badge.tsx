@@ -1,22 +1,18 @@
-import { Text, View } from 'react-native';
-
 import type { StockBadge as Badge } from '@/features/part/stock';
 
-// Out in red at 10%, Reorder in amber at 20% with a 60% border, as in PartsLogic's DESIGN.md.
+import { Plate, TEXT_ON } from './plate';
+import { SignText } from './sign-text';
+
+// Out is a red stop plate and Reorder a yellow check-it plate, each with its word (never colour alone).
+// PartsLogic's rule decides which (features/part/stock.ts).
 export function StockBadge({ badge }: { badge: Badge }) {
-  if (badge === 'out') {
-    return (
-      <View className="rounded-full bg-out/10 px-2.5 py-0.5">
-        <Text className="text-sm font-semibold text-out">Out</Text>
-      </View>
-    );
-  }
-  if (badge === 'reorder') {
-    return (
-      <View className="rounded-full border border-reorder/60 bg-reorder/20 px-2.5 py-0.5">
-        <Text className="text-sm font-semibold text-reorder-ink">Reorder</Text>
-      </View>
-    );
-  }
-  return null;
+  if (!badge) return null;
+  const tone = badge === 'out' ? 'stop' : 'warning';
+  return (
+    <Plate tone={tone} className="px-2 py-0.5">
+      <SignText size="tag" weight="heavy" ink={TEXT_ON[tone]}>
+        {badge === 'out' ? 'Out' : 'Reorder'}
+      </SignText>
+    </Plate>
+  );
 }

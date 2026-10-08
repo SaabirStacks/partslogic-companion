@@ -4,16 +4,16 @@ import { Pressable, Text, View } from 'react-native';
 import { cx } from './cx';
 import { Icon } from './icon';
 
-// An inset group of rows on paper, with an optional heading above it.
+// An inset group of rows on a plate, with an optional heading above it.
 export function ListGroup({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <View className="gap-2">
       {title ? (
-        <Text accessibilityRole="header" className="px-4 text-sm font-semibold text-quiet-ink">
+        <Text accessibilityRole="header" className="px-1 font-sign-bold text-[15px] uppercase tracking-[0.6px] text-quiet-ink">
           {title}
         </Text>
       ) : null}
-      <View className="overflow-hidden rounded-xl bg-paper">{children}</View>
+      <View className="overflow-hidden rounded-plate border-2 border-plate-edge bg-plate">{children}</View>
     </View>
   );
 }
@@ -53,11 +53,11 @@ export function ListRow({ label, value, detail, onPress, last, tabular, trailing
   );
   const frame = cx(
     'min-h-12 flex-row items-center justify-between gap-4 px-4 py-3',
-    !last && 'border-b border-hairline',
+    !last && 'border-b border-rule',
   );
   const description = [label, value, detail].filter(Boolean).join(', ');
   return onPress ? (
-    <Pressable accessibilityRole="button" accessibilityLabel={description} onPress={onPress} className={cx(frame, 'active:bg-canvas')}>
+    <Pressable accessibilityRole="button" accessibilityLabel={description} onPress={onPress} className={cx(frame, 'active:bg-ground')}>
       {content}
     </Pressable>
   ) : (

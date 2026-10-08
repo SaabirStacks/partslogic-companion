@@ -10,7 +10,7 @@ export function AddPartLink({ code }: { code: string }) {
       hitSlop={8}
       onPress={() => router.push({ pathname: '/quick-add', params: { code } })}
       className="self-start py-1 active:opacity-70">
-      <Text className="text-sm font-semibold text-tint">Add part</Text>
+      <Text className="text-sm font-semibold text-mandatory-ink">Add part</Text>
     </Pressable>
   );
 }

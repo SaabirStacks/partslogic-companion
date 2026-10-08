@@ -4,7 +4,7 @@ export function outboxSummary(input: {
   needsAttention: number;
   online: boolean;
   lastProblem: string | null;
-}): { icon: 'sent' | 'warning' | 'offline' | 'outbox'; title: string; body: string } {
+}): { icon: 'sent' | 'warning' | 'offline' | 'sync'; title: string; body: string } {
   const { waiting, needsAttention, online, lastProblem } = input;
   const items = (count: number) => `${count} ${count === 1 ? 'item' : 'items'}`;
   if (needsAttention > 0) {
@@ -19,7 +19,7 @@ export function outboxSummary(input: {
   }
   if (waiting > 0) {
     return {
-      icon: 'outbox',
+      icon: 'sync',
       title: `Sending ${items(waiting)}`,
       body: lastProblem ? `The last try didn’t get through (${lastProblem}). Trying again shortly.` : 'This takes a moment.',
     };

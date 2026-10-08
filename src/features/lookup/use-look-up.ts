@@ -33,7 +33,7 @@ export function useLookUp() {
     const next = addRecent(recent, part);
     recentPartsPref.set(next);
     setRecent(next);
-    router.push(`/lookup/part/${part.partId}`);
+    router.push(`/part/${part.partId}`);
   }
 
   async function search(query: string) {
