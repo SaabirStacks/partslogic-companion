@@ -1,28 +1,35 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 
-import { countResultText } from '@/features/count/result-text';
+import { countResultText, countSummary } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
 import { NeedsLocation } from '@/features/location/needs-location';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
-import { useRemote } from '@/lib/use-remote';
+import { clock, plural } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
-import { CameraScanner } from '@/scan/camera-scanner';
-import { ScanField } from '@/scan/scan-field';
+import { useRemote } from '@/lib/use-remote';
 import { useWorkingLocation } from '@/session/location-provider';
+import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
-import { cx } from '@/ui/cx';
-import { ListGroup, ListRow } from '@/ui/list';
-import { Panel } from '@/ui/panel';
+import { ConfirmSheet } from '@/ui/confirm-sheet';
+import { Icon } from '@/ui/icon';
+import { JobBanner } from '@/ui/job-banner';
+import { JobScreen } from '@/ui/job-screen';
+import { LineRow } from '@/ui/line-row';
+import { ON_TONE, Plate, PressablePlate, TEXT_ON } from '@/ui/plate';
 import { Quantity } from '@/ui/quantity';
-import { Screen } from '@/ui/screen';
-import { useColour } from '@/ui/theme';
+import { ScanResultCard } from '@/ui/scan-result-card';
+import { SectionLabel } from '@/ui/section-label';
+import { Detail, SignText } from '@/ui/sign-text';
+import { StatusStrip } from '@/ui/status-strip';
+import { Tally } from '@/ui/tally';
 import { unlocatedStockSummary } from '@/vendor/partslogic/shared/floor';
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+type Counting = ReturnType<typeof useBinCount>;
 
+// Put away & count: scan a bin and its code locks in, then scan every part on the shelf, blind. Finishing
+// pulls what was counted out of Unbinned onto the shelf and sends anything not scanned back to Unbinned.
 export default function Count() {
   const counting = useBinCount();
   const params = useLocalSearchParams<{ binId?: string; bin?: string; location?: string }>();
@@ -30,7 +37,7 @@ export default function Count() {
   // The "Count this bin" request already acted on, so a re-render can't start it twice.
   const handled = useRef<string | null>(null);
 
-  // "Count this bin" from Look up.
+  // "Count bin" from Look up.
   useEffect(() => {
     const binId = Number(params.binId);
     if (!loaded || count || !Number.isInteger(binId) || binId <= 0 || !params.bin) return;
@@ -40,15 +47,13 @@ export default function Count() {
     void Promise.resolve().then(() => begin({ binId, binCode: params.bin!, location: params.location ?? null }));
   }, [loaded, count, params.binId, params.bin, params.location, begin]);
 
-  if (!loaded) return <Screen>{null}</Screen>;
-  return count ? <Counting counting={counting} /> : <Start counting={counting} />;
+  if (!loaded) return <View className="flex-1 bg-ground" />;
+  if (counting.finished && !count) return <Result counting={counting} />;
+  return count ? <CountingBin counting={counting} /> : <Start counting={counting} />;
 }
 
-type CountingApi = ReturnType<typeof useBinCount>;
-
-function Start({ counting }: { counting: CountingApi }) {
+function Start({ counting }: { counting: Counting }) {
   const { location } = useWorkingLocation();
-  const colourOf = useColour();
   // Read the id here, not inside the loader: the React Compiler reads what a callback uses while the screen
   // renders, so `location!.id` in the callback crashed before a location was chosen.
   const locationId = location?.id ?? null;
@@ -57,171 +62,220 @@ function Start({ counting }: { counting: CountingApi }) {
   );
   const { start } = counting;
 
-  if (!location) return <Screen><NeedsLocation /></Screen>;
+  if (!location) return <NeedsLocation />;
 
   return (
-    <Screen>
-      <View className="gap-3 px-4 pb-10 pt-2">
-        <View className="gap-1 px-1">
-          <Text accessibilityRole="header" className="text-lg font-semibold text-ink">
-            Scan a bin to start
-          </Text>
-          <Text className="text-sm leading-5 text-quiet-ink">
-            Then scan every part on its shelf. Counts are blind: you only see what you scan. Counting a bin also puts
-            away stock waiting in Unbinned.
-          </Text>
-          {unbinned.data && unbinned.data.parts > 0 ? (
-            <Text className="text-sm tabular-nums text-mandatory-ink">
-              Unbinned in {location.name}: {plural(unbinned.data.parts, 'part', 'parts')} ·{' '}
-              {plural(unbinned.data.qty, 'unit', 'units')}
-            </Text>
-          ) : null}
-        </View>
-
-        <View className="h-48 overflow-hidden rounded-plate">
-          <CameraScanner
-          enabled={start.kind !== 'checking'}
-          onScan={(code) => void counting.chooseBin(code)}
+    <JobScreen
+      placeholder="Bin label, for example A-01"
+      scanEnabled={start.kind !== 'checking'}
+      onScan={(code) => void counting.chooseBin(code)}
+      banner={<JobBanner title="Scan a bin label" detail={location.name} />}
+      result={<StartAnswer counting={counting} locationName={location.name} />}>
+      {unbinned.data && unbinned.data.parts > 0 ? (
+        <Tally
+          items={[
+            { value: unbinned.data.qty, label: 'Unbinned units', tone: 'warning' },
+            { value: unbinned.data.parts, label: 'Parts' },
+          ]}
         />
-        </View>
-        <ScanField placeholder="Bin label, for example A-01" onSubmit={(code) => void counting.chooseBin(code)} />
-
-        {start.kind === 'checking' ? (
-          <View className="flex-row items-center gap-3 px-1 py-2">
-            <ActivityIndicator color={colourOf('quiet-ink')} />
-            <Text className="text-base text-quiet-ink">Checking {start.code}</Text>
-          </View>
-        ) : null}
-        {start.kind === 'create' ? (
-          <Panel icon="count" title={`${start.code} isn’t a bin in ${location.name}`} body="Create it and start counting?">
-            <Button label={`Create bin ${start.code}`} onPress={() => void counting.createBin(start.code)} />
-            <Button label="Cancel" variant="secondary" onPress={counting.resetStart} />
-          </Panel>
-        ) : null}
-        {start.kind === 'message' ? (
-          <Panel icon="warning" title={start.title} body={start.body}>
-            <Button label="OK" variant="secondary" onPress={counting.resetStart} />
-          </Panel>
-        ) : null}
-
-        {counting.recent.length > 0 ? (
-          <View className="mt-3">
-            <ListGroup title="Counted on this phone">
-              {counting.recent.map((item, index) => {
-                const result = countResultText(counting.progressOf(item.stocktakeId));
-                return (
-                  <ListRow
-                    key={item.stocktakeId}
-                    label={`Bin ${item.binCode}`}
-                    value={item.finishedAt ? time(item.finishedAt) : undefined}
-                    detail={result.text}
-                    onPress={result.problem ? () => router.navigate('/sync') : undefined}
-                    last={index === counting.recent.length - 1}
-                  />
-                );
-              })}
-            </ListGroup>
-          </View>
-        ) : null}
-      </View>
-    </Screen>
+      ) : null}
+      {counting.recent.length > 0 ? (
+        <>
+          <SectionLabel>Counted on this phone</SectionLabel>
+          {counting.recent.map((item) => {
+            const result = countResultText(counting.progressOf(item.stocktakeId));
+            const face = (
+              <>
+                <View className="flex-1">
+                  <SignText size="label" weight="heavy">{`Bin ${item.binCode}`}</SignText>
+                  <Detail ink={result.problem ? 'text-stop-ink' : 'text-quiet-ink'} numberOfLines={2}>
+                    {result.text}
+                  </Detail>
+                </View>
+                {item.finishedAt ? <Detail>{clock(item.finishedAt)}</Detail> : null}
+              </>
+            );
+            return result.problem ? (
+              <PressablePlate
+                key={item.stocktakeId}
+                tone="surface"
+                accessibilityLabel={`Bin ${item.binCode}, ${result.text}. Open Sync`}
+                onPress={() => router.navigate('/sync')}
+                className="min-h-16 flex-row items-center gap-3 px-3 py-2">
+                {face}
+                <Icon name="forward" size={16} />
+              </PressablePlate>
+            ) : (
+              <Plate key={item.stocktakeId} className="min-h-16 flex-row items-center gap-3 px-3 py-2">
+                {face}
+              </Plate>
+            );
+          })}
+        </>
+      ) : null}
+    </JobScreen>
   );
 }
 
-function Counting({ counting }: { counting: CountingApi }) {
+function StartAnswer({ counting, locationName }: { counting: Counting; locationName: string }) {
+  const { start } = counting;
+  switch (start.kind) {
+    case 'checking':
+      return <ScanResultCard tone="surface" status={{ icon: 'waiting', label: 'Checking' }} title={start.code} />;
+    case 'create':
+      return (
+        <ScanResultCard key={start.code} tone="warning" status={{ icon: 'bin', label: `Not a bin in ${locationName}` }} title={start.code}>
+          <Button label={`Create bin ${start.code}`} icon="plus" compact onPress={() => void counting.createBin(start.code)} />
+          <Button label="Cancel" variant="secondary" compact onPress={counting.resetStart} />
+        </ScanResultCard>
+      );
+    case 'message':
+      return (
+        <ScanResultCard key={start.title} tone="warning" status={{ icon: 'warning', label: 'Not started' }} title={start.title} detail={start.body}>
+          <Button label="OK" variant="secondary" compact onPress={counting.resetStart} />
+        </ScanResultCard>
+      );
+    default:
+      return null;
+  }
+}
+
+function CountingBin({ counting }: { counting: Counting }) {
   const count = counting.count!;
   const progress = counting.progressOf(count.stocktakeId);
-
-  function confirmFinish() {
-    const empty = counting.lines.length === 0;
-    Alert.alert(
-      empty ? `Is bin ${count.binCode} empty?` : `Finish counting ${count.binCode}?`,
-      empty
-        ? 'Everything PartsLogic has in this bin goes back to Unbinned.'
-        : `${plural(counting.lines.length, 'part', 'parts')}, ${plural(counting.units, 'unit', 'units')}. Anything not scanned goes back to Unbinned.`,
-      [
-        { text: 'Keep counting', style: 'cancel' },
-        { text: empty ? 'Yes, it’s empty' : 'Finish', onPress: () => void counting.finish() },
-      ],
-    );
-  }
-
-  function confirmDiscard() {
-    Alert.alert(
-      'Discard this count?',
-      'Nothing you scanned is kept. If PartsLogic already opened the count, it’s cancelled automatically later.',
-      [
-        { text: 'Keep counting', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => void counting.discard() },
-      ],
-    );
-  }
+  const [confirming, setConfirming] = useState<'finish' | 'discard' | null>(null);
+  const empty = counting.lines.length === 0;
 
   return (
-    <Screen>
-      <View className="gap-3 px-4 pb-10 pt-2">
-        <View accessible className="gap-0.5 px-1">
-          <Text accessibilityRole="header" className="text-lg font-semibold text-ink">
-            Bin {count.binCode}
-          </Text>
-          <Text className="text-sm tabular-nums text-quiet-ink">
-            {[count.location, 'Blind count', `started ${time(count.startedAt)}`].filter(Boolean).join(' · ')}
-          </Text>
-          {progress.stage === 'attention' ? (
-            <Text className="text-sm text-stop-ink">Not sent: {progress.reason ?? 'PartsLogic refused it'}</Text>
-          ) : null}
-        </View>
-
-        <View className="h-40 overflow-hidden rounded-plate">
-          <CameraScanner onScan={(code) => void counting.scan(code)} />
-        </View>
-        <ScanField placeholder="Barcode or part number" onSubmit={(code) => void counting.scan(code)} />
-
-        {counting.notice ? <Panel icon="warning" title="Not counted" body={counting.notice} /> : null}
-
-        <Button label={counting.lines.length === 0 ? 'Bin is empty' : 'Finish count'} onPress={confirmFinish} />
-
-        {counting.lines.length > 0 ? (
-          <ListGroup title={`Counted · ${plural(counting.units, 'unit', 'units')}`}>
-            {[...counting.lines].reverse().map((line, index, shown) => {
-              const name = count.labels[line.code] ?? line.code;
-              const unknown = counting.outcomes.get(line.clientCountId) === 'unresolved';
-              return (
-                <View
-                  key={line.clientCountId}
-                  className={cx('flex-row items-center gap-3 px-4 py-3', index < shown.length - 1 && 'border-b border-rule')}>
-                  <View className="flex-1 gap-0.5">
-                    <Text numberOfLines={1} className="text-base tabular-nums text-ink">
-                      {name}
-                    </Text>
-                    {name !== line.code ? <Text className="text-sm tabular-nums text-quiet-ink">{line.code}</Text> : null}
-                    {unknown ? (
-                      <>
-                        <Text className="text-sm text-quiet-ink">Unknown code: kept for the office to match</Text>
-                        <AddPartLink code={line.code} />
-                      </>
-                    ) : null}
-                  </View>
-                  <Quantity
-                    total={line.qty}
-                    name={name}
-                    onStep={(change) => void counting.step(line.clientCountId, change)}
-                    onSet={(qty) => void counting.setQty(line.clientCountId, qty)}
-                  />
-                </View>
-              );
-            })}
-          </ListGroup>
+    <>
+      <JobScreen
+        placeholder="Barcode or part number"
+        onScan={(code) => void counting.scan(code)}
+        banner={<JobBanner size="display" title={`Bin ${count.binCode}`} detail={[count.location, 'Blind count'].filter(Boolean).join(' · ')} />}
+        result={<LastScan counting={counting} />}
+        action={
+          <ActionBar
+            label={empty ? 'Bin is empty' : `Finish · ${plural(counting.units, 'unit', 'units')}`}
+            icon="check"
+            onPress={() => setConfirming('finish')}
+            secondary={{ label: 'Discard this count', icon: 'close', onPress: () => setConfirming('discard') }}
+          />
+        }>
+        {progress.stage === 'attention' ? (
+          <StatusStrip tone="stop" icon="stop" text={progress.reason ? `Not sent · ${progress.reason}` : 'Not sent'} />
         ) : null}
+        <Tally
+          items={[
+            { value: counting.units, label: 'Units' },
+            { value: counting.lines.length, label: 'Parts' },
+          ]}
+        />
+        {[...counting.lines].reverse().map((line) => {
+          const name = count.labels[line.code] ?? line.code;
+          const unknown = counting.outcomes.get(line.clientCountId) === 'unresolved';
+          return (
+            <LineRow
+              key={line.clientCountId}
+              name={name}
+              code={name !== line.code ? line.code : null}
+              status={unknown ? { text: 'Unknown · kept for the office', icon: 'warning', tone: 'warning' } : null}
+              quantity={
+                <Quantity
+                  total={line.qty}
+                  name={name}
+                  onStep={(change) => void counting.step(line.clientCountId, change)}
+                  onSet={(qty) => void counting.setQty(line.clientCountId, qty)}
+                />
+              }>
+              {unknown ? <AddPartLink code={line.code} /> : null}
+            </LineRow>
+          );
+        })}
+      </JobScreen>
+      <ConfirmSheet
+        visible={confirming === 'finish'}
+        title={empty ? `Is bin ${count.binCode} empty?` : `Finish bin ${count.binCode}?`}
+        facts={
+          empty
+            ? undefined
+            : [
+                { value: counting.units, label: 'Units' },
+                { value: counting.lines.length, label: 'Parts' },
+              ]
+        }
+        note={empty ? 'Everything PartsLogic has in it goes back to Unbinned.' : 'Anything not scanned goes back to Unbinned.'}
+        confirm={{
+          label: empty ? 'Yes, it’s empty' : `Finish · ${plural(counting.units, 'unit', 'units')}`,
+          onPress: () => {
+            setConfirming(null);
+            void counting.finish();
+          },
+        }}
+        cancelLabel="Keep counting"
+        onCancel={() => setConfirming(null)}
+      />
+      <ConfirmSheet
+        visible={confirming === 'discard'}
+        title="Discard this count?"
+        note="Nothing scanned is kept."
+        confirm={{
+          label: 'Discard',
+          destructive: true,
+          onPress: () => {
+            setConfirming(null);
+            void counting.discard();
+          },
+        }}
+        cancelLabel="Keep counting"
+        onCancel={() => setConfirming(null)}
+      />
+    </>
+  );
+}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Discard this count"
-          onPress={confirmDiscard}
-          className="mt-4 h-12 items-center justify-center rounded-xl active:opacity-70">
-          <Text className="text-base font-semibold text-stop-ink">Discard count</Text>
-        </Pressable>
-      </View>
-    </Screen>
+// The plate for the scan that just landed: the part and how many of it are counted now.
+function LastScan({ counting }: { counting: Counting }) {
+  const { notice, lastScan, count } = counting;
+  if (notice) {
+    return <ScanResultCard key={notice.detail} tone="warning" status={{ icon: 'bin', label: 'Not counted' }} title={notice.title} detail={notice.detail} />;
+  }
+  if (!lastScan || !count) return null;
+  const line = counting.lines.find((candidate) => candidate.code === lastScan.code);
+  if (!line) return null;
+  const name = count.labels[line.code] ?? line.code;
+  const unknown = counting.outcomes.get(line.clientCountId) === 'unresolved' || !count.labels[line.code];
+  return (
+    <ScanResultCard
+      key={lastScan.key}
+      tone={unknown ? 'warning' : 'safe'}
+      status={unknown ? { icon: 'warning', label: 'Counted · unknown code' } : { icon: 'sent', label: 'Counted' }}
+      title={name}
+      detail={name !== line.code ? line.code : null}
+      quantity={{ value: String(line.qty), label: 'Counted' }}
+    />
+  );
+}
+
+// After Finish: what the count did, in big numbers, filling in as PartsLogic answers.
+function Result({ counting }: { counting: Counting }) {
+  const finished = counting.finished!;
+  const summary = countSummary(counting.progressOf(finished.stocktakeId));
+  return (
+    <ScrollView className="bg-ground" contentContainerClassName="flex-grow justify-center gap-4 px-4 py-8">
+      <Plate tone={summary.tone} heavy className="gap-2 p-4">
+        <View className="flex-row items-center gap-2">
+          <Icon name={summary.icon} size={20} colour={ON_TONE[summary.tone]} />
+          <SignText size="label" ink={TEXT_ON[summary.tone]} numberOfLines={2} className="flex-1">
+            {summary.label}
+          </SignText>
+        </View>
+        <SignText accessibilityRole="header" size="hero" weight="heavy" ink={TEXT_ON[summary.tone]}>
+          {`Bin ${finished.binCode}`}
+        </SignText>
+      </Plate>
+      <Tally items={summary.items.length > 0 ? summary.items : [{ value: finished.units, label: 'Counted' }]} />
+      <Button label="Count next bin" icon="count" onPress={counting.dismissFinished} />
+      <Button label="Board" variant="secondary" onPress={() => router.dismissTo('/')} />
+    </ScrollView>
   );
 }
