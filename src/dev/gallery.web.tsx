@@ -11,6 +11,7 @@ import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
 import { PartRow } from '@/features/part/part-row';
 import { PartView } from '@/features/part/part-view';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
+import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
 import { NotSetUp } from '@/features/setup/not-set-up';
 import { jobsFor } from '@/features/board/jobs';
@@ -196,6 +197,50 @@ const SCREENS: Record<string, () => ReactNode> = {
     />
   ),
   job: () => <SampleJob />,
+  count: () => (
+    <View className="flex-1">
+      <StackHeader title="Put away & count" />
+      <JobScreen
+        placeholder="Barcode or part number"
+        onScan={noop}
+        banner={<JobBanner size="display" title="Bin A-01" detail="MAIN · Blind count" />}
+        result={<ScanResultCard tone="safe" status={{ icon: 'sent', label: 'Counted' }} title="Mann HU 816 x" detail="4011558726304" quantity={{ value: '6', label: 'Counted' }} />}
+        action={<ActionBar label="Finish · 9 units" icon="check" onPress={noop} secondary={{ label: 'Discard', icon: 'close', onPress: noop }} />}>
+        <Tally
+          items={[
+            { value: 9, label: 'Units' },
+            { value: 2, label: 'Parts' },
+          ]}
+        />
+        <LineRow name="Mann HU 816 x" code="4011558726304" quantity={<Quantity total={6} name="Mann HU 816 x" onStep={noop} onSet={noop} />} />
+        <LineRow name="NGK BKR6E" code="087295104401" quantity={<Quantity total={3} name="NGK BKR6E" onStep={noop} onSet={noop} />} />
+      </JobScreen>
+    </View>
+  ),
+  'count-result': () => {
+    const summary = countSummary({
+      stage: 'done',
+      result: { stocktakeId: 'S', status: 'posted', duplicate: false, partial: false, needsReview: false, putAway: 6, returned: 1, found: 2, unresolved: 0 },
+    });
+    return (
+      <View className="flex-1 bg-ground">
+        <StackHeader title="Put away & count" />
+        <ScrollView contentContainerClassName="flex-grow justify-center gap-4 px-4 py-8">
+          <Plate tone={summary.tone} heavy className="gap-2 p-4">
+            <SignText size="label" ink={TEXT_ON[summary.tone]}>
+              {summary.label}
+            </SignText>
+            <SignText size="hero" weight="heavy" ink={TEXT_ON[summary.tone]}>
+              Bin A-01
+            </SignText>
+          </Plate>
+          <Tally items={summary.items} />
+          <Button label="Count next bin" icon="count" onPress={noop} />
+          <Button label="Board" variant="secondary" onPress={noop} />
+        </ScrollView>
+      </View>
+    );
+  },
   'receive-done': () => (
     <View className="flex-1 bg-ground">
       <StackHeader title="Receive" />

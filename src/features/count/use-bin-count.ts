@@ -49,7 +49,12 @@ export function useBinCount() {
   const [count, setCount] = useState<BinCount | null | undefined>(undefined);
   const [recent, setRecent] = useState<BinCount[]>([]);
   const [start, setStart] = useState<StartState>({ kind: 'idle' });
-  const [notice, setNotice] = useState<string | null>(null);
+  // A scan that wasn't counted (a bin label), and the scan that was.
+  const [notice, setNotice] = useState<{ title: string; detail: string } | null>(null);
+  // key is new for every scan, so the result plate rises even when the same part is scanned again.
+  const [lastScan, setLastScan] = useState<{ key: string; code: string } | null>(null);
+  // The count just finished, for the result screen.
+  const [finished, setFinished] = useState<{ stocktakeId: string; binCode: string; units: number } | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -110,6 +115,8 @@ export function useBinCount() {
     );
     setStart({ kind: 'idle' });
     setNotice(null);
+    setLastScan(null);
+    setFinished(null);
     setCount(created);
   }
 
@@ -128,6 +135,8 @@ export function useBinCount() {
     recent,
     start,
     notice,
+    lastScan,
+    finished,
     online,
     progressOf: (id: string) => countProgress(outbox.items, id),
 
@@ -141,7 +150,7 @@ export function useBinCount() {
           await begin({ binId: hit.binId, binCode: hit.bin, location: hit.location });
         } else if (hit.type === 'part') {
           scanFeedback.unknown();
-          setStart({ kind: 'message', title: 'That’s a part', body: 'Scan the bin label first, then the parts on the shelf.' });
+          setStart({ kind: 'message', title: 'That’s a part', body: 'Scan the bin label first' });
         } else if (hit.type === 'unknown' && !hit.offline && location) {
           scanFeedback.unknown();
           setStart({ kind: 'create', code });
@@ -149,15 +158,13 @@ export function useBinCount() {
           scanFeedback.unknown();
           setStart({
             kind: 'message',
-            title: `${code} isn’t a bin we know`,
-            body: online
-              ? 'Choose a working location to create it, or check the label.'
-              : 'It isn’t in the scan list saved on this phone. Check the label, or connect to create the bin.',
+            title: `${code} isn’t a bin`,
+            body: online ? 'Choose a location to create it' : 'Not in the scan list · connect to create it',
           });
         }
       } catch (error) {
         scanFeedback.failed();
-        setStart({ kind: 'message', title: 'That didn’t work', body: (error as Error).message });
+        setStart({ kind: 'message', title: 'Didn’t work', body: (error as Error).message });
       }
     },
 
@@ -170,14 +177,10 @@ export function useBinCount() {
         if (made.type === 'bin') {
           await begin({ binId: made.binId, binCode: made.code, location: location.code });
         } else {
-          setStart({
-            kind: 'message',
-            title: 'That code belongs to a part',
-            body: `${made.brand} ${made.number} already uses it, so it can’t be a bin label.`,
-          });
+          setStart({ kind: 'message', title: 'That code is a part', body: `${made.brand} ${made.number} uses it` });
         }
       } catch (error) {
-        setStart({ kind: 'message', title: 'The bin wasn’t created', body: (error as Error).message });
+        setStart({ kind: 'message', title: 'Bin not created', body: (error as Error).message });
       }
     },
 
@@ -192,8 +195,8 @@ export function useBinCount() {
         scanFeedback.unknown();
         setNotice(
           local.bin.toUpperCase() === count.binCode.toUpperCase()
-            ? `That’s this bin’s label. Scan the parts on the shelf.`
-            : `${local.bin} is another bin. Finish this count first, then count that one.`,
+            ? { title: local.bin, detail: 'This bin’s label · scan the parts' }
+            : { title: local.bin, detail: 'Another bin · finish this one first' },
         );
         return;
       }
@@ -201,11 +204,9 @@ export function useBinCount() {
       scanFeedback.found();
       const labels =
         local.type === 'part' && local.label ? { ...count.labels, [code.trim()]: local.label } : count.labels;
-      await apply(
-        count,
-        { type: 'scan', clientCountId: Crypto.randomUUID(), code, partId: local.type === 'part' ? local.partId : null },
-        labels,
-      );
+      const clientCountId = Crypto.randomUUID();
+      await apply(count, { type: 'scan', clientCountId, code, partId: local.type === 'part' ? local.partId : null }, labels);
+      setLastScan({ key: clientCountId, code: code.trim() });
     },
 
     async step(clientCountId: string, change: 1 | -1) {
@@ -224,12 +225,23 @@ export function useBinCount() {
         `Finish count of bin ${count.binCode}`,
       );
       await store.finish(count.stocktakeId);
+      setFinished({
+        stocktakeId: count.stocktakeId,
+        binCode: count.binCode,
+        units: visibleLines(count.session).reduce((sum, line) => sum + line.qty, 0),
+      });
+      setLastScan(null);
+      setNotice(null);
       await load();
     },
+
+    dismissFinished: () => setFinished(null),
 
     async discard() {
       if (!count) return;
       await store.discard(count.stocktakeId);
+      setLastScan(null);
+      setNotice(null);
       await load();
     },
   };
