@@ -6,31 +6,36 @@ import { Icon } from '@/ui/icon';
 import { JobTile } from '@/ui/job-tile';
 import { APPEAR, SETTLE } from '@/ui/motion';
 import { Plate, PressablePlate } from '@/ui/plate';
+import { SectionLabel } from '@/ui/section-label';
 import { SignText } from '@/ui/sign-text';
 import { LocationPlate, SyncPlate } from '@/ui/status-plates';
 
-import type { Job } from './jobs';
+import type { BoardSection, LiveWorkflow } from '@/workflows/catalogue';
+
 import { resumeText, type OpenWork } from './open-work';
 import type { SyncState } from './sync-state';
 
 type BoardProps = {
-  jobs: Job[];
+  sections: BoardSection[];
   openWork: OpenWork[];
   location: string | null;
   sync: SyncState;
-  onJob: (job: Job) => void;
+  onJob: (workflow: LiveWorkflow) => void;
   onResume: (work: OpenWork) => void;
   onLocation: () => void;
   onSync: () => void;
   onAccount: () => void;
 };
 
-// Home: the jobs as signs. Status plates on top, open work as yellow resume plates, then the lead job as
-// a wide sign and the rest in a grid of squares. Every job is one tap away.
-export function BoardView({ jobs, openWork, location, sync, onJob, onResume, onLocation, onSync, onAccount }: BoardProps) {
+// Two to a row; a tile left on its own fills its row.
+const pairs = <T,>(items: readonly T[]): T[][] =>
+  Array.from({ length: Math.ceil(items.length / 2) }, (_, index) => items.slice(index * 2, index * 2 + 2));
+
+// Home: the jobs as signs. Status plates on top, open work as yellow resume plates, then the workflows in
+// their families (Parts, Inbound, Stock control...). Look up leads as a wide sign; the rest sit in a grid of
+// squares. Every job is one tap away.
+export function BoardView({ sections, openWork, location, sync, onJob, onResume, onLocation, onSync, onAccount }: BoardProps) {
   const insets = useSafeAreaInsets();
-  const [lead, ...rest] = jobs;
-  const rows = Array.from({ length: Math.ceil(rest.length / 2) }, (_, index) => rest.slice(index * 2, index * 2 + 2));
 
   return (
     <ScrollView
@@ -83,15 +88,27 @@ export function BoardView({ jobs, openWork, location, sync, onJob, onResume, onL
 
       {/* The jobs slide down to make room when a resume plate arrives. */}
       <Animated.View layout={SETTLE} style={{ gap: 12 }}>
-        {lead ? <JobTile wide label={lead.label} icon={lead.icon} tone={lead.tone} onPress={() => onJob(lead)} /> : null}
-        {rows.map((row) => (
-          <View key={row.map((job) => job.id).join()} className="flex-row gap-3">
-            {row.map((job) => (
-              <JobTile key={job.id} label={job.label} icon={job.icon} tone={job.tone} onPress={() => onJob(job)} />
-            ))}
-            {row.length === 1 ? <View className="flex-1" /> : null}
-          </View>
-        ))}
+        {sections.map((section, sectionIndex) => {
+          const [lead, ...rest] = sectionIndex === 0 ? section.workflows : [];
+          const tiles = sectionIndex === 0 ? rest : section.workflows;
+          return (
+            <View key={section.family} className="gap-3">
+              <SectionLabel>{section.label}</SectionLabel>
+              {lead ? <JobTile shape="lead" label={lead.label} icon={lead.icon} tone={lead.tone} onPress={() => onJob(lead)} /> : null}
+              {pairs(tiles).map((row) =>
+                row.length === 1 ? (
+                  <JobTile key={row[0].id} shape="bar" label={row[0].label} icon={row[0].icon} tone={row[0].tone} onPress={() => onJob(row[0])} />
+                ) : (
+                  <View key={row.map((workflow) => workflow.id).join()} className="flex-row gap-3">
+                    {row.map((workflow) => (
+                      <JobTile key={workflow.id} label={workflow.label} icon={workflow.icon} tone={workflow.tone} onPress={() => onJob(workflow)} />
+                    ))}
+                  </View>
+                ),
+              )}
+            </View>
+          );
+        })}
       </Animated.View>
     </ScrollView>
   );

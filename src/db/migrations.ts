@@ -61,4 +61,9 @@ export const MIGRATIONS: string[] = [
     discarded INTEGER NOT NULL DEFAULT 0
   );
   `,
+  // 4: which workflow a bin count belongs to (an id from src/workflows/catalogue.ts), so a count resumes
+  // as what it was started as. Counts from before this were the one "Put away & count" job.
+  `
+  ALTER TABLE bin_counts ADD COLUMN workflow TEXT NOT NULL DEFAULT 'put-away';
+  `,
 ];

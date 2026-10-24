@@ -41,19 +41,32 @@ back office, so what the phone does and what the office sees agree.
 
 ## Operating Context
 
-- **Jobs:**
-  - **Look up:** scan or type, then see the part, on-hand stock per bin, prices, codes and
-    alternatives.
-  - **Receive:** a delivery becomes a goods receipt (GR-0042), and the stock lands in the location's
-    **Unbinned** bin.
-  - **Put away & count:** blind bin count. Scan a bin, then every part on its shelf. Counting a bin pulls
-    stock from Unbinned onto the shelf; anything not scanned goes back to Unbinned.
-  - **Move:** move stock between bins. Needs signal.
-  - **Add part:** add an unknown barcode as a new part. Waiting scans of that barcode then match up.
+- **Workflows,** in the standard warehouse families (one list in `src/workflows/catalogue.ts`; the board
+  shows only the ones PartsLogic supports today):
+  - **Parts:**
+    - **Look up:** scan or type, then see the part, on-hand stock per bin, prices, codes and
+      alternatives.
+    - **Add part:** add an unknown barcode as a new part. Waiting scans of that barcode then match up.
+  - **Inbound:**
+    - **Receive goods:** a delivery becomes a goods receipt (GR-0042), and the stock lands in the
+      location's **Unbinned** bin, which serves as inbound staging.
+    - **Put away:** choose a bin and count it, blind. Counting a bin pulls stock from Unbinned onto the
+      shelf; anything not scanned goes back to Unbinned.
+    - Later: inbound staging areas, customer returns.
+  - **Stock control:**
+    - **Stock count:** the same blind bin count, to check a shelf.
+    - **Transfer stock:** move stock between bins. Needs signal.
+    - Later: full stock take, opening stock (initial setup), adjust stock.
+  - **Outbound** (later): pick, pack, outbound staging, dispatch, return to supplier.
   - **Sync:** what's waiting to send, what needs attention, and what was sent.
 - **Working location:** each phone works in one location at a time, chosen once and remembered.
+- **Labels in use:** manufacturer and supplier labels. PartsLogic's own labels come later; bins carry a
+  name on the shelf, not a barcode, so bins are typed or picked.
 - **Scanning:**
-  - phone camera (EAN-13/8, UPC, Code 128/39, ITF-14, QR)
+  - phone camera, product and supplier barcodes only (EAN-13/8, UPC-A/E, ITF-14, Code 128, Code 39);
+    QR and other 2D codes are ignored
+  - one scan at a time: a scan pauses the camera on a card to check it (and how many) before it's
+    recorded
   - typing a part number
   - hardware scanners that type like a keyboard
 - **Terms used on the floor:** Unbinned, GR-0042, bin codes like A-01 and `LOC/BIN`, on hand, reorder,

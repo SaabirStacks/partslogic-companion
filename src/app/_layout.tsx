@@ -20,6 +20,7 @@ import { Icon } from '@/ui/icon';
 import { colour, themeVars, type Scheme } from '@/ui/palette';
 import { PressablePlate } from '@/ui/plate';
 import { navigationTheme, useScheme } from '@/ui/theme';
+import { liveWorkflow } from '@/workflows/catalogue';
 
 /*
  * Direction: safety signage (impeccable direction contract, candidate 6 of 7, seed c57f0597, degraded).
@@ -123,15 +124,15 @@ function RootStack({ scheme }: { scheme: Scheme }) {
       </Stack.Protected>
       <Stack.Protected guard={status === 'member'}>
         <Stack.Screen name="index" />
-        <Stack.Screen name="lookup" options={jobHeader(scheme, 'Look up', false)} />
+        <Stack.Screen name="lookup" options={jobHeader(scheme, liveWorkflow('lookup').label, false)} />
         <Stack.Screen name="part/[id]" options={jobHeader(scheme, 'Part')} />
-        <Stack.Screen name="receive" options={jobHeader(scheme, 'Receive')} />
-        <Stack.Screen name="count" options={jobHeader(scheme, 'Put away & count')} />
+        <Stack.Screen name="receive" options={jobHeader(scheme, liveWorkflow('receive').label)} />
+        <Stack.Screen name="count" options={jobHeader(scheme, liveWorkflow('stock-count').label)} />
         <Stack.Screen name="sync" options={jobHeader(scheme, 'Sync', false)} />
         <Stack.Screen name="account" options={{ ...SHEET, sheetAllowedDetents: [0.6, 1] }} />
         <Stack.Screen name="location" options={{ ...SHEET, sheetAllowedDetents: [0.5, 1] }} />
-        <Stack.Screen name="move" options={jobHeader(scheme, 'Move stock')} />
-        <Stack.Screen name="quick-add" options={jobHeader(scheme, 'Add part')} />
+        <Stack.Screen name="move" options={jobHeader(scheme, liveWorkflow('transfer').label)} />
+        <Stack.Screen name="quick-add" options={jobHeader(scheme, liveWorkflow('add-part').label)} />
       </Stack.Protected>
     </Stack>
   );

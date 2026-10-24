@@ -1,7 +1,8 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
+import { countWorkflow, type CountWorkflow } from '@/features/count/count-store';
 import { countResultText, countSummary } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
 import { NeedsLocation } from '@/features/location/needs-location';
@@ -12,6 +13,7 @@ import { useRemote } from '@/lib/use-remote';
 import { useWorkingLocation } from '@/session/location-provider';
 import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
+import { ConfirmScanCard } from '@/ui/confirm-scan-card';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { Icon } from '@/ui/icon';
 import { JobBanner } from '@/ui/job-banner';
@@ -25,15 +27,18 @@ import { Detail, SignText } from '@/ui/sign-text';
 import { StatusStrip } from '@/ui/status-strip';
 import { Tally } from '@/ui/tally';
 import { unlocatedStockSummary } from '@/vendor/partslogic/shared/floor';
+import { liveWorkflow } from '@/workflows/catalogue';
 
 type Counting = ReturnType<typeof useBinCount>;
 
-// Put away & count: scan a bin and its code locks in, then scan every part on the shelf, blind. Finishing
-// pulls what was counted out of Unbinned onto the shelf and sends anything not scanned back to Unbinned.
+// Put away and Stock count, one screen: choose a bin and it locks in, then scan every part on the shelf,
+// blind. Finishing pulls what was counted out of Unbinned onto the shelf and sends anything not scanned back
+// to Unbinned. purpose says which workflow the board opened; a count left open keeps its own.
 export default function Count() {
-  const counting = useBinCount();
-  const params = useLocalSearchParams<{ binId?: string; bin?: string; location?: string }>();
+  const params = useLocalSearchParams<{ purpose?: string; binId?: string; bin?: string; location?: string }>();
+  const counting = useBinCount(countWorkflow(params.purpose));
   const { begin, loaded, count } = counting;
+  const title = liveWorkflow(count?.workflow ?? countWorkflow(params.purpose)).label.toUpperCase();
   // The "Count this bin" request already acted on, so a re-render can't start it twice.
   const handled = useRef<string | null>(null);
 
@@ -48,16 +53,27 @@ export default function Count() {
   }, [loaded, count, params.binId, params.bin, params.location, begin]);
 
   if (!loaded) return <View className="flex-1 bg-ground" />;
-  if (counting.finished && !count) return <Result counting={counting} />;
-  return count ? <CountingBin counting={counting} /> : <Start counting={counting} />;
+  return (
+    <>
+      <Stack.Screen options={{ title }} />
+      {counting.finished && !count ? (
+        <Result counting={counting} />
+      ) : count ? (
+        <CountingBin counting={counting} />
+      ) : (
+        <Start counting={counting} purpose={countWorkflow(params.purpose)} />
+      )}
+    </>
+  );
 }
 
-function Start({ counting }: { counting: Counting }) {
+function Start({ counting, purpose }: { counting: Counting; purpose: CountWorkflow }) {
   const { location } = useWorkingLocation();
   // Read the id here, not inside the loader: the React Compiler reads what a callback uses while the screen
   // renders, so `location!.id` in the callback crashed before a location was chosen.
   const locationId = location?.id ?? null;
-  const unbinned = useRemote(locationId !== null && counting.online ? `unbinned:${locationId}` : null, () =>
+  // Putting away starts from what's waiting in Unbinned, so it shows how much is there.
+  const unbinned = useRemote(purpose === 'put-away' && locationId !== null && counting.online ? `unbinned:${locationId}` : null, () =>
     unlocatedStockSummary(supabase, locationId),
   );
   const { start } = counting;
@@ -66,10 +82,12 @@ function Start({ counting }: { counting: Counting }) {
 
   return (
     <JobScreen
-      placeholder="Bin label, for example A-01"
+      placeholder="Bin name, for example A-01"
+      // Bins carry a name, not a barcode, so the keyboard is ready on arrival.
+      typeFirst
       scanEnabled={start.kind !== 'checking'}
       onScan={(code) => void counting.chooseBin(code)}
-      banner={<JobBanner title="Scan a bin label" detail={location.name} />}
+      banner={<JobBanner title="Choose a bin" detail={location.name} />}
       result={<StartAnswer counting={counting} locationName={location.name} />}>
       {unbinned.data && unbinned.data.parts > 0 ? (
         <Tally
@@ -150,16 +168,20 @@ function CountingBin({ counting }: { counting: Counting }) {
     <>
       <JobScreen
         placeholder="Barcode or part number"
-        onScan={(code) => void counting.scan(code)}
+        scanEnabled={!counting.held.pending}
+        onScan={counting.scan}
         banner={<JobBanner size="display" title={`Bin ${count.binCode}`} detail={[count.location, 'Blind count'].filter(Boolean).join(' · ')} />}
         result={<LastScan counting={counting} />}
         action={
-          <ActionBar
-            label={empty ? 'Bin is empty' : `Finish · ${plural(counting.units, 'unit', 'units')}`}
-            icon="check"
-            onPress={() => setConfirming('finish')}
-            secondary={{ label: 'Discard this count', icon: 'close', onPress: () => setConfirming('discard') }}
-          />
+          // While a scan waits on Count or Skip, it's the only decision on screen.
+          counting.held.pending ? null : (
+            <ActionBar
+              label={empty ? 'Bin is empty' : `Finish · ${plural(counting.units, 'unit', 'units')}`}
+              icon="check"
+              onPress={() => setConfirming('finish')}
+              secondary={{ label: 'Discard this count', icon: 'close', onPress: () => setConfirming('discard') }}
+            />
+          )
         }>
         {progress.stage === 'attention' ? (
           <StatusStrip tone="stop" icon="stop" text={progress.reason ? `Not sent · ${progress.reason}` : 'Not sent'} />
@@ -233,11 +255,23 @@ function CountingBin({ counting }: { counting: Counting }) {
   );
 }
 
-// The plate for the scan that just landed: the part and how many of it are counted now.
+// The plate over the camera's edge: the scan being held for a decision, or else the part just counted and
+// how many of it are counted now.
 function LastScan({ counting }: { counting: Counting }) {
-  const { notice, lastScan, count } = counting;
-  if (notice) {
-    return <ScanResultCard key={notice.detail} tone="warning" status={{ icon: 'bin', label: 'Not counted' }} title={notice.title} detail={notice.detail} />;
+  const { held, lastScan, count } = counting;
+  if (held.pending) {
+    return (
+      <ConfirmScanCard
+        pending={held.pending}
+        verb="Count"
+        onConfirm={() => void counting.confirm()}
+        onSkip={held.clear}
+        onStep={held.step}
+        onSet={held.setQty}
+        onRetry={() => void held.retry()}
+        addPart={<AddPartLink code={held.pending.code} />}
+      />
+    );
   }
   if (!lastScan || !count) return null;
   const line = counting.lines.find((candidate) => candidate.code === lastScan.code);

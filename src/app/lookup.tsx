@@ -18,7 +18,7 @@ import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 type LookUpApi = ReturnType<typeof useLookUp>;
 
 // Look up: scan or type, and the answer lands on the result plate. A part shows its stock, bins and
-// price at a glance; the next scan replaces it, and tapping it opens the whole part.
+// price at a glance, and tapping it opens the whole part. The camera holds on the answer until Scan next.
 export default function LookUp() {
   const lookUp = useLookUp();
   const { state } = useSession();
@@ -29,7 +29,8 @@ export default function LookUp() {
   return (
     <JobScreen
       placeholder="Part number or barcode"
-      scanEnabled={!lookUp.busy}
+      scanEnabled={!lookUp.holding}
+      onResume={lookUp.view.kind === 'working' ? undefined : lookUp.clear}
       onScan={lookUp.scan}
       onType={lookUp.type}
       result={<Answer view={view} lookUp={lookUp} currency={member?.currency ?? 'GBP'} />}
@@ -67,7 +68,7 @@ function Answer({ view, lookUp, currency }: { view: LookUpView; lookUp: LookUpAp
     case 'part':
       return <PartPlate key={view.at} part={view.part} currency={currency} onOpen={() => lookUp.openPart(view.part)} />;
     case 'bin':
-      return <ScanResultCard tone="surface" status={{ icon: 'bin', label: 'Bin label' }} title={view.bin} detail={view.location} />;
+      return <ScanResultCard tone="surface" status={{ icon: 'bin', label: 'Bin' }} title={view.bin} detail={view.location} />;
     case 'unknown':
       return (
         <ScanResultCard tone="warning" status={{ icon: 'warning', label: 'Unknown code' }} title={view.code} detail={barcodeProblem(view.code)}>
@@ -117,7 +118,8 @@ function PartPlate({ part, currency, onOpen }: { part: RecentPart; currency: str
   return <PartAnswerPlate title={title} answer={partAnswer(data.detail, currency)} savedAt={data.savedAt} onOpen={onOpen} />;
 }
 
-// The one main action for what was scanned: open the part, count the bin, or add the unknown code.
+// The one main action for what was scanned: open the part, count the bin, or add the unknown code. Scan
+// next sits on the paused camera.
 function Action({ view, lookUp, canCount }: { view: LookUpView; lookUp: LookUpApi; canCount: boolean }) {
   if (view.kind === 'part') {
     return <ActionBar label="Open part" icon="forward" onPress={() => lookUp.openPart(view.part)} />;
@@ -129,7 +131,7 @@ function Action({ view, lookUp, canCount }: { view: LookUpView; lookUp: LookUpAp
         icon="count"
         onPress={() => {
           lookUp.clear();
-          router.navigate({ pathname: '/count', params: { binId: String(view.binId), bin: view.bin, location: view.location } });
+          router.navigate({ pathname: '/count', params: { purpose: 'stock-count', binId: String(view.binId), bin: view.bin, location: view.location } });
         }}
       />
     );

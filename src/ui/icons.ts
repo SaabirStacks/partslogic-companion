@@ -9,6 +9,7 @@ export const ICONS = {
   lookup: symbol('magnifyingglass', 'search'),
   receive: symbol('shippingbox.fill', 'package_2'),
   count: symbol('tray.2.fill', 'shelves'),
+  putAway: symbol('tray.and.arrow.down.fill', 'move_to_inbox'),
   move: symbol('arrow.left.arrow.right', 'swap_horiz'),
   add: symbol('plus.square.fill', 'add_box'),
   sync: symbol('arrow.triangle.2.circlepath', 'sync'),

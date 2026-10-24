@@ -4,8 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { db } from '@/db/database';
 import { deviceLabel } from '@/lib/device';
 import { useOutbox } from '@/queue/outbox-provider';
-import { scanFeedback } from '@/scan/feedback';
-import { localLabel } from '@/scan/local-label';
+import { feedbackFor } from '@/scan/feedback';
+import { usePendingScan } from '@/scan/pending-scan';
+import { checkScan, partLabel, worthRechecking, type ScanCheck } from '@/scan/resolve';
 import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
@@ -18,8 +19,9 @@ const LINES_PER_CALL = 500;
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-// Receiving one delivery: every scan is saved on the phone and queued at once (no waiting on signal),
-// and what PartsLogic made of each line comes back through the outbox.
+// Receiving one delivery, one scan at a time: a scan is held (the camera pauses) until the person adds it,
+// with its quantity, or skips it. Each added line is saved on the phone and queued at once (no waiting on
+// signal), and what PartsLogic made of each line comes back through the outbox.
 export function useDelivery() {
   const { state } = useSession();
   const userId = state.status === 'member' ? state.member.userId : null;
@@ -31,9 +33,20 @@ export function useDelivery() {
   const [lines, setLines] = useState<DeliveryLine[]>([]);
   const [recent, setRecent] = useState<Delivery[]>([]);
   const [finished, setFinished] = useState<{ delivery: Delivery; units: number } | null>(null);
-  // A scan that wasn't added: a bin label (deliveries go into Unbinned, not onto shelves).
-  const [notice, setNotice] = useState<{ kind: 'bin'; bin: string } | null>(null);
   const [lastLine, setLastLine] = useState<DeliveryLine | null>(null);
+
+  // A code is checked against the delivery's own location (a bin label never goes into a delivery: stock
+  // lands in Unbinned).
+  const scanLocation = location && (!delivery || location.id === delivery.locationId) ? location : null;
+  const check = useCallback(
+    async (code: string) => {
+      const hit = await checkScan(code, scanLocation);
+      feedbackFor(hit);
+      return hit;
+    },
+    [scanLocation],
+  );
+  const held = usePendingScan<ScanCheck>({ check, recheck: worthRechecking });
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -91,7 +104,6 @@ export function useDelivery() {
     setDelivery(opened);
     setLines([]);
     setFinished(null);
-    setNotice(null);
     setLastLine(null);
     return opened;
   }
@@ -112,25 +124,25 @@ export function useDelivery() {
     finished,
     // The receipt number of the delivery just finished, once PartsLogic has given it one.
     finishedNumber: finished ? receiptNumber(outbox.items, finished.delivery.documentId) : null,
-    notice,
+    held,
     lastLine,
     waiting: [...states.values()].filter((s) => s.outcome === 'waiting').length,
     problems: [...states.values()].filter((s) => s.outcome === 'attention' || s.outcome === 'refused').length,
 
-    // The first scan of a box starts the delivery, so there's no separate start step.
-    async scan(code: string) {
-      const sameLocation = location && (!delivery || location.id === delivery.locationId) ? location.code : null;
-      const local = await localLabel(code, sameLocation);
-      if (local.type === 'bin') {
-        scanFeedback.unknown();
-        setNotice({ kind: 'bin', bin: local.bin });
-        return;
-      }
+    // A scanned or typed code: held until it's added or skipped. One at a time.
+    scan(code: string) {
+      if (!held.pending) void held.hold(code);
+    },
+
+    // Adds the held scan with its quantity. The first line added starts the delivery, so there's no
+    // separate start step.
+    async confirm() {
+      const scan = held.pending;
+      if (!scan?.hit || scan.hit.type === 'bin' || scan.hit.type === 'error') return;
+      held.clear();
       const current = delivery ?? (await start());
       if (!current) return;
-      setNotice(null);
-      scanFeedback.found();
-      await addLine(current, code, 1, local.type === 'part' ? local.label : null);
+      await addLine(current, scan.code, scan.qty, scan.hit.type === 'part' ? partLabel(scan.hit) : null);
     },
 
     async change(code: string, qty: number, name: string | null) {
@@ -152,7 +164,7 @@ export function useDelivery() {
       await store.finish(delivery.documentId);
       setFinished({ delivery, units });
       setLastLine(null);
-      setNotice(null);
+      held.clear();
       await load();
     },
 
