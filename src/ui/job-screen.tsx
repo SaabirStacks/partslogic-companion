@@ -19,6 +19,8 @@ export function JobScreen({
   onScan,
   onType,
   scanEnabled = true,
+  onResume,
+  typeFirst = false,
   placeholder,
   banner,
   result,
@@ -28,7 +30,12 @@ export function JobScreen({
   onScan: (code: string) => void;
   // Typed codes go here when they mean something different from a scan (Look up searches them).
   onType?: (text: string) => void;
+  // False pauses the camera (it dims and says Paused) and the typing box.
   scanEnabled?: boolean;
+  // Scan next on the paused camera, for a job that resumes from the camera (Look up).
+  onResume?: () => void;
+  // Opens the typing box on arrival, for codes that are usually typed (a bin's name).
+  typeFirst?: boolean;
   placeholder: string;
   // A plate above the camera that holds what the job is locked to, such as the bin being counted.
   banner?: ReactNode;
@@ -37,14 +44,14 @@ export function JobScreen({
   action?: ReactNode;
 }) {
   const { height } = useWindowDimensions();
-  const [typing, setTyping] = useState(false);
+  const [typing, setTyping] = useState(typeFirst);
 
   return (
     <View className="flex-1 bg-ground">
       <OfflineBanner />
       {banner}
       <View style={{ height: Math.max(200, Math.round(height * 0.34)) }}>
-        <CameraScanner enabled={scanEnabled} onScan={onScan} />
+        <CameraScanner enabled={scanEnabled} onScan={onScan} onResume={onResume} />
         <View className="absolute inset-x-3 top-3 flex-row items-start justify-end gap-2">
           {typing ? (
             <Animated.View entering={APPEAR} style={{ flex: 1 }}>

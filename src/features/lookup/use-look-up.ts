@@ -86,7 +86,9 @@ export function useLookUp() {
   return {
     view,
     recent,
-    busy: view.kind === 'working',
+    // An answer to a scan or typed code is on screen: the camera holds on it until Scan next. Search results
+    // (and No match) leave it scanning.
+    holding: view.kind !== 'idle' && view.kind !== 'results',
     scan: (code: string) => void lookUp(code, false),
     type: (text: string) => void lookUp(text, true),
     search: (query: string) => void search(query),

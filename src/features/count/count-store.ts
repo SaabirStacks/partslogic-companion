@@ -2,6 +2,10 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { BinSession } from '@/vendor/partslogic/shared/bin-session';
 
+// The two workflows a bin count serves (see src/workflows/catalogue.ts).
+export type CountWorkflow = 'put-away' | 'stock-count';
+export const countWorkflow = (value: unknown): CountWorkflow => (value === 'stock-count' ? 'stock-count' : 'put-away');
+
 export type BinCount = {
   stocktakeId: string;
   userId: string;
@@ -12,6 +16,7 @@ export type BinCount = {
   session: BinSession;
   labels: Record<string, string>;
   finishedAt: string | null;
+  workflow: CountWorkflow;
 };
 
 type Row = {
@@ -24,6 +29,7 @@ type Row = {
   session: string;
   labels: string;
   finished_at: string | null;
+  workflow: string;
 };
 
 const toCount = (row: Row): BinCount => ({
@@ -36,6 +42,7 @@ const toCount = (row: Row): BinCount => ({
   session: JSON.parse(row.session) as BinSession,
   labels: JSON.parse(row.labels) as Record<string, string>,
   finishedAt: row.finished_at,
+  workflow: countWorkflow(row.workflow),
 });
 
 // Bin counts on this phone. The session is saved after every scan, so a count survives the app closing.
@@ -61,8 +68,8 @@ export class CountStore {
 
   async create(count: BinCount): Promise<void> {
     await this.db.runAsync(
-      `INSERT INTO bin_counts (stocktake_id, user_id, bin_id, bin_code, location, started_at, session, labels)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bin_counts (stocktake_id, user_id, bin_id, bin_code, location, started_at, session, labels, workflow)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       count.stocktakeId,
       count.userId,
       count.binId,
@@ -71,6 +78,7 @@ export class CountStore {
       count.startedAt,
       JSON.stringify(count.session),
       JSON.stringify(count.labels),
+      count.workflow,
     );
   }
 

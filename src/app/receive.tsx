@@ -11,6 +11,7 @@ import { clock, plural } from '@/lib/format';
 import { useWorkingLocation } from '@/session/location-provider';
 import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
+import { ConfirmScanCard } from '@/ui/confirm-scan-card';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
@@ -26,8 +27,9 @@ import { Tally } from '@/ui/tally';
 
 type Receiving = ReturnType<typeof useDelivery>;
 
-// Receive: scan box after box. The first scan opens the delivery; every scan lands as a green plate (or
-// yellow for a code PartsLogic may not know) and adds to its line. Finish books it all into Unbinned.
+// Receive goods: scan box after box, one at a time. Each scan pauses the camera on a card to check it and
+// set how many, then Add (or Skip). The first line added opens the delivery; Finish books it all into
+// Unbinned.
 export default function Receive() {
   const { location } = useWorkingLocation();
   const receiving = useDelivery();
@@ -45,7 +47,8 @@ export default function Receive() {
     <>
       <JobScreen
         placeholder="Barcode or part number"
-        onScan={(code) => void receiving.scan(code)}
+        scanEnabled={!receiving.held.pending}
+        onScan={receiving.scan}
         banner={
           delivery ? (
             <JobBanner
@@ -56,7 +59,8 @@ export default function Receive() {
         }
         result={<LastScan receiving={receiving} />}
         action={
-          groups.length > 0 ? (
+          // While a scan waits on Add or Skip, it's the only decision on screen.
+          groups.length > 0 && !receiving.held.pending ? (
             <ActionBar
               label={`Finish · ${plural(units, 'unit', 'units')}`}
               icon="check"
@@ -118,12 +122,22 @@ export default function Receive() {
   );
 }
 
-// The plate for the scan that just landed: what was added and how many of it are in the delivery now.
+// The plate over the camera's edge: the scan being held for a decision, or else the line just added and
+// how many of it are in the delivery now.
 function LastScan({ receiving }: { receiving: Receiving }) {
-  const { notice, lastLine, groups } = receiving;
-  if (notice) {
+  const { held, lastLine, groups } = receiving;
+  if (held.pending) {
     return (
-      <ScanResultCard key={notice.bin} tone="warning" status={{ icon: 'bin', label: 'Bin label · not added' }} title={notice.bin} detail="Deliveries go into Unbinned" />
+      <ConfirmScanCard
+        pending={held.pending}
+        verb="Add"
+        onConfirm={() => void receiving.confirm()}
+        onSkip={held.clear}
+        onStep={held.step}
+        onSet={held.setQty}
+        onRetry={() => void held.retry()}
+        addPart={<AddPartLink code={held.pending.code} />}
+      />
     );
   }
   if (!lastLine) return null;
@@ -186,7 +200,7 @@ function Finished({ receiving }: { receiving: Receiving }) {
         tone="safe"
         title={receiving.finishedNumber ?? 'Delivery finished'}
         line={`${plural(finished.units, 'unit', 'units')} into ${place}`}>
-        <Button label="Put away now" icon="count" onPress={() => router.replace('/count')} />
+        <Button label="Put away now" icon="count" onPress={() => router.replace({ pathname: '/count', params: { purpose: 'put-away' } })} />
         <Button label="Next delivery" variant="secondary" onPress={receiving.dismissFinished} />
       </Notice>
     </View>

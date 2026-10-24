@@ -227,7 +227,8 @@ pointing at the SQL and has a test.
 ### Scanning
 
 - `CameraView` with `barcodeScannerSettings.barcodeTypes`: `ean13`, `ean8`, `upc_a`, `upc_e`,
-  `code128`, `code39`, `itf14`, `qr`.
+  `code128`, `code39`, `itf14` (QR dropped in October 2026: parts packaging uses it for links, never the
+  part; see `src/scan/code-kind.ts`).
 - **Cooldown:** after a read, scanning pauses until about 1 second has passed or a different code
   appears, with haptic feedback. The camera fires repeatedly while a barcode stays in view, and
   without this a count would be inflated. Every line also has +/− buttons.

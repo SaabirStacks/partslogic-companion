@@ -16,11 +16,11 @@ import { AddForm } from '@/features/quick-add/add-part-screens';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
 import { NotSetUp } from '@/features/setup/not-set-up';
-import { jobsFor } from '@/features/board/jobs';
 import { syncState } from '@/features/board/sync-state';
 import { ActionBar } from '@/ui/action-bar';
 import { BinChip } from '@/ui/bin-chip';
 import { Button } from '@/ui/button';
+import { ConfirmScanCard } from '@/ui/confirm-scan-card';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { Icon } from '@/ui/icon';
 import { JobBanner } from '@/ui/job-banner';
@@ -35,6 +35,9 @@ import { SectionLabel } from '@/ui/section-label';
 import { SignText } from '@/ui/sign-text';
 import { Tally } from '@/ui/tally';
 import { useScheme } from '@/ui/theme';
+import type { PendingScan } from '@/scan/pending-scan';
+import type { ScanCheck } from '@/scan/resolve';
+import { boardFor } from '@/workflows/catalogue';
 
 import { Fixtures, OIL_FILTER, OUTBOX_ITEMS, RECENT } from './fixtures';
 
@@ -61,7 +64,16 @@ function StackHeader({ title, quickLookUp = true }: { title: string; quickLookUp
   );
 }
 
-function SampleJob({ confirming = false }: { confirming?: boolean }) {
+// A scan Receive is holding for a decision, as the gallery shows it.
+const HELD_PART: PendingScan<ScanCheck> = {
+  key: 'p',
+  code: '4047025186913',
+  qty: 1,
+  hit: { type: 'part', partId: 1, brand: 'Bosch', number: '0 986 494 119', offline: false },
+};
+const HELD_UNKNOWN: PendingScan<ScanCheck> = { key: 'u', code: '5010415305187', qty: 2, hit: { type: 'unknown', code: '5010415305187', offline: false } };
+
+function SampleJob({ confirming = false, held }: { confirming?: boolean; held?: PendingScan<ScanCheck> }) {
   const lines = [
     { name: 'Bosch 0 986 494 119', code: '4047025186913', qty: 4, status: statusText('booked', null) },
     { name: '5010415305187', code: null, qty: 1, status: statusText('unknown', null), unknown: true },
@@ -69,21 +81,37 @@ function SampleJob({ confirming = false }: { confirming?: boolean }) {
   ];
   return (
     <View className="flex-1">
-      <StackHeader title="Receive" />
+      <StackHeader title="Receive goods" />
       <JobScreen
         placeholder="Barcode or part number"
         onScan={noop}
+        scanEnabled={!held}
         banner={<JobBanner title="GR-0042" detail="Into Main Unbinned" />}
         result={
-          <ScanResultCard
-            tone="safe"
-            status={{ icon: 'sent', label: 'Added' }}
-            title="Bosch 0 986 494 119"
-            detail="4047025186913"
-            quantity={{ value: '+1', label: '4 in delivery' }}
-          />
+          held ? (
+            <ConfirmScanCard
+              pending={held}
+              verb="Add"
+              onConfirm={noop}
+              onSkip={noop}
+              onStep={noop}
+              onSet={noop}
+              onRetry={noop}
+              addPart={<AddPartLink code={held.code} />}
+            />
+          ) : (
+            <ScanResultCard
+              tone="safe"
+              status={{ icon: 'sent', label: 'Added' }}
+              title="Bosch 0 986 494 119"
+              detail="4047025186913"
+              quantity={{ value: '+1', label: '4 in delivery' }}
+            />
+          )
         }
-        action={<ActionBar label="Finish · 24 units" icon="check" onPress={noop} secondary={{ label: 'Undo', icon: 'undo', onPress: noop }} />}>
+        action={
+          held ? null : <ActionBar label="Finish · 24 units" icon="check" onPress={noop} secondary={{ label: 'Undo', icon: 'undo', onPress: noop }} />
+        }>
         <Tally
           items={[
             { value: 24, label: 'Units' },
@@ -158,7 +186,7 @@ function Parts() {
 const SCREENS: Record<string, () => ReactNode> = {
   board: () => (
     <BoardView
-      jobs={jobsFor('counter')}
+      sections={boardFor('counter')}
       openWork={[{ kind: 'delivery', units: 12, startedAt }]}
       location="Main"
       sync={syncState({ waiting: 3, needsAttention: 0, online: true })}
@@ -171,7 +199,7 @@ const SCREENS: Record<string, () => ReactNode> = {
   ),
   'board-problem': () => (
     <BoardView
-      jobs={jobsFor('counter')}
+      sections={boardFor('counter')}
       openWork={[
         { kind: 'delivery', units: 12, startedAt },
         { kind: 'count', bin: 'A-01', units: 7, startedAt },
@@ -187,7 +215,7 @@ const SCREENS: Record<string, () => ReactNode> = {
   ),
   'board-viewer': () => (
     <BoardView
-      jobs={jobsFor('viewer')}
+      sections={boardFor('viewer')}
       openWork={[]}
       location="Main"
       sync={syncState({ waiting: 0, needsAttention: 0, online: true })}
@@ -199,9 +227,24 @@ const SCREENS: Record<string, () => ReactNode> = {
     />
   ),
   job: () => <SampleJob />,
+  'receive-held': () => <SampleJob held={HELD_PART} />,
+  'receive-held-unknown': () => <SampleJob held={HELD_UNKNOWN} />,
+  'count-start': () => (
+    <View className="flex-1">
+      <StackHeader title="Put away" />
+      <JobScreen placeholder="Bin name, for example A-01" typeFirst onScan={noop} banner={<JobBanner title="Choose a bin" detail="Main" />}>
+        <Tally
+          items={[
+            { value: 24, label: 'Unbinned units', tone: 'warning' },
+            { value: 7, label: 'Parts' },
+          ]}
+        />
+      </JobScreen>
+    </View>
+  ),
   count: () => (
     <View className="flex-1">
-      <StackHeader title="Put away & count" />
+      <StackHeader title="Stock count" />
       <JobScreen
         placeholder="Barcode or part number"
         onScan={noop}
@@ -226,7 +269,7 @@ const SCREENS: Record<string, () => ReactNode> = {
     });
     return (
       <View className="flex-1 bg-ground">
-        <StackHeader title="Put away & count" />
+        <StackHeader title="Put away" />
         <ScrollView contentContainerClassName="flex-grow justify-center gap-4 px-4 py-8">
           <Plate tone={summary.tone} heavy className="gap-2 p-4">
             <SignText size="label" ink={TEXT_ON[summary.tone]}>
@@ -245,7 +288,7 @@ const SCREENS: Record<string, () => ReactNode> = {
   },
   move: () => (
     <View className="flex-1">
-      <StackHeader title="Move stock" />
+      <StackHeader title="Transfer stock" />
       <JobScreen
         placeholder="Part number, barcode or bin"
         onScan={noop}
@@ -279,7 +322,7 @@ const SCREENS: Record<string, () => ReactNode> = {
   ),
   'receive-done': () => (
     <View className="flex-1 bg-ground">
-      <StackHeader title="Receive" />
+      <StackHeader title="Receive goods" />
       <Notice icon="sent" tone="safe" title="GR-0042" line="24 units into Main Unbinned">
         <Button label="Put away now" icon="count" onPress={noop} />
         <Button label="Next delivery" variant="secondary" onPress={noop} />
@@ -294,7 +337,9 @@ const SCREENS: Record<string, () => ReactNode> = {
       <JobScreen
         placeholder="Part number or barcode"
         onScan={noop}
+        scanEnabled={false}
         result={<PartAnswerPlate title="Mann HU 816 x" answer={partAnswer(OIL_FILTER, 'GBP')} savedAt={null} onOpen={noop} />}
+        onResume={noop}
         action={<ActionBar label="Open part" icon="forward" onPress={noop} />}>
         <SectionLabel>Recent</SectionLabel>
         {RECENT.map((part) => (
@@ -314,6 +359,8 @@ const SCREENS: Record<string, () => ReactNode> = {
             <Button label="Search instead" icon="lookup" variant="secondary" compact onPress={noop} />
           </ScanResultCard>
         }
+        scanEnabled={false}
+        onResume={noop}
         action={<ActionBar label="Add part" icon="add" tone="plain" onPress={noop} />}>
         <SectionLabel>Recent</SectionLabel>
         {RECENT.map((part) => (
