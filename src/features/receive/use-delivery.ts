@@ -13,15 +13,18 @@ import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
 
 import { DeliveryStore, type Delivery } from './delivery-store';
 import { adjustmentTo, groupLines, lineStates, receiptNumber, type DeliveryLine } from './lines';
+import { receiptSummary } from './receipt';
+import { deliveryName, receiptDetails, type Sender } from './sender';
 
 // record_receipt_lines takes up to 500 lines a call.
 const LINES_PER_CALL = 500;
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-// Receiving one delivery, one scan at a time: a scan is held (the camera pauses) until the person adds it,
-// with its quantity, or skips it. Each added line is saved on the phone and queued at once (no waiting on
-// signal), and what PartsLogic made of each line comes back through the outbox.
+// Receiving one delivery. It starts by saying who it's from, then takes one scan at a time: a scan is
+// held (the camera pauses) until the person adds it, with its quantity, or skips it. Each added line is
+// saved on the phone and queued at once (no waiting on signal), and what PartsLogic made of each line
+// comes back through the outbox.
 export function useDelivery() {
   const { state } = useSession();
   const userId = state.status === 'member' ? state.member.userId : null;
@@ -32,7 +35,7 @@ export function useDelivery() {
   const [delivery, setDelivery] = useState<Delivery | null | undefined>(undefined);
   const [lines, setLines] = useState<DeliveryLine[]>([]);
   const [recent, setRecent] = useState<Delivery[]>([]);
-  const [finished, setFinished] = useState<{ delivery: Delivery; units: number } | null>(null);
+  const [finished, setFinished] = useState<{ delivery: Delivery; lines: DeliveryLine[] } | null>(null);
   const [lastLine, setLastLine] = useState<DeliveryLine | null>(null);
 
   // A code is checked against the delivery's own location (a bin label never goes into a delivery: stock
@@ -62,10 +65,11 @@ export function useDelivery() {
     void Promise.resolve().then(load);
   }, [load]);
 
-  const label = (startedAt: string, count: number) =>
-    `Delivery started ${time(startedAt)} · ${count} ${count === 1 ? 'line' : 'lines'}`;
+  const label = (current: Delivery, count: number) =>
+    `Delivery from ${deliveryName(current.sender)} started ${time(current.startedAt)} · ${count} ${count === 1 ? 'line' : 'lines'}`;
 
   async function addLine(current: Delivery, code: string, qty: number, name: string | null) {
+    const first = lines.length === 0;
     const line: DeliveryLine = { clientLineId: Crypto.randomUUID(), code, qty, label: name, createdAt: new Date().toISOString() };
     await store.addLine(current.documentId, line);
     const payload: QueueItem = {
@@ -76,36 +80,19 @@ export function useDelivery() {
       device: deviceLabel(),
       lines: [{ clientLineId: line.clientLineId, code, qty }],
     };
-    await outbox.enqueue(payload, label(current.startedAt, 1), (existing) =>
+    await outbox.enqueue(payload, label(current, 1), (existing) =>
       existing.kind === 'receipt_lines' && existing.lines.length < LINES_PER_CALL
         ? {
             payload: { ...existing, lines: [...existing.lines, payload.lines[0]] },
-            label: label(current.startedAt, existing.lines.length + 1),
+            label: label(current, existing.lines.length + 1),
           }
         : null,
     );
+    // Who it's from goes right behind the first lines, in the same stream: the receipt exists by then.
+    const details = first ? receiptDetails(Crypto.randomUUID(), current.documentId, current.sender, current.reference) : null;
+    if (details) await outbox.enqueue(details, `Delivery from ${deliveryName(current.sender)} · who it’s from`);
     setLines((previous) => [...previous, line]);
     setLastLine(line);
-  }
-
-  // Opens a new delivery in the working location and returns it, so the scan that started it can be added
-  // straight away.
-  async function start(): Promise<Delivery | null> {
-    if (!userId || !location) return null;
-    const opened: Delivery = {
-      documentId: Crypto.randomUUID(),
-      userId,
-      locationId: location.id,
-      locationName: location.name,
-      startedAt: new Date().toISOString(),
-      finishedAt: null,
-    };
-    await store.start(opened);
-    setDelivery(opened);
-    setLines([]);
-    setFinished(null);
-    setLastLine(null);
-    return opened;
   }
 
   const documentId = delivery?.documentId ?? null;
@@ -114,6 +101,13 @@ export function useDelivery() {
   const number = documentId ? receiptNumber(outbox.items, documentId) : null;
   const units = lines.reduce((sum, line) => sum + line.qty, 0);
 
+  // The finished delivery's receipt fills in as PartsLogic answers.
+  const finishedId = finished?.delivery.documentId ?? null;
+  const finishedGroups = useMemo(
+    () => (finished && finishedId ? groupLines(finished.lines, lineStates(outbox.items, finishedId)) : []),
+    [finished, finishedId, outbox.items],
+  );
+
   return {
     loaded: delivery !== undefined,
     delivery: delivery ?? null,
@@ -121,28 +115,50 @@ export function useDelivery() {
     number,
     units,
     recent,
-    finished,
-    // The receipt number of the delivery just finished, once PartsLogic has given it one.
-    finishedNumber: finished ? receiptNumber(outbox.items, finished.delivery.documentId) : null,
+    finished: finished
+      ? {
+          delivery: finished.delivery,
+          units: finished.lines.reduce((sum, line) => sum + line.qty, 0),
+          number: finishedId ? receiptNumber(outbox.items, finishedId) : null,
+          summary: receiptSummary(finishedGroups),
+        }
+      : null,
     held,
     lastLine,
     waiting: [...states.values()].filter((s) => s.outcome === 'waiting').length,
     problems: [...states.values()].filter((s) => s.outcome === 'attention' || s.outcome === 'refused').length,
 
-    // A scanned or typed code: held until it's added or skipped. One at a time.
-    scan(code: string) {
-      if (!held.pending) void held.hold(code);
+    // Opens a new delivery in the working location, from who it's from (and its delivery note).
+    async start(sender: Sender, reference: string | null) {
+      if (!userId || !location) return;
+      const opened: Delivery = {
+        documentId: Crypto.randomUUID(),
+        userId,
+        locationId: location.id,
+        locationName: location.name,
+        sender,
+        reference,
+        startedAt: new Date().toISOString(),
+        finishedAt: null,
+      };
+      await store.start(opened);
+      setDelivery(opened);
+      setLines([]);
+      setFinished(null);
+      setLastLine(null);
     },
 
-    // Adds the held scan with its quantity. The first line added starts the delivery, so there's no
-    // separate start step.
+    // A scanned or typed code: held until it's added or skipped. One at a time.
+    scan(code: string) {
+      if (delivery && !held.pending) void held.hold(code);
+    },
+
+    // Adds the held scan with its quantity.
     async confirm() {
       const scan = held.pending;
-      if (!scan?.hit || scan.hit.type === 'bin' || scan.hit.type === 'error') return;
+      if (!delivery || !scan?.hit || scan.hit.type === 'bin' || scan.hit.type === 'error') return;
       held.clear();
-      const current = delivery ?? (await start());
-      if (!current) return;
-      await addLine(current, scan.code, scan.qty, scan.hit.type === 'part' ? partLabel(scan.hit) : null);
+      await addLine(delivery, scan.code, scan.qty, scan.hit.type === 'part' ? partLabel(scan.hit) : null);
     },
 
     async change(code: string, qty: number, name: string | null) {
@@ -156,14 +172,21 @@ export function useDelivery() {
 
     async finish() {
       if (!delivery) return;
-      const clientId = Crypto.randomUUID();
       await outbox.enqueue(
-        { kind: 'close_receipt', clientId, documentId: delivery.documentId },
-        `Finish delivery started ${time(delivery.startedAt)}`,
+        { kind: 'close_receipt', clientId: Crypto.randomUUID(), documentId: delivery.documentId },
+        `Finish delivery from ${deliveryName(delivery.sender)} started ${time(delivery.startedAt)}`,
       );
       await store.finish(delivery.documentId);
-      setFinished({ delivery, units });
+      setFinished({ delivery: { ...delivery, finishedAt: new Date().toISOString() }, lines });
       setLastLine(null);
+      held.clear();
+      await load();
+    },
+
+    // Drops a delivery started by mistake, before anything was scanned (nothing reached PartsLogic).
+    async cancel() {
+      if (!delivery || lines.length > 0) return;
+      await store.discardEmpty(delivery.documentId);
       held.clear();
       await load();
     },

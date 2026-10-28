@@ -76,7 +76,7 @@ export function BoardView({ sections, openWork, location, sync, onJob, onResume,
                   className={index > 0 ? 'rounded-none border-0 border-t border-rule' : 'rounded-none border-0'}>
                   <View className="min-h-16 flex-row items-center gap-3 px-4 py-3">
                     <View className="flex-1 gap-0.5">
-                      <Txt variant="label" numberOfLines={1} className="font-bold">
+                      <Txt variant="label" numberOfLines={2} className="font-bold">
                         {`Resume · ${text.title}`}
                       </Txt>
                       <Txt variant="caption" numbers numberOfLines={1}>

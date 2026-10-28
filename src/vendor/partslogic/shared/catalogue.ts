@@ -256,6 +256,27 @@ export type EnrichmentPreview = {
   queuedVehicleLists: number;
   budget: { limit: number; spent: number; remaining: number } | null;
   credits: { search: number; product: number; perMaker: number };
+  // The enabled sources a run goes down, in order, with each one's last result for this part.
+  sources: EnrichmentSourceStep[];
+  budgets: Partial<Record<'piloterr' | 'firecrawl', { limit: number; spent: number; remaining: number }>>;
+  gaps: Partial<Record<'photo' | 'oe' | 'barcode' | 'category' | 'specs' | 'xrefs' | 'vehicles', boolean>>;
+  // When the websites were last searched for this part (a search is reused for 30 days).
+  webSearchedOn: string | null;
+  webCredits: { search: number; aiPage: number; siteSearch: number; markdownPage: number; maxPages: number };
+};
+
+export type EnrichmentSourceStep = {
+  id: number;
+  name: string;
+  kind: 'autodoc' | 'brand_catalogue' | 'retailer';
+  provider: 'piloterr' | 'firecrawl';
+  domain: string | null;
+  // websites: read with AI extraction, or by the Autodoc-family page reader (no AI)
+  reader: 'ai' | 'autodoc_family' | null;
+  // websites: found through the site's own search rather than the shared web search
+  ownSearch: boolean;
+  skip: string | null;
+  last: { status: string; at: string | null; url: string | null } | null;
 };
 
 // One part with its inventory row, prices, OE numbers, images, barcodes, enrichment state, per-tab counts and
@@ -682,6 +703,50 @@ export function readEnrichmentPreview(preview: JsonRecord | null): EnrichmentPre
       product: readNumber(credits?.product) ?? 2,
       perMaker: readNumber(credits?.per_maker) ?? 2,
     },
+    sources: readArray(preview.sources).flatMap((value) => {
+      const row = readRecord(value);
+      const id = readNumber(row?.id);
+      const name = readString(row?.name);
+      const provider = readString(row?.provider);
+      if (id == null || !name || (provider !== 'piloterr' && provider !== 'firecrawl')) return [];
+      const last = readRecord(row?.last);
+      const reader = readString(row?.reader);
+      return [
+        {
+          id,
+          name,
+          kind: (readString(row?.kind) ?? 'retailer') as EnrichmentSourceStep['kind'],
+          provider,
+          domain: readString(row?.domain),
+          reader: reader === 'autodoc_family' ? 'autodoc_family' : provider === 'firecrawl' ? 'ai' : null,
+          ownSearch: readBoolean(row?.own_search) ?? false,
+          skip: readString(row?.skip),
+          last: last && readString(last.status)
+            ? { status: readString(last.status) ?? '', at: readString(last.at), url: readString(last.url) }
+            : null,
+        },
+      ];
+    }),
+    budgets: Object.fromEntries(
+      (['piloterr', 'firecrawl'] as const).flatMap((provider) => {
+        const row = readRecord(readRecord(preview.budgets)?.[provider]);
+        const providerLimit = readNumber(row?.limit);
+        return providerLimit == null
+          ? []
+          : [[provider, { limit: providerLimit, spent: readNumber(row?.spent) ?? 0, remaining: readNumber(row?.remaining) ?? 0 }]];
+      })
+    ),
+    gaps: Object.fromEntries(
+      Object.entries(readRecord(preview.gaps) ?? {}).flatMap(([key, value]) => (typeof value === 'boolean' ? [[key, value]] : []))
+    ),
+    webSearchedOn: readString(readRecord(preview.web_search)?.searched_at),
+    webCredits: {
+      search: readNumber(credits?.web_search) ?? 2,
+      aiPage: readNumber(credits?.web_page) ?? 5,
+      siteSearch: readNumber(credits?.site_search) ?? 1,
+      markdownPage: readNumber(credits?.markdown_page) ?? 1,
+      maxPages: readNumber(credits?.web_max_pages) ?? 3,
+    },
   };
 }
 
@@ -764,8 +829,13 @@ function readKitLines(value: Json | undefined): KitLine[] {
   });
 }
 
-// Sets the Piloterr credit budget (admins). Spend is checked against it before every paid call.
-export async function setEnrichmentBudget(supabase: Client, credits: number): Promise<void> {
-  const { error } = await supabase.rpc('set_api_budget', { p_provider: 'piloterr', p_credit_limit: credits });
+// Sets a provider's credit budget (admins; Piloterr unless named). Spend is checked against it before every
+// paid call.
+export async function setEnrichmentBudget(
+  supabase: Client,
+  credits: number,
+  provider: 'piloterr' | 'firecrawl' = 'piloterr',
+): Promise<void> {
+  const { error } = await supabase.rpc('set_api_budget', { p_provider: provider, p_credit_limit: credits });
   if (error) throw dataError(error);
 }

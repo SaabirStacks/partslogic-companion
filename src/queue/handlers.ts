@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { conflictMessage } from '@/features/quick-add/wording';
 import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
-import { DataError } from '@/vendor/partslogic/shared/errors';
+import { classifyQueueError, DataError } from '@/vendor/partslogic/shared/errors';
 import {
   closeStockDocument,
   commitBinCount,
@@ -10,6 +10,7 @@ import {
   quickAddPart,
   recordCounts,
   recordReceiptLines,
+  setReceiptDetails,
 } from '@/vendor/partslogic/shared/floor';
 
 // Each kind of queued work and the PartsLogic call that sends it. Every call is safe to repeat: the server
@@ -36,6 +37,8 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
         device: item.device,
         lines: item.lines,
       });
+    case 'receipt_details':
+      return sendReceiptDetails(item);
     case 'close_receipt':
       return closeStockDocument(supabase, item.documentId);
     case 'quick_add':
@@ -55,4 +58,22 @@ async function sendQuickAdd(item: Extract<QueueItem, { kind: 'quick_add' }>) {
   });
   if (result.status === 'conflict') throw new DataError(conflictMessage(result), 'P0001');
   return result;
+}
+
+// Who a delivery came from, sent after its first lines (same stream), so the receipt exists. It's extra
+// detail on a delivery, never a reason to hold the delivery up: when PartsLogic refuses it (a supplier
+// removed since the list was saved), the refusal is recorded as the answer and the delivery's Finish
+// still goes through. The office can set the supplier on the receipt. No signal is still a retry.
+async function sendReceiptDetails(item: Extract<QueueItem, { kind: 'receipt_details' }>) {
+  try {
+    return await setReceiptDetails(supabase, {
+      documentId: item.documentId,
+      sourceId: item.sourceId,
+      brandId: item.brandId,
+      reference: item.reference,
+    });
+  } catch (error) {
+    if (classifyQueueError(error as { code?: string; message?: string }) === 'retry') throw error;
+    return { refused: error instanceof Error ? error.message : String(error) };
+  }
 }

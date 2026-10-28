@@ -5,7 +5,8 @@ import { cx } from './cx';
 // The type scale, all in the phone's own face (San Francisco, Roboto). The few values read at arm's
 // length (quantities, part numbers, bin codes) are display and headline, 28 pt and up; everything read
 // in the hand is 15–17. Colour is its own prop (a text-* class) because two colour classes on one
-// element don't reliably resolve in the order they're written.
+// element don't reliably resolve in the order they're written. numbers turns on tabular figures, for
+// quantities that line up; leave it off for codes like A-01 or GR-0042 (it spaces out their hyphens).
 export type TextVariant = 'display' | 'headline' | 'title' | 'body' | 'label' | 'caption' | 'section';
 
 const VARIANT: Record<TextVariant, string> = {
@@ -42,7 +43,7 @@ export function Txt({
   return (
     <Text
       maxFontSizeMultiplier={MAX_SCALE[variant]}
-      className={cx(VARIANT[variant], ink ?? DEFAULT_INK[variant], (numbers || variant === 'display') && 'tabular-nums', className)}
+      className={cx(VARIANT[variant], ink ?? DEFAULT_INK[variant], numbers && 'tabular-nums', className)}
       {...props}
     />
   );

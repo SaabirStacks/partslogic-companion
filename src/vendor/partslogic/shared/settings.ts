@@ -402,8 +402,13 @@ export type EnrichmentRunSummary = {
 
 export type EngineSetting = { key: string; value: number; description: string; updatedAt: string };
 
-export async function getEnrichmentBudget(supabase: Client): Promise<EnrichmentBudget | null> {
-  const { data, error } = await supabase.rpc('enrichment_budget');
+export type EnrichmentProvider = 'piloterr' | 'firecrawl';
+
+export async function getEnrichmentBudget(
+  supabase: Client,
+  provider: EnrichmentProvider = 'piloterr',
+): Promise<EnrichmentBudget | null> {
+  const { data, error } = await supabase.rpc('enrichment_budget', { p_provider: provider });
   if (error) throw dataError(error);
   const record = readRecord(data);
   if (!record) return null;
@@ -419,8 +424,8 @@ export async function getEnrichmentBudget(supabase: Client): Promise<EnrichmentB
 }
 
 // Starts a new budget period now: spend counts from zero again (admins). The ledger keeps every call.
-export async function resetEnrichmentBudgetPeriod(supabase: Client): Promise<void> {
-  const { error } = await supabase.rpc('reset_api_budget_period', { p_provider: 'piloterr' });
+export async function resetEnrichmentBudgetPeriod(supabase: Client, provider: EnrichmentProvider = 'piloterr'): Promise<void> {
+  const { error } = await supabase.rpc('reset_api_budget_period', { p_provider: provider });
   if (error) throw dataError(error);
 }
 

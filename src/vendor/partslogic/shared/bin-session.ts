@@ -5,6 +5,8 @@
 // total it has seen before, so the phone can send the whole session as often as it likes. A line taken back
 // to 0 stays in the session (hidden from the counter) so the 0 reaches the server and voids what was sent.
 
+import type { CountPurpose } from './floor';
+
 export type BinSessionLine = {
   clientCountId: string;
   code: string;
@@ -82,7 +84,17 @@ export function sessionLines(session: BinSession): { clientCountId: string; code
 // quick add, so a replay is success, not an error.
 export type QueueItem =
   | { kind: 'ensure_bin'; clientId: string; locationId: number; code: string }
-  | { kind: 'open_bin_count'; clientId: string; stocktakeId: string; binId: number; startedAt: string; device?: string }
+  | {
+      kind: 'open_bin_count';
+      clientId: string;
+      stocktakeId: string;
+      binId: number;
+      startedAt: string;
+      device?: string;
+      // which job the count is, and the stock take or opening-stock run it belongs to (see openBinCount)
+      purpose?: CountPurpose;
+      runId?: string;
+    }
   | {
       kind: 'bin_count_lines';
       clientId: string;
@@ -100,6 +112,16 @@ export type QueueItem =
       lines: { clientLineId: string; code: string; qty: number }[];
     }
   | { kind: 'close_receipt'; clientId: string; documentId: string }
+  // Who the delivery came from and its delivery note, sent after the receipt's first lines (same stream, so
+  // the receipt exists by then). Each item carries all three; a later one replaces an earlier one.
+  | {
+      kind: 'receipt_details';
+      clientId: string;
+      documentId: string;
+      sourceId: number | null;
+      brandId: number | null;
+      reference: string | null;
+    }
   | {
       kind: 'quick_add';
       clientId: string;

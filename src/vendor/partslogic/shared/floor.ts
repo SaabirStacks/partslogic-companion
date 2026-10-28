@@ -41,6 +41,16 @@ export type FloorReviewReason =
   | 'large_found'
   | 'voided_scans';
 
+// Which job a bin count was. stock_take and opening counts can belong to a run: the bin counts of one stock
+// take, or of setting up opening stock. Opening counts book the stock they find as opening stock.
+export type CountPurpose = 'put_away' | 'stock_count' | 'stock_take' | 'opening';
+export const COUNT_PURPOSES: readonly CountPurpose[] = ['put_away', 'stock_count', 'stock_take', 'opening'];
+
+// Who a goods receipt came from: one of your suppliers, or a manufacturer that delivered direct.
+export type ReceiptSupplier = { sourceId: number; name: string };
+export type ReceiptManufacturer = { brandId: number; name: string };
+export type CountRun = { id: string; startedAt: string; bins: number };
+
 export type FloorActivityRow = {
   id: string;
   kind: FloorDocumentKind;
@@ -64,6 +74,13 @@ export type FloorActivityRow = {
   reversedBy: string | null;
   continues: string | null;
   reasons: FloorReviewReason[];
+  // receipts: who it came from and the delivery note (a continuation shows its receipt's)
+  supplier: ReceiptSupplier | null;
+  manufacturer: ReceiptManufacturer | null;
+  reference: string | null;
+  // counts: which job it was (null for counts from before this was recorded) and the run it belongs to
+  purpose: CountPurpose | null;
+  run: CountRun | null;
 };
 
 export type FloorLine = {
@@ -226,15 +243,19 @@ export async function ensureBin(
   return { type: 'bin', binId, code: readString(row.code) ?? code, created: readBoolean(row.created) === true };
 }
 
+// Opens a blind count of one bin. purpose names the job; runId groups the counts of one stock take or
+// opening-stock run (only those two take one).
 export async function openBinCount(
   supabase: Client,
-  input: { stocktakeId: string; binId: number; device?: string; startedAt?: string },
+  input: { stocktakeId: string; binId: number; device?: string; startedAt?: string; purpose?: CountPurpose; runId?: string },
 ): Promise<{ stocktakeId: string; status: string; created: boolean; needsReview: boolean }> {
   const { data, error } = await supabase.rpc('open_bin_count', {
     p_stocktake: input.stocktakeId,
     p_bin: input.binId,
     p_device: input.device,
     p_started_at: input.startedAt,
+    p_purpose: input.purpose,
+    p_run: input.runId,
   });
   if (error) throw dataError(error);
   const row = requireRecord(data, 'The count could not be opened.');
@@ -372,6 +393,30 @@ export async function recordReceiptLines(
   };
 }
 
+// Says who a delivery came from and its delivery note: a supplier or a manufacturer (not both), and the note
+// number (up to 60 characters). Each call sets all three, so leaving one out clears it. Counters change an
+// open receipt; once it is closed, only an editor can.
+export async function setReceiptDetails(
+  supabase: Client,
+  input: { documentId: string; sourceId?: number | null; brandId?: number | null; reference?: string | null },
+): Promise<{ documentId: string; number: string; sourceId: number | null; brandId: number | null; reference: string | null }> {
+  const { data, error } = await supabase.rpc('set_receipt_details', {
+    p_document: input.documentId,
+    p_source: input.sourceId ?? undefined,
+    p_brand: input.brandId ?? undefined,
+    p_reference: input.reference ?? undefined,
+  });
+  if (error) throw dataError(error);
+  const row = requireRecord(data, 'The delivery details could not be saved.');
+  return {
+    documentId: readString(row.document_id) ?? input.documentId,
+    number: readString(row.number) ?? '',
+    sourceId: readNumber(row.source_id),
+    brandId: readNumber(row.brand_id),
+    reference: readString(row.reference),
+  };
+}
+
 // Closes a goods receipt and any continuation its late lines opened.
 export async function closeStockDocument(
   supabase: Client,
@@ -463,6 +508,31 @@ export async function scanIndexVersion(supabase: Client): Promise<string | null>
 
 const REASONS = new Set<string>(['late_lines', 'no_location', 'large_quantity', 'refused_undo', 'partial', 'large_found', 'voided_scans']);
 
+function countPurpose(value: Json | undefined): CountPurpose | null {
+  const purpose = readString(value);
+  return purpose && (COUNT_PURPOSES as readonly string[]).includes(purpose) ? (purpose as CountPurpose) : null;
+}
+
+function receiptSupplier(value: Json | undefined): ReceiptSupplier | null {
+  const row = readRecord(value);
+  const sourceId = readNumber(row?.source_id);
+  const name = readString(row?.name);
+  return sourceId != null && name ? { sourceId, name } : null;
+}
+
+function receiptManufacturer(value: Json | undefined): ReceiptManufacturer | null {
+  const row = readRecord(value);
+  const brandId = readNumber(row?.brand_id);
+  const name = readString(row?.name);
+  return brandId != null && name ? { brandId, name } : null;
+}
+
+function countRun(value: Json | undefined): CountRun | null {
+  const row = readRecord(value);
+  const id = readString(row?.id);
+  return row && id ? { id, startedAt: readString(row.started_at) ?? '', bins: readNumber(row.bins) ?? 0 } : null;
+}
+
 function activityRow(item: Json | undefined): FloorActivityRow | null {
   const row = readRecord(item);
   const id = readString(row?.id);
@@ -491,6 +561,11 @@ function activityRow(item: Json | undefined): FloorActivityRow | null {
     reasons: readArray(row.reasons).flatMap((reason) =>
       typeof reason === 'string' && REASONS.has(reason) ? [reason as FloorReviewReason] : [],
     ),
+    supplier: receiptSupplier(row.supplier),
+    manufacturer: receiptManufacturer(row.manufacturer),
+    reference: readString(row.reference),
+    purpose: countPurpose(row.purpose),
+    run: countRun(row.run),
   };
 }
 

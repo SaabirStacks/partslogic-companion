@@ -1,12 +1,16 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { DeliveryLine } from './lines';
+import { readSender, type Sender } from './sender';
 
 export type Delivery = {
   documentId: string;
   userId: string;
   locationId: number | null;
   locationName: string | null;
+  // Who it's from and its delivery note; null for deliveries started before the phone asked.
+  sender: Sender | null;
+  reference: string | null;
   startedAt: string;
   finishedAt: string | null;
 };
@@ -16,6 +20,8 @@ type DeliveryRow = {
   user_id: string;
   location_id: number | null;
   location_name: string | null;
+  sender: string | null;
+  reference: string | null;
   started_at: string;
   finished_at: string | null;
 };
@@ -25,6 +31,8 @@ const toDelivery = (row: DeliveryRow): Delivery => ({
   userId: row.user_id,
   locationId: row.location_id,
   locationName: row.location_name,
+  sender: readSender(row.sender),
+  reference: row.reference,
   startedAt: row.started_at,
   finishedAt: row.finished_at,
 });
@@ -53,11 +61,13 @@ export class DeliveryStore {
 
   async start(delivery: Delivery): Promise<void> {
     await this.db.runAsync(
-      'INSERT INTO deliveries (document_id, user_id, location_id, location_name, started_at) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO deliveries (document_id, user_id, location_id, location_name, sender, reference, started_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       delivery.documentId,
       delivery.userId,
       delivery.locationId,
       delivery.locationName,
+      delivery.sender ? JSON.stringify(delivery.sender) : null,
+      delivery.reference,
       delivery.startedAt,
     );
   }
@@ -95,6 +105,15 @@ export class DeliveryStore {
     await this.db.runAsync(
       'UPDATE deliveries SET finished_at = ? WHERE document_id = ?',
       new Date().toISOString(),
+      documentId,
+    );
+  }
+
+  // A delivery started by mistake, before anything was scanned: nothing reached PartsLogic, so it goes.
+  async discardEmpty(documentId: string): Promise<void> {
+    await this.db.runAsync(
+      'DELETE FROM deliveries WHERE document_id = ? AND NOT EXISTS (SELECT 1 FROM delivery_lines WHERE document_id = ?)',
+      documentId,
       documentId,
     );
   }

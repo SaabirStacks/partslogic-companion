@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   catalogue: {
     Tables: {
@@ -810,6 +810,42 @@ export type Database = {
         }
         Relationships: []
       }
+      spec_keys: {
+        Row: {
+          aliases: string[]
+          allowed_values: string[] | null
+          created_at: string
+          description: string | null
+          key: string
+          label: string
+          type: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          aliases?: string[]
+          allowed_values?: string[] | null
+          created_at?: string
+          description?: string | null
+          key: string
+          label: string
+          type?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aliases?: string[]
+          allowed_values?: string[] | null
+          created_at?: string
+          description?: string | null
+          key?: string
+          label?: string
+          type?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       unattributed_oe_numbers: {
         Row: {
           batch_id: string | null
@@ -1522,6 +1558,211 @@ export type Database = {
           },
         ]
       }
+      enrichment_pages: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          created_by: string | null
+          credits: number
+          detail: string | null
+          dropped: Json
+          enrichment_source_id: number
+          id: number
+          part_id: number
+          profile_code: string | null
+          profile_version: number | null
+          row_number: number | null
+          schema_hash: string | null
+          search_id: number | null
+          status: string
+          target_id: number | null
+          unmapped_specs: Json
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          credits?: number
+          detail?: string | null
+          dropped?: Json
+          enrichment_source_id: number
+          id?: never
+          part_id: number
+          profile_code?: string | null
+          profile_version?: number | null
+          row_number?: number | null
+          schema_hash?: string | null
+          search_id?: number | null
+          status: string
+          target_id?: number | null
+          unmapped_specs?: Json
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          credits?: number
+          detail?: string | null
+          dropped?: Json
+          enrichment_source_id?: number
+          id?: never
+          part_id?: number
+          profile_code?: string | null
+          profile_version?: number | null
+          row_number?: number | null
+          schema_hash?: string | null
+          search_id?: number | null
+          status?: string
+          target_id?: number | null
+          unmapped_specs?: Json
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_pages_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrichment_pages_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_progress"
+            referencedColumns: ["batch_id"]
+          },
+          {
+            foreignKeyName: "enrichment_pages_enrichment_source_id_fkey"
+            columns: ["enrichment_source_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_sources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrichment_pages_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_searches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrichment_pages_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_targets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrichment_searches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          credits: number
+          domains: string[]
+          id: number
+          matched: Json
+          part_id: number
+          query: string
+          results: Json
+          target_id: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          credits?: number
+          domains: string[]
+          id?: never
+          matched?: Json
+          part_id: number
+          query: string
+          results?: Json
+          target_id?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          credits?: number
+          domains?: string[]
+          id?: never
+          matched?: Json
+          part_id?: number
+          query?: string
+          results?: Json
+          target_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_searches_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "enrichment_targets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      enrichment_sources: {
+        Row: {
+          brand_ids: number[] | null
+          created_at: string
+          domain: string | null
+          enabled: boolean
+          id: number
+          kind: string
+          name: string
+          notes: string | null
+          position: number
+          profile_code: string | null
+          provider: string
+          source_id: number
+          updated_at: string
+        }
+        Insert: {
+          brand_ids?: number[] | null
+          created_at?: string
+          domain?: string | null
+          enabled?: boolean
+          id?: never
+          kind: string
+          name: string
+          notes?: string | null
+          position: number
+          profile_code?: string | null
+          provider: string
+          source_id: number
+          updated_at?: string
+        }
+        Update: {
+          brand_ids?: number[] | null
+          created_at?: string
+          domain?: string | null
+          enabled?: boolean
+          id?: never
+          kind?: string
+          name?: string
+          notes?: string | null
+          position?: number
+          profile_code?: string | null
+          provider?: string
+          source_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrichment_sources_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrichment_targets: {
         Row: {
           attempts: number
@@ -1901,6 +2142,7 @@ export type Database = {
           created_by: string | null
           id: number
           is_active: boolean
+          purpose: string
           source_id: number | null
           spec: Json
           version: number
@@ -1911,6 +2153,7 @@ export type Database = {
           created_by?: string | null
           id?: never
           is_active?: boolean
+          purpose?: string
           source_id?: number | null
           spec: Json
           version?: number
@@ -1921,6 +2164,7 @@ export type Database = {
           created_by?: string | null
           id?: never
           is_active?: boolean
+          purpose?: string
           source_id?: number | null
           spec?: Json
           version?: number
@@ -2147,6 +2391,10 @@ export type Database = {
         Args: { p_batch: string; p_from_row: number; p_to_row: number }
         Returns: Json
       }
+      apply_canonical: {
+        Args: { c: Json; p_batch: string; p_part: number; p_row: number }
+        Returns: Json
+      }
       apply_enrichment: {
         Args: { p_batch: string; p_row: number; p_target: number }
         Returns: Json
@@ -2156,10 +2404,24 @@ export type Database = {
         Args: { p_batch: string; p_row: number }
         Returns: Json
       }
+      apply_web_page: { Args: { p_page: number }; Returns: Json }
+      backfill_candidates: {
+        Args: { p_scope: string }
+        Returns: {
+          in_stock: boolean
+          part_id: number
+          sold: boolean
+        }[]
+      }
       canonical_autodoc: {
         Args: { p_doc: Json; p_provider: string }
         Returns: Json
       }
+      canonical_matches_part: {
+        Args: { c: Json; p_part: number }
+        Returns: boolean
+      }
+      canonical_web: { Args: { p_doc: Json }; Returns: Json }
       claim_enrichment_targets: {
         Args: { p_limit?: number; p_provider: string }
         Returns: {
@@ -2209,6 +2471,7 @@ export type Database = {
         }
       }
       complete_job: { Args: { p_job: number }; Returns: undefined }
+      default_web_profile: { Args: never; Returns: Json }
       enqueue_job: {
         Args: { p_kind: string; p_payload?: Json; p_run_after?: string }
         Returns: number
@@ -2223,6 +2486,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      known_brand: { Args: { p_name: string }; Returns: number }
       map_batch: { Args: { p_batch: string }; Returns: Json }
       map_next_chunk: {
         Args: { p_budget?: string; p_chunk?: number }
@@ -2260,6 +2524,7 @@ export type Database = {
         Returns: number
       }
       parse_image_list: { Args: { p_images: Json }; Returns: Json }
+      part_enrichment_gaps: { Args: { p_part: number }; Returns: Json }
       publish_price: {
         Args: {
           p_anomaly_pct?: number
@@ -2314,6 +2579,10 @@ export type Database = {
         Returns: number
       }
       rule_value: { Args: { p_cells: Json; p_rule: Json }; Returns: string }
+      save_web_profile_version: {
+        Args: { p_by: string; p_source: number; p_spec: Json }
+        Returns: Json
+      }
       spec_brand_columns: {
         Args: { p_headers: string[]; p_spec: Json }
         Returns: Json
@@ -2341,6 +2610,7 @@ export type Database = {
         Args: { p_file_name: string; p_profile: string }
         Returns: Json
       }
+      start_web_batch: { Args: { p_source: number }; Returns: string }
       store_api_response: {
         Args: { p_batch: string; p_doc: Json }
         Returns: number
@@ -2349,6 +2619,10 @@ export type Database = {
         Args: { p_step: Json; p_value: string }
         Returns: string
       }
+      validate_web_profile: { Args: { p_spec: Json }; Returns: Json }
+      web_contract_fields: { Args: never; Returns: string[] }
+      web_evidence_source: { Args: { p_name: string }; Returns: number }
+      web_search_memory: { Args: { p_part: number }; Returns: Json }
     }
     Enums: {
       batch_status:
@@ -2845,6 +3119,48 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_cost_lots: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          id: number
+          note: string | null
+          part_id: number
+          qty: number
+          source_id: number
+          unit_cost: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: never
+          note?: string | null
+          part_id: number
+          qty: number
+          source_id: number
+          unit_cost: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          id?: never
+          note?: string | null
+          part_id?: number
+          qty?: number
+          source_id?: number
+          unit_cost?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       stock_document_lines: {
         Row: {
           bin_id: number | null
@@ -2929,6 +3245,7 @@ export type Database = {
       }
       stock_documents: {
         Row: {
+          brand_id: number | null
           continues_id: string | null
           created_at: string
           created_by: string | null
@@ -2948,6 +3265,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          brand_id?: number | null
           continues_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -2967,6 +3285,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          brand_id?: number | null
           continues_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -3302,6 +3621,8 @@ export type Database = {
           partial: boolean
           posted_at: string | null
           posted_by: string | null
+          purpose: string | null
+          run_id: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["stocktake_status"]
         }
@@ -3319,6 +3640,8 @@ export type Database = {
           partial?: boolean
           posted_at?: string | null
           posted_by?: string | null
+          purpose?: string | null
+          run_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["stocktake_status"]
         }
@@ -3336,6 +3659,8 @@ export type Database = {
           partial?: boolean
           posted_at?: string | null
           posted_by?: string | null
+          purpose?: string | null
+          run_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["stocktake_status"]
         }
@@ -3690,6 +4015,7 @@ export type Database = {
           score: number
         }[]
       }
+      cancel_enrichment_backfill: { Args: never; Returns: number }
       cancel_stale_bin_counts: { Args: never; Returns: number }
       cancel_stocktake: { Args: { p_stocktake: string }; Returns: undefined }
       catalogue_settings: {
@@ -3789,11 +4115,17 @@ export type Database = {
         Args: { p_doc: Json; p_target: number }
         Returns: Json
       }
+      enrichment_backfill_estimate: { Args: { p_scope: string }; Returns: Json }
+      enrichment_backfill_status: { Args: never; Returns: Json }
       enrichment_begin: {
         Args: { p_by: string; p_force?: boolean; p_part: number }
         Returns: Json
       }
-      enrichment_budget: { Args: never; Returns: Json }
+      enrichment_budget: { Args: { p_provider?: string }; Returns: Json }
+      enrichment_chain: {
+        Args: { p_only_source?: number; p_part: number }
+        Returns: Json
+      }
       enrichment_finish: {
         Args: {
           p_error?: string
@@ -3802,6 +4134,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      enrichment_gaps: { Args: { p_part: number }; Returns: Json }
       enrichment_pick_card: {
         Args: { p_cards: Json; p_target: number }
         Returns: string
@@ -3811,6 +4144,11 @@ export type Database = {
         Args: { p_credits: number; p_reason: string; p_target: number }
         Returns: undefined
       }
+      enrichment_source_pages: {
+        Args: { p_limit?: number; p_source: number }
+        Returns: Json
+      }
+      enrichment_sources: { Args: never; Returns: Json }
       enrichment_spend: {
         Args: { p_credits: number; p_reason: string; p_target: number }
         Returns: number
@@ -4073,6 +4411,8 @@ export type Database = {
         Args: {
           p_bin: number
           p_device?: string
+          p_purpose?: string
+          p_run?: string
           p_started_at?: string
           p_stocktake: string
         }
@@ -4159,6 +4499,7 @@ export type Database = {
           value: Json
         }[]
       }
+      part_stock_costs: { Args: { p_part: number }; Returns: Json }
       part_vehicle_texts: {
         Args: { p_part: number }
         Returns: {
@@ -4222,7 +4563,12 @@ export type Database = {
         }
         Returns: Json
       }
+      queue_enrichment_backfill: {
+        Args: { p_limit?: number; p_scope: string }
+        Returns: Json
+      }
       quick_add_part: { Args: { p: Json }; Returns: Json }
+      reapply_web_page: { Args: { p_page: number }; Returns: Json }
       record_count: {
         Args: {
           p_bin: number
@@ -4257,9 +4603,15 @@ export type Database = {
         Args: { p_code: string; p_label_type?: string; p_part: number }
         Returns: undefined
       }
+      remove_enrichment_source: { Args: { p_id: number }; Returns: string }
       remove_kit_component: { Args: { p_link: number }; Returns: undefined }
+      remove_stock_cost_lot: { Args: { p_id: number }; Returns: Json }
       remove_supplier_code: {
         Args: { p_code: string; p_source: number }
+        Returns: undefined
+      }
+      reorder_enrichment_sources: {
+        Args: { p_ids: number[] }
         Returns: undefined
       }
       reorder_suggestions: {
@@ -4344,7 +4696,46 @@ export type Database = {
         Args: { p_error?: string; p_job: number; p_outcome: string }
         Returns: undefined
       }
+      save_enrichment_source: {
+        Args: {
+          p_brand_ids?: number[]
+          p_domain: string
+          p_enabled?: boolean
+          p_id: number
+          p_kind: string
+          p_name: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
       save_import_profile: {
+        Args: { p_source: number; p_spec: Json }
+        Returns: Json
+      }
+      save_spec_key: {
+        Args: {
+          p_aliases?: string[]
+          p_allowed_values?: string[]
+          p_description?: string
+          p_key: string
+          p_label: string
+          p_type?: string
+          p_unit?: string
+        }
+        Returns: Json
+      }
+      save_stock_cost_lot: {
+        Args: {
+          p_id?: number
+          p_note?: string
+          p_part: number
+          p_qty: number
+          p_source: number
+          p_unit_cost: number
+        }
+        Returns: Json
+      }
+      save_web_profile: {
         Args: { p_source: number; p_spec: Json }
         Returns: Json
       }
@@ -4371,6 +4762,15 @@ export type Database = {
       set_api_budget: {
         Args: { p_credit_limit: number; p_provider: string }
         Returns: undefined
+      }
+      set_receipt_details: {
+        Args: {
+          p_brand?: number
+          p_document: string
+          p_reference?: string
+          p_source?: number
+        }
+        Returns: Json
       }
       set_sell_price: {
         Args: {
@@ -4402,6 +4802,7 @@ export type Database = {
         Returns: undefined
       }
       sku_available: { Args: { p_part?: number; p_sku: string }; Returns: Json }
+      spec_keys: { Args: never; Returns: Json }
       start_ingestion: {
         Args: {
           p_file_name: string
@@ -4469,6 +4870,7 @@ export type Database = {
         }[]
       }
       unlocated_stock_summary: { Args: { p_location?: number }; Returns: Json }
+      unmapped_spec_labels: { Args: { p_source?: number }; Returns: Json }
       vehicle_candidates_for_vrm: {
         Args: { p_lookup: number }
         Returns: {
@@ -4481,6 +4883,36 @@ export type Database = {
       }
       void_count: { Args: { p_count: number }; Returns: undefined }
       void_floor_code: { Args: { p_code: string }; Returns: Json }
+      web_enrichment_apply: {
+        Args: {
+          p_by?: string
+          p_doc: Json
+          p_failed?: string
+          p_preview?: boolean
+          p_search?: number
+          p_source: number
+          p_target: number
+        }
+        Returns: Json
+      }
+      web_enrichment_begin: {
+        Args: { p_by?: string; p_part: number; p_preview?: boolean }
+        Returns: Json
+      }
+      web_enrichment_search: {
+        Args: {
+          p_by?: string
+          p_credits: number
+          p_domains: string[]
+          p_matched: Json
+          p_query: string
+          p_results: Json
+          p_target: number
+        }
+        Returns: number
+      }
+      web_page_detail: { Args: { p_page: number }; Returns: Json }
+      web_profile_versions: { Args: { p_source: number }; Returns: Json }
       write_off_unlocated: {
         Args: { p_bin: number; p_parts: number[] }
         Returns: Json

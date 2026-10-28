@@ -16,6 +16,10 @@ import { AddForm } from '@/features/quick-add/add-part-screens';
 import { CountReceipt } from '@/features/count/count-receipt';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
+import { DeliveryReceipt } from '@/features/receive/delivery-receipt';
+import type { Sender } from '@/features/receive/sender';
+import type { SenderOption } from '@/features/receive/sender-options';
+import { WhoIsItFromView } from '@/features/receive/who-is-it-from';
 import { NotSetUp } from '@/features/setup/not-set-up';
 import { syncState } from '@/features/board/sync-state';
 import { ActionBar } from '@/ui/action-bar';
@@ -27,7 +31,6 @@ import { Icon } from '@/ui/icon';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
 import { LineRow } from '@/ui/line-row';
-import { Notice } from '@/ui/notice';
 import { Quantity } from '@/ui/quantity';
 import { themeVars, type Tone } from '@/ui/palette';
 import { Card, PressableCard, TEXT_ON } from '@/ui/surface';
@@ -87,7 +90,7 @@ function SampleJob({ confirming = false, held }: { confirming?: boolean; held?: 
         placeholder="Barcode or part number"
         onScan={noop}
         scanEnabled={!held}
-        banner={<JobBanner title="GR-0042" detail="Into Main Unbinned" />}
+        banner={<JobBanner size="headline" title="BGA" detail="GR-0042 · DN 448210 · into Main Unbinned" />}
         result={
           held ? (
             <ConfirmScanCard
@@ -184,11 +187,38 @@ function Parts() {
   );
 }
 
+const SUPPLIERS: SenderOption[] = ['APEC', 'BGA', 'Euro Car Parts', 'FPS'].map((name, index) => ({ kind: 'supplier', id: index + 1, name, detail: null }));
+const MAKERS: SenderOption[] = [
+  { kind: 'manufacturer', id: 11, name: 'BOSCH', detail: null },
+  { kind: 'manufacturer', id: 12, name: 'MANN-FILTER', detail: 'Also MANN' },
+  { kind: 'manufacturer', id: 13, name: 'NGK', detail: null },
+];
+
+function WhoScreen({ kind, chosen, reference, savedAt = null }: { kind: Sender['kind']; chosen: Sender | null; reference: string; savedAt?: string | null }) {
+  return (
+    <View className="flex-1">
+      <StackHeader title="Receive goods" />
+      <WhoIsItFromView
+        kind={kind}
+        query=""
+        list={{ options: kind === 'supplier' ? SUPPLIERS : MAKERS, loading: false, failed: false, savedAt, reload: noop }}
+        chosen={chosen}
+        reference={reference}
+        onKind={noop}
+        onQuery={noop}
+        onChoose={noop}
+        onReference={noop}
+        onStart={noop}
+      />
+    </View>
+  );
+}
+
 const SCREENS: Record<string, () => ReactNode> = {
   board: () => (
     <BoardView
       sections={boardFor('counter')}
-      openWork={[{ kind: 'delivery', units: 12, startedAt }]}
+      openWork={[{ kind: 'delivery', from: 'BGA', units: 12, startedAt }]}
       location="Main"
       sync={syncState({ waiting: 3, needsAttention: 0, online: true })}
       onJob={noop}
@@ -202,7 +232,7 @@ const SCREENS: Record<string, () => ReactNode> = {
     <BoardView
       sections={boardFor('counter')}
       openWork={[
-        { kind: 'delivery', units: 12, startedAt },
+        { kind: 'delivery', from: 'BGA', units: 12, startedAt },
         { kind: 'count', bin: 'A-01', units: 7, startedAt },
       ]}
       location="Main"
@@ -313,13 +343,29 @@ const SCREENS: Record<string, () => ReactNode> = {
       </View>
     </Fixtures>
   ),
+  'receive-who': () => <WhoScreen kind="supplier" chosen={SUPPLIERS[1]} reference="DN 448210" />,
+  'receive-who-maker': () => <WhoScreen kind="manufacturer" chosen={null} reference="" />,
+  'receive-who-offline': () => <WhoScreen kind="supplier" chosen={null} reference="" savedAt={startedAt} />,
   'receive-done': () => (
     <View className="flex-1 bg-ground">
       <StackHeader title="Receive goods" />
-      <Notice icon="sent" tone="ok" title="GR-0042" line="24 units into Main Unbinned">
-        <Button label="Put away now" icon="count" onPress={noop} />
-        <Button label="Next delivery" variant="secondary" onPress={noop} />
-      </Notice>
+      <DeliveryReceipt
+        delivery={{
+          documentId: 'R1',
+          userId: 'u',
+          locationId: 1,
+          locationName: 'Main',
+          sender: SUPPLIERS[1],
+          reference: 'DN 448210',
+          startedAt,
+          finishedAt: '2026-10-08T09:31:00.000Z',
+        }}
+        number="GR-0042"
+        units={24}
+        summary={{ state: 'booked', codes: 7, unknown: 1 }}
+        onPutAway={noop}
+        onNext={noop}
+      />
     </View>
   ),
   confirm: () => <SampleJob confirming />,
