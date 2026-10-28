@@ -2,7 +2,12 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { countWorkflow, type CountWorkflow } from '@/features/count/count-store';
+import { countWorkflow, isRunWorkflow, type CountWorkflow, type RunWorkflow } from '@/features/count/count-store';
+import { RunOverview } from '@/features/count/run-overview';
+import { RunPlanView } from '@/features/count/run-plan';
+import { runCountText } from '@/features/count/run-progress';
+import { RunReceipt } from '@/features/count/run-receipt';
+import { useCountRun } from '@/features/count/use-count-run';
 import { CountReceipt } from '@/features/count/count-receipt';
 import { countResultText, countSummary } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
@@ -34,14 +39,16 @@ import { liveWorkflow } from '@/workflows/catalogue';
 
 type Counting = ReturnType<typeof useBinCount>;
 
-// Put away and Stock count, one screen: choose a bin and it locks in, then scan every part on the shelf,
-// blind. Finishing pulls what was counted out of Unbinned onto the shelf and sends anything not scanned back
-// to Unbinned. purpose says which workflow the board opened; a count left open keeps its own.
+// Every bin count, one screen: Put away and Stock count choose a bin and it locks in, then scan every part
+// on the shelf, blind. Finishing pulls what was counted out of Unbinned onto the shelf and sends anything
+// not scanned back to Unbinned. Stock take and Opening stock are a planned run of such counts (RunFlow).
+// purpose says which workflow the board opened; a count left open keeps its own.
 export default function Count() {
   const params = useLocalSearchParams<{ purpose?: string; binId?: string; bin?: string; location?: string }>();
   const counting = useBinCount(countWorkflow(params.purpose));
   const { begin, loaded, count } = counting;
-  const title = liveWorkflow(count?.workflow ?? countWorkflow(params.purpose)).label.toUpperCase();
+  const workflow = count?.workflow ?? countWorkflow(params.purpose);
+  const title = liveWorkflow(workflow).label;
   // The "Count this bin" request already acted on, so a re-render can't start it twice.
   const handled = useRef<string | null>(null);
 
@@ -59,7 +66,9 @@ export default function Count() {
   return (
     <>
       <Stack.Screen options={{ title }} />
-      {counting.finished && !count ? (
+      {isRunWorkflow(workflow) ? (
+        <RunFlow workflow={workflow} counting={counting} />
+      ) : counting.finished && !count ? (
         <Result counting={counting} />
       ) : count ? (
         <CountingBin counting={counting} />
@@ -150,7 +159,69 @@ function StartAnswer({ counting, locationName }: { counting: Counting; locationN
   }
 }
 
-function CountingBin({ counting }: { counting: Counting }) {
+// A stock take or opening stock: plan the bins, then count them one by one (each bin is the same blind
+// count as below, carrying the run's id), pause and resume from the board, and finish with a receipt.
+function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Counting }) {
+  const { location } = useWorkingLocation();
+  const label = liveWorkflow(workflow).label;
+  const noun = label.toLowerCase();
+  // Read again whenever one of the run's counts starts, moves on or finishes.
+  const runFlow = useCountRun(workflow, `${counting.count?.stocktakeId ?? ''}:${counting.units}:${counting.recent.length}`);
+  const bins = useBinChoices(!runFlow.loaded || runFlow.run ? null : (location?.id ?? null));
+  const [overview, setOverview] = useState(false);
+
+  if (!runFlow.loaded) return <View className="flex-1 bg-ground" />;
+
+  if (runFlow.finished) {
+    const { run, progress } = runFlow.finished;
+    const toCheck = progress.bins.filter((bin) => {
+      if (!bin.stocktakeId) return false;
+      const sent = counting.progressOf(bin.stocktakeId);
+      return sent.stage === 'attention' || (sent.stage === 'done' && (sent.result.needsReview || sent.result.partial));
+    }).length;
+    return (
+      <RunReceipt
+        title={label}
+        run={run}
+        progress={progress}
+        toCheck={toCheck}
+        onDone={() => {
+          runFlow.dismissFinished();
+          router.dismissTo('/');
+        }}
+      />
+    );
+  }
+
+  const run = runFlow.run;
+  if (!run) {
+    if (!location) return <NeedsLocation />;
+    return <RunPlanView noun={noun} locationName={location.name} list={bins} onStart={(planned) => void runFlow.start(planned)} />;
+  }
+
+  const progress = runFlow.progress!;
+  if (counting.count && counting.count.runId === run.runId && !overview) {
+    return <CountingBin counting={counting} run={{ text: `${label} · ${runCountText(progress)}`, onOverview: () => setOverview(true) }} />;
+  }
+  return (
+    <RunOverview
+      noun={noun}
+      run={run}
+      progress={progress}
+      onBin={(bin) => {
+        if (bin.state === 'counting') {
+          setOverview(false);
+          return;
+        }
+        void counting.begin({ binId: bin.binId, binCode: bin.code, location: location?.code ?? null }, run.runId, workflow).then(() => setOverview(false));
+      }}
+      onPause={() => router.back()}
+      onFinish={() => void runFlow.finish()}
+    />
+  );
+}
+
+function CountingBin({ counting, run }: { counting: Counting; run?: { text: string; onOverview: () => void } }) {
   const count = counting.count!;
   const progress = counting.progressOf(count.stocktakeId);
   const [confirming, setConfirming] = useState<'finish' | 'discard' | null>(null);
@@ -162,7 +233,7 @@ function CountingBin({ counting }: { counting: Counting }) {
         placeholder="Barcode or part number"
         scanEnabled={!counting.held.pending}
         onScan={counting.scan}
-        banner={<JobBanner size="headline" title={`Bin ${count.binCode}`} detail={[count.location, 'Blind count'].filter(Boolean).join(' · ')} />}
+        banner={<JobBanner size="headline" title={`Bin ${count.binCode}`} detail={[run?.text ?? count.location, 'Blind count'].filter(Boolean).join(' · ')} />}
         result={<LastScan counting={counting} />}
         action={
           // While a scan waits on Count or Skip, it's the only decision on screen.
@@ -175,6 +246,7 @@ function CountingBin({ counting }: { counting: Counting }) {
             />
           )
         }>
+        {run ? <Button label="All bins" icon="stockTake" variant="secondary" compact onPress={run.onOverview} /> : null}
         {progress.stage === 'attention' ? (
           <StatusStrip tone="stop" icon="stop" text={progress.reason ? `Not sent · ${progress.reason}` : 'Not sent'} />
         ) : null}

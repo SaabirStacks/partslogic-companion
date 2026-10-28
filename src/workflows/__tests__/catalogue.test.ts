@@ -30,7 +30,7 @@ describe('boardFor', () => {
       expect(boardFor(role).map((section) => [section.family, section.workflows.map((workflow) => workflow.id)])).toEqual([
         ['parts', ['lookup', 'add-part']],
         ['inbound', ['receive', 'put-away']],
-        ['stock', ['stock-count', 'transfer']],
+        ['stock', ['stock-count', 'stock-take', 'opening-stock', 'transfer']],
       ]);
     }
   });
@@ -41,6 +41,6 @@ describe('boardFor', () => {
 
   it('never shows a workflow PartsLogic cannot support yet', () => {
     const shown = boardFor('owner').flatMap((section) => section.workflows.map((workflow) => workflow.id));
-    for (const id of ['pick', 'pack', 'dispatch', 'stock-take', 'adjust'] as const) expect(shown).not.toContain(id);
+    for (const id of ['pick', 'pack', 'dispatch', 'customer-return', 'adjust'] as const) expect(shown).not.toContain(id);
   });
 });

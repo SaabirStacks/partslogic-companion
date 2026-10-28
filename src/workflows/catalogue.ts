@@ -53,6 +53,25 @@ const LIVE = {
     icon: 'count',
     href: { pathname: '/count', params: { purpose: 'stock-count' } },
   },
+  // Stock take and Opening stock are planned runs of bin counts: the phone keeps the run together and each
+  // bin is a count PartsLogic records with the run and its purpose. Opening stock books found stock as
+  // opening stock.
+  'stock-take': {
+    family: 'stock',
+    label: 'Stock take',
+    minRole: 'counter',
+    availability: 'live',
+    icon: 'stockTake',
+    href: { pathname: '/count', params: { purpose: 'stock-take' } },
+  },
+  'opening-stock': {
+    family: 'stock',
+    label: 'Opening stock',
+    minRole: 'counter',
+    availability: 'live',
+    icon: 'opening',
+    href: { pathname: '/count', params: { purpose: 'opening-stock' } },
+  },
   transfer: { family: 'stock', label: 'Transfer stock', minRole: 'counter', availability: 'live', icon: 'move', href: '/move' },
 } as const satisfies Record<string, LiveWorkflow>;
 
@@ -65,8 +84,6 @@ const FUTURE = {
     needs: 'Staging areas; today every receipt lands in its location’s Unbinned bin',
   },
   'customer-return': { family: 'inbound', label: 'Customer return', minRole: 'counter', availability: 'planned', needs: 'A returns document (the customer_return movement reason exists)' },
-  'stock-take': { family: 'stock', label: 'Stock take', minRole: 'counter', availability: 'planned', needs: 'Shared wrappers and staff access for the full stock take functions' },
-  'opening-stock': { family: 'stock', label: 'Opening stock', minRole: 'counter', availability: 'planned', needs: 'An opening-balance session; the opening reason is editor-only' },
   adjust: { family: 'stock', label: 'Adjust stock', minRole: 'editor', availability: 'server-ready', needs: 'A screen for adjust_stock' },
   pick: { family: 'outbound', label: 'Pick', minRole: 'counter', availability: 'planned', needs: 'Orders and pick lists' },
   pack: { family: 'outbound', label: 'Pack', minRole: 'counter', availability: 'planned', needs: 'Orders and packages' },

@@ -3,12 +3,25 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { BinSession } from '@/vendor/partslogic/shared/bin-session';
 import type { CountPurpose } from '@/vendor/partslogic/shared/floor';
 
-// The two workflows a bin count serves (see src/workflows/catalogue.ts).
-export type CountWorkflow = 'put-away' | 'stock-count';
-export const countWorkflow = (value: unknown): CountWorkflow => (value === 'stock-count' ? 'stock-count' : 'put-away');
+// The workflows a bin count serves (see src/workflows/catalogue.ts). Stock take and Opening stock are runs
+// of bin counts (run-store.ts); the other two count one bin at a time.
+export type CountWorkflow = 'put-away' | 'stock-count' | 'stock-take' | 'opening-stock';
+export type RunWorkflow = Extract<CountWorkflow, 'stock-take' | 'opening-stock'>;
+
+const WORKFLOWS: readonly CountWorkflow[] = ['put-away', 'stock-count', 'stock-take', 'opening-stock'];
+export const countWorkflow = (value: unknown): CountWorkflow =>
+  WORKFLOWS.find((workflow) => workflow === value) ?? 'put-away';
+export const isRunWorkflow = (workflow: CountWorkflow): workflow is RunWorkflow =>
+  workflow === 'stock-take' || workflow === 'opening-stock';
 
 // What PartsLogic records as the count's job (stocktakes.purpose), which also names it in the office.
-export const COUNT_PURPOSE: Record<CountWorkflow, CountPurpose> = { 'put-away': 'put_away', 'stock-count': 'stock_count' };
+// Opening stock books what's found as opening stock.
+export const COUNT_PURPOSE: Record<CountWorkflow, CountPurpose> = {
+  'put-away': 'put_away',
+  'stock-count': 'stock_count',
+  'stock-take': 'stock_take',
+  'opening-stock': 'opening',
+};
 
 export type BinCount = {
   stocktakeId: string;
@@ -21,6 +34,8 @@ export type BinCount = {
   labels: Record<string, string>;
   finishedAt: string | null;
   workflow: CountWorkflow;
+  // The stock take or opening-stock run this count belongs to, if any.
+  runId: string | null;
 };
 
 type Row = {
@@ -34,6 +49,7 @@ type Row = {
   labels: string;
   finished_at: string | null;
   workflow: string;
+  run_id: string | null;
 };
 
 const toCount = (row: Row): BinCount => ({
@@ -47,6 +63,7 @@ const toCount = (row: Row): BinCount => ({
   labels: JSON.parse(row.labels) as Record<string, string>,
   finishedAt: row.finished_at,
   workflow: countWorkflow(row.workflow),
+  runId: row.run_id,
 });
 
 // Bin counts on this phone. The session is saved after every scan, so a count survives the app closing.
@@ -72,8 +89,8 @@ export class CountStore {
 
   async create(count: BinCount): Promise<void> {
     await this.db.runAsync(
-      `INSERT INTO bin_counts (stocktake_id, user_id, bin_id, bin_code, location, started_at, session, labels, workflow)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bin_counts (stocktake_id, user_id, bin_id, bin_code, location, started_at, session, labels, workflow, run_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       count.stocktakeId,
       count.userId,
       count.binId,
@@ -83,6 +100,7 @@ export class CountStore {
       JSON.stringify(count.session),
       JSON.stringify(count.labels),
       count.workflow,
+      count.runId,
     );
   }
 
@@ -97,6 +115,12 @@ export class CountStore {
 
   async finish(stocktakeId: string): Promise<void> {
     await this.db.runAsync('UPDATE bin_counts SET finished_at = ? WHERE stocktake_id = ?', new Date().toISOString(), stocktakeId);
+  }
+
+  // Every count of a run on this phone, open or finished (not the ones thrown away).
+  async inRun(runId: string): Promise<BinCount[]> {
+    const rows = await this.db.getAllAsync<Row>('SELECT * FROM bin_counts WHERE run_id = ? AND discarded = 0 ORDER BY started_at', runId);
+    return rows.map(toCount);
   }
 
   async discard(stocktakeId: string): Promise<void> {

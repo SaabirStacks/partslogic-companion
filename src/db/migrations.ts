@@ -74,4 +74,20 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE deliveries ADD COLUMN reference TEXT;
   CREATE TABLE saved_lists (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL, saved_at TEXT NOT NULL);
   `,
+  // 6: stock takes and opening stock, each a planned run of bin counts (src/features/count/run-store.ts).
+  // bins is the planned list as JSON ({ binId, code }[]); a bin count of a run carries its run_id.
+  `
+  CREATE TABLE count_runs (
+    run_id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    workflow TEXT NOT NULL,
+    location_id INTEGER NOT NULL,
+    location_name TEXT,
+    bins TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    finished_at TEXT
+  );
+  ALTER TABLE bin_counts ADD COLUMN run_id TEXT;
+  CREATE INDEX bin_counts_run ON bin_counts (run_id);
+  `,
 ];

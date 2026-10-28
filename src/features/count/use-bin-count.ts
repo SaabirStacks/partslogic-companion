@@ -63,7 +63,7 @@ export function useBinCount(workflow: CountWorkflow) {
   const held = usePendingScan<ScanCheck>({ check, recheck: worthRechecking });
   const [lastScan, setLastScan] = useState<{ key: string; code: string } | null>(null);
   // The count just finished, for the result screen.
-  const [finished, setFinished] = useState<{ stocktakeId: string; binCode: string; units: number } | null>(null);
+  const [finished, setFinished] = useState<{ stocktakeId: string; binCode: string; units: number; runId: string | null } | null>(null);
 
   const load = useCallback(async () => {
     if (!userId) return;
@@ -96,7 +96,9 @@ export function useBinCount(workflow: CountWorkflow) {
     setCount({ ...current, session, labels });
   }
 
-  async function begin(bin: BinToCount) {
+  // Starts a blind count of one bin; runId (and the run's own workflow) when it's one bin of a stock take or
+  // opening-stock run.
+  async function begin(bin: BinToCount, runId: string | null = null, as: CountWorkflow = workflow) {
     if (!userId) return;
     // PartsLogic refuses to count its system bins, and the refusal would block Sync, so never start one.
     if (isSystemBin(bin.binCode)) {
@@ -121,7 +123,8 @@ export function useBinCount(workflow: CountWorkflow) {
       session,
       labels: {},
       finishedAt: null,
-      workflow,
+      workflow: as,
+      runId,
     };
     await store.create(created);
     await outbox.enqueue(
@@ -132,7 +135,8 @@ export function useBinCount(workflow: CountWorkflow) {
         binId: bin.binId,
         startedAt,
         device: deviceLabel(),
-        purpose: COUNT_PURPOSE[workflow],
+        purpose: COUNT_PURPOSE[as],
+        ...(runId ? { runId } : {}),
       },
       label(created),
     );
@@ -226,6 +230,7 @@ export function useBinCount(workflow: CountWorkflow) {
         stocktakeId: count.stocktakeId,
         binCode: count.binCode,
         units: visibleLines(count.session).reduce((sum, line) => sum + line.qty, 0),
+        runId: count.runId,
       });
       setLastScan(null);
       held.clear();
