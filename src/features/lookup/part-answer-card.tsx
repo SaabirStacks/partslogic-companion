@@ -1,15 +1,14 @@
 import { View } from 'react-native';
 
 import { BinChip } from '@/ui/bin-chip';
-import { TEXT_ON } from '@/ui/plate';
 import { ScanResultCard } from '@/ui/scan-result-card';
-import { SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 
 import type { PartAnswer } from './answer';
 
-// A scanned part on the result plate: the stock sign's colour and word, on hand in big numbers, the
+// A scanned part on the result card: the stock chip's colour and word, on hand in big numbers, the
 // bins holding it, and the sell price. Tapping it opens the whole part.
-export function PartAnswerPlate({
+export function PartAnswerCard({
   title,
   answer,
   savedAt,
@@ -34,14 +33,14 @@ export function PartAnswerPlate({
             <BinChip key={bin.binId} code={bin.place} qty={bin.qty} />
           ))}
           {answer.moreBins > 0 ? (
-            <SignText size="label" ink={TEXT_ON[answer.tone]}>
+            <Txt variant="label" numbers ink="text-quiet-ink">
               {`+${answer.moreBins}`}
-            </SignText>
+            </Txt>
           ) : null}
           {answer.price ? (
-            <SignText size="title" weight="heavy" className="ml-auto" ink={TEXT_ON[answer.tone]}>
+            <Txt variant="title" numbers className="ml-auto font-extrabold">
               {answer.price}
-            </SignText>
+            </Txt>
           ) : null}
         </View>
       ) : null}

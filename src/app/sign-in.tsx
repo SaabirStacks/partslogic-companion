@@ -5,10 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
-import { EntranceBoard } from '@/ui/entrance-board';
 import { Field } from '@/ui/field';
-import { Detail, SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
+import { Wordmark } from '@/ui/wordmark';
 
 export default function SignIn() {
   const { checking, signIn } = useSession();
@@ -37,14 +37,14 @@ export default function SignIn() {
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="flex-grow justify-between gap-8 px-5 py-6">
           <View className="gap-8">
-            <EntranceBoard />
+            <Wordmark />
 
             <View className="gap-4">
               <View className="gap-1">
-                <SignText accessibilityRole="header" size="display" weight="heavy">
+                <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
                   Sign in
-                </SignText>
-                <Detail>Same email and password as the back office.</Detail>
+                </Txt>
+                <Txt variant="caption">Same email and password as the back office.</Txt>
               </View>
               <Field
                 label="Email"
@@ -72,7 +72,7 @@ export default function SignIn() {
                 onSubmitEditing={submit}
                 editable={!busy}
               />
-              {offline ? <StatusStrip tone="warning" icon="offline" text="Offline · connect to sign in" /> : null}
+              {offline ? <StatusStrip tone="warn" icon="offline" text="Offline · connect to sign in" /> : null}
               {problem ? <StatusStrip tone="stop" icon="stop" text={problem} /> : null}
             </View>
           </View>

@@ -15,10 +15,11 @@ import { Icon } from '@/ui/icon';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
 import { Notice } from '@/ui/notice';
-import { Plate, PressablePlate, TEXT_ON } from '@/ui/plate';
+import { Choice } from '@/ui/choice';
+import { Card, PressableCard } from '@/ui/surface';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { SectionLabel } from '@/ui/section-label';
-import { Detail, SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { brandOptions } from '@/vendor/partslogic/shared/add-part';
 import { barcodeProblem, looksLikeBarcode } from '@/vendor/partslogic/shared/gtin';
@@ -61,11 +62,11 @@ export function ScanCode({ onCode }: { onCode: (code: string) => void }) {
       banner={<JobBanner title="Scan the barcode" />}
       result={
         found?.kind === 'part' ? (
-          <ScanResultCard key={found.partId} tone="warning" status={{ icon: 'warning', label: 'Already a part' }} title={found.name}>
+          <ScanResultCard key={found.partId} tone="warn" status={{ icon: 'warning', label: 'Already a part' }} title={found.name}>
             <Button label="Open the part" icon="forward" variant="secondary" compact onPress={() => router.push(`/part/${found.partId}`)} />
           </ScanResultCard>
         ) : found ? (
-          <ScanResultCard key={found.title} tone="warning" status={{ icon: 'warning', label: 'Not added' }} title={found.title} detail={found.detail} />
+          <ScanResultCard key={found.title} tone="warn" status={{ icon: 'warning', label: 'Not added' }} title={found.title} detail={found.detail} />
         ) : null
       }
     />
@@ -96,7 +97,7 @@ export function AddForm({ code }: { code: string }) {
       <ScrollView className="bg-ground" contentContainerClassName="flex-grow">
         <Notice
           icon={outcome.kind === 'conflict' ? 'stop' : outcome.kind === 'queued' ? 'waiting' : 'sent'}
-          tone={outcome.kind === 'conflict' ? 'stop' : outcome.kind === 'queued' ? 'warning' : 'safe'}
+          tone={outcome.kind === 'conflict' ? 'stop' : outcome.kind === 'queued' ? 'warn' : 'ok'}
           title={outcome.kind === 'conflict' ? 'Not added' : outcome.kind === 'queued' ? 'Saved' : 'Part added'}
           line={outcome.message}>
           {holder !== null ? (
@@ -112,37 +113,31 @@ export function AddForm({ code }: { code: string }) {
 
   return (
     <KeyboardAvoidingView className="flex-1 bg-ground" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-3 px-3 pb-6 pt-3">
-        <Plate className="gap-0.5 px-3 py-2">
-          <SignText size="tag" ink="text-quiet-ink">
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-3 px-4 pb-6 pt-3">
+        <Card className="gap-0.5 px-3 py-2">
+          <Txt variant="caption" ink="text-quiet-ink">
             Barcode
-          </SignText>
-          <SignText selectable size="headline" weight="heavy">
+          </Txt>
+          <Txt selectable variant="headline">
             {code}
-          </SignText>
-        </Plate>
-        {problem ? <StatusStrip tone="warning" icon="warning" text={problem} /> : null}
-        {!adding.online ? <StatusStrip tone="warning" icon="offline" text="Offline · the brand is checked when it sends" /> : null}
+          </Txt>
+        </Card>
+        {problem ? <StatusStrip tone="warn" icon="warning" text={problem} /> : null}
+        {!adding.online ? <StatusStrip tone="warn" icon="offline" text="Offline · the brand is checked when it sends" /> : null}
 
         {brand ? (
           <>
             <SectionLabel>Brand</SectionLabel>
-            <PressablePlate
-              tone="mandatory"
+            <Choice
+              selected
+              title={brand.brandId == null ? `${brand.name} · new` : brand.name}
+              detail="Tap to change"
               accessibilityLabel={`Brand ${brand.name}. Change`}
               onPress={() => {
                 setBrand(null);
                 setBrandText('');
               }}
-              className="min-h-14 flex-row items-center gap-3 px-3">
-              <Icon name="check" size={20} colour="on-mandatory" />
-              <SignText size="title" weight="heavy" ink={TEXT_ON.mandatory} className="flex-1">
-                {brand.brandId == null ? `${brand.name} · new` : brand.name}
-              </SignText>
-              <SignText size="tag" ink={TEXT_ON.mandatory}>
-                Change
-              </SignText>
-            </PressablePlate>
+            />
           </>
         ) : (
           <>
@@ -156,30 +151,23 @@ export function AddForm({ code }: { code: string }) {
             />
             {adding.online
               ? (brands.data ?? []).slice(0, 6).map((option) => (
-                  <PressablePlate
+                  <Choice
                     key={option.brandId}
+                    title={option.name}
+                    detail={[option.alias ? `Also ${option.alias}` : null, `${option.parts} parts`].filter(Boolean).join(' · ')}
                     accessibilityLabel={`${option.name}${option.alias ? `, also called ${option.alias}` : ''}`}
                     onPress={() => choose({ brandId: option.brandId, name: option.name })}
-                    className="min-h-14 flex-row items-center gap-3 px-3 py-2">
-                    <View className="flex-1">
-                      <SignText size="label" weight="heavy">
-                        {option.name}
-                      </SignText>
-                      {option.alias ? <Detail>{`Also ${option.alias}`}</Detail> : null}
-                    </View>
-                    <Detail>{`${option.parts} parts`}</Detail>
-                  </PressablePlate>
+                  />
                 ))
               : null}
             {adding.online && query && !exact ? (
-              <PressablePlate
-                tone="plain"
+              <PressableCard
                 accessibilityLabel={`Use ${query.toUpperCase()} as a new brand`}
                 onPress={() => choose({ brandId: null, name: query.toUpperCase() })}
-                className="min-h-14 flex-row items-center gap-3 px-3">
-                <Icon name="plus" size={20} colour="on-plain" />
-                <SignText size="label" ink={TEXT_ON.plain}>{`New brand · ${query.toUpperCase()}`}</SignText>
-              </PressablePlate>
+                className="min-h-14 flex-row items-center gap-3 px-4">
+                <Icon name="plus" size={18} colour="action-ink" />
+                <Txt variant="label" className="font-bold">{`New brand · ${query.toUpperCase()}`}</Txt>
+              </PressableCard>
             ) : null}
           </>
         )}
@@ -187,22 +175,22 @@ export function AddForm({ code }: { code: string }) {
         <Field label="Part number" value={number} onChangeText={setNumber} autoCapitalize="characters" autoCorrect={false} placeholder="As printed on the box" />
 
         {outcome?.kind === 'confirm-brand' ? (
-          <Plate tone="warning" className="gap-3 p-3">
-            <Detail ink={TEXT_ON.warning}>{outcome.message}</Detail>
+          <View className="gap-3 rounded-card bg-warn-soft p-3">
+            <Txt variant="caption" ink="text-warn-ink" className="font-semibold">{outcome.message}</Txt>
             <Button
               label={`Yes, ${brandText.trim().toUpperCase()} is new`}
               busy={adding.busy}
               compact
               onPress={() => void adding.submit({ brandId: null, name: brandText.trim().toUpperCase() }, number, true)}
             />
-          </Plate>
+          </View>
         ) : null}
         {outcome?.kind === 'error' ? <StatusStrip tone="stop" icon="stop" text={outcome.message} /> : null}
       </ScrollView>
       <ActionBar
         label={adding.online ? 'Add part' : 'Save to add later'}
         icon="add"
-        tone="plain"
+        tone="neutral"
         busy={adding.busy}
         disabled={!chosenBrand || !number.trim()}
         onPress={() => chosenBrand && void adding.submit(chosenBrand, number)}

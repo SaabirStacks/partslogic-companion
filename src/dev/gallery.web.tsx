@@ -8,11 +8,12 @@ import SignIn from '@/app/sign-in';
 import Sync from '@/app/sync';
 import { BoardView } from '@/features/board/board-view';
 import { partAnswer } from '@/features/lookup/answer';
-import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
+import { PartAnswerCard } from '@/features/lookup/part-answer-card';
 import { PartRow } from '@/features/part/part-row';
 import { PartView } from '@/features/part/part-view';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
 import { AddForm } from '@/features/quick-add/add-part-screens';
+import { CountReceipt } from '@/features/count/count-receipt';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
 import { NotSetUp } from '@/features/setup/not-set-up';
@@ -29,10 +30,10 @@ import { LineRow } from '@/ui/line-row';
 import { Notice } from '@/ui/notice';
 import { Quantity } from '@/ui/quantity';
 import { themeVars, type Tone } from '@/ui/palette';
-import { Plate, PressablePlate, TEXT_ON } from '@/ui/plate';
+import { Card, PressableCard, TEXT_ON } from '@/ui/surface';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { SectionLabel } from '@/ui/section-label';
-import { SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 import { Tally } from '@/ui/tally';
 import { useScheme } from '@/ui/theme';
 import type { PendingScan } from '@/scan/pending-scan';
@@ -52,13 +53,13 @@ function StackHeader({ title, quickLookUp = true }: { title: string; quickLookUp
   return (
     <View className="h-14 flex-row items-center gap-3 bg-ground px-3">
       <Icon name="back" size={24} />
-      <SignText size="title" weight="heavy" className="flex-1">
+      <Txt variant="title" className="flex-1">
         {title}
-      </SignText>
+      </Txt>
       {quickLookUp ? (
-        <PressablePlate accessibilityLabel="Look up a part" onPress={noop} className="h-11 w-11 items-center justify-center">
+        <PressableCard accessibilityLabel="Look up a part" onPress={noop} className="h-11 w-11 items-center justify-center">
           <Icon name="lookup" size={22} />
-        </PressablePlate>
+        </PressableCard>
       ) : null}
     </View>
   );
@@ -101,7 +102,7 @@ function SampleJob({ confirming = false, held }: { confirming?: boolean; held?: 
             />
           ) : (
             <ScanResultCard
-              tone="safe"
+              tone="ok"
               status={{ icon: 'sent', label: 'Added' }}
               title="Bosch 0 986 494 119"
               detail="4047025186913"
@@ -116,7 +117,7 @@ function SampleJob({ confirming = false, held }: { confirming?: boolean; held?: 
           items={[
             { value: 24, label: 'Units' },
             { value: 7, label: 'Codes' },
-            { value: 1, label: 'To check', tone: 'warning' },
+            { value: 1, label: 'To check', tone: 'warn' },
           ]}
         />
         {lines.map((line) => (
@@ -147,16 +148,16 @@ function SampleJob({ confirming = false, held }: { confirming?: boolean; held?: 
 }
 
 function Parts() {
-  const tones: Tone[] = ['mandatory', 'safe', 'warning', 'stop', 'plain', 'surface'];
+  const tones: Tone[] = ['action', 'ok', 'warn', 'stop', 'neutral'];
   return (
     <ScrollView className="flex-1 bg-ground" contentContainerClassName="gap-4 p-3">
       <View className="flex-row flex-wrap gap-2">
         {tones.map((tone) => (
-          <Plate key={tone} tone={tone} className="px-3 py-2">
-            <SignText size="label" weight="heavy" ink={TEXT_ON[tone]}>
+          <Card key={tone} tone={tone} className="px-3 py-2">
+            <Txt variant="label" ink={TEXT_ON[tone]}>
               {tone}
-            </SignText>
-          </Plate>
+            </Txt>
+          </Card>
         ))}
       </View>
       <Button label="Start delivery" icon="receive" onPress={noop} />
@@ -169,13 +170,13 @@ function Parts() {
         <BinChip code="B-12" qty={2} selected onPress={noop} />
         <BinChip code="Unbinned" qty={6} />
       </View>
-      <ScanResultCard tone="surface" status={{ icon: 'check', label: 'In stock' }} title="Mann HU 816 x" detail="Oil filter" quantity={{ value: '12', label: 'On hand' }} onPress={noop}>
+      <ScanResultCard tone="neutral" status={{ icon: 'check', label: 'In stock' }} title="Mann HU 816 x" detail="Oil filter" quantity={{ value: '12', label: 'On hand' }} onPress={noop}>
         <View className="flex-row flex-wrap gap-2">
           <BinChip code="A-01" qty={8} />
           <BinChip code="C-03" qty={4} />
         </View>
       </ScanResultCard>
-      <ScanResultCard tone="warning" status={{ icon: 'warning', label: 'Unknown code' }} title="5010415305187" detail="Not in PartsLogic yet">
+      <ScanResultCard tone="warn" status={{ icon: 'warning', label: 'Unknown code' }} title="5010415305187" detail="Not in PartsLogic yet">
         <Button label="Add part" icon="add" compact onPress={noop} />
       </ScanResultCard>
       <ScanResultCard tone="stop" status={{ icon: 'stop', label: 'Out of stock' }} title="Febi 12345" quantity={{ value: '0', label: 'On hand' }} />
@@ -235,7 +236,7 @@ const SCREENS: Record<string, () => ReactNode> = {
       <JobScreen placeholder="Bin name, for example A-01" typeFirst onScan={noop} banner={<JobBanner title="Choose a bin" detail="Main" />}>
         <Tally
           items={[
-            { value: 24, label: 'Unbinned units', tone: 'warning' },
+            { value: 24, label: 'Unbinned units', tone: 'warn' },
             { value: 7, label: 'Parts' },
           ]}
         />
@@ -248,8 +249,8 @@ const SCREENS: Record<string, () => ReactNode> = {
       <JobScreen
         placeholder="Barcode or part number"
         onScan={noop}
-        banner={<JobBanner size="display" title="Bin A-01" detail="MAIN · Blind count" />}
-        result={<ScanResultCard tone="safe" status={{ icon: 'sent', label: 'Counted' }} title="Mann HU 816 x" detail="4011558726304" quantity={{ value: '6', label: 'Counted' }} />}
+        banner={<JobBanner size="headline" title="Bin A-01" detail="MAIN · Blind count" />}
+        result={<ScanResultCard tone="ok" status={{ icon: 'sent', label: 'Counted' }} title="Mann HU 816 x" detail="4011558726304" quantity={{ value: '6', label: 'Counted' }} />}
         action={<ActionBar label="Finish · 9 units" icon="check" onPress={noop} secondary={{ label: 'Discard', icon: 'close', onPress: noop }} />}>
         <Tally
           items={[
@@ -271,15 +272,7 @@ const SCREENS: Record<string, () => ReactNode> = {
       <View className="flex-1 bg-ground">
         <StackHeader title="Put away" />
         <ScrollView contentContainerClassName="flex-grow justify-center gap-4 px-4 py-8">
-          <Plate tone={summary.tone} heavy className="gap-2 p-4">
-            <SignText size="label" ink={TEXT_ON[summary.tone]}>
-              {summary.label}
-            </SignText>
-            <SignText size="hero" weight="heavy" ink={TEXT_ON[summary.tone]}>
-              Bin A-01
-            </SignText>
-          </Plate>
-          <Tally items={summary.items} />
+          <CountReceipt binCode="A-01" summary={summary} units={9} />
           <Button label="Count next bin" icon="count" onPress={noop} />
           <Button label="Board" variant="secondary" onPress={noop} />
         </ScrollView>
@@ -293,7 +286,7 @@ const SCREENS: Record<string, () => ReactNode> = {
         placeholder="Part number, barcode or bin"
         onScan={noop}
         banner={<JobBanner title="Mann HU 816 x" detail="From A-01" />}
-        result={<ScanResultCard tone="safe" status={{ icon: 'sent', label: 'Bin scanned' }} title="B-12" />}
+        result={<ScanResultCard tone="ok" status={{ icon: 'sent', label: 'Bin scanned' }} title="B-12" />}
         action={<ActionBar label="Move 4 · A-01 → B-12" icon="move" onPress={noop} />}>
         <SectionLabel>From</SectionLabel>
         <View className="flex-row flex-wrap gap-2">
@@ -305,10 +298,10 @@ const SCREENS: Record<string, () => ReactNode> = {
           <BinChip code="B-12" selected onPress={noop} />
         </View>
         <SectionLabel>How many</SectionLabel>
-        <Plate className="flex-row items-center justify-between gap-3 px-3 py-2">
+        <Card className="flex-row items-center justify-between gap-3 px-3 py-2">
           <Quantity total={4} name="Mann HU 816 x" onStep={noop} onSet={noop} />
           <Button label="All 8" variant="secondary" compact onPress={noop} />
-        </Plate>
+        </Card>
       </JobScreen>
     </View>
   ),
@@ -323,7 +316,7 @@ const SCREENS: Record<string, () => ReactNode> = {
   'receive-done': () => (
     <View className="flex-1 bg-ground">
       <StackHeader title="Receive goods" />
-      <Notice icon="sent" tone="safe" title="GR-0042" line="24 units into Main Unbinned">
+      <Notice icon="sent" tone="ok" title="GR-0042" line="24 units into Main Unbinned">
         <Button label="Put away now" icon="count" onPress={noop} />
         <Button label="Next delivery" variant="secondary" onPress={noop} />
       </Notice>
@@ -338,7 +331,7 @@ const SCREENS: Record<string, () => ReactNode> = {
         placeholder="Part number or barcode"
         onScan={noop}
         scanEnabled={false}
-        result={<PartAnswerPlate title="Mann HU 816 x" answer={partAnswer(OIL_FILTER, 'GBP')} savedAt={null} onOpen={noop} />}
+        result={<PartAnswerCard title="Mann HU 816 x" answer={partAnswer(OIL_FILTER, 'GBP')} savedAt={null} onOpen={noop} />}
         onResume={noop}
         action={<ActionBar label="Open part" icon="forward" onPress={noop} />}>
         <SectionLabel>Recent</SectionLabel>
@@ -355,13 +348,13 @@ const SCREENS: Record<string, () => ReactNode> = {
         placeholder="Part number or barcode"
         onScan={noop}
         result={
-          <ScanResultCard tone="warning" status={{ icon: 'warning', label: 'Unknown code' }} title="5010415305187">
+          <ScanResultCard tone="warn" status={{ icon: 'warning', label: 'Unknown code' }} title="5010415305187">
             <Button label="Search instead" icon="lookup" variant="secondary" compact onPress={noop} />
           </ScanResultCard>
         }
         scanEnabled={false}
         onResume={noop}
-        action={<ActionBar label="Add part" icon="add" tone="plain" onPress={noop} />}>
+        action={<ActionBar label="Add part" icon="add" tone="neutral" onPress={noop} />}>
         <SectionLabel>Recent</SectionLabel>
         {RECENT.map((part) => (
           <PartRow key={part.partId} {...part} onPress={noop} />
@@ -429,7 +422,7 @@ export function Gallery() {
         <ScrollView contentContainerClassName="gap-2 p-4">
           {Object.keys(SCREENS).map((name) => (
             <Pressable key={name} onPress={() => setScreen(name)}>
-              <SignText size="title">{name}</SignText>
+              <Txt variant="title">{name}</Txt>
             </Pressable>
           ))}
         </ScrollView>

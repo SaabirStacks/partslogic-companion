@@ -35,7 +35,7 @@ export function ConfirmScanCard({
 
   if (!hit) {
     return (
-      <ScanResultCard key={pending.key} tone="surface" status={{ icon: 'waiting', label: 'Checking' }} title={code}>
+      <ScanResultCard key={pending.key} tone="neutral" status={{ icon: 'waiting', label: 'Checking' }} title={code}>
         <Button label="Skip" icon="close" variant="secondary" compact onPress={onSkip} />
       </ScanResultCard>
     );
@@ -54,7 +54,7 @@ export function ConfirmScanCard({
 
   if (hit.type === 'bin') {
     return (
-      <ScanResultCard key={pending.key} tone="warning" status={{ icon: 'bin', label: 'That’s a bin' }} title={hit.bin} detail={hit.location}>
+      <ScanResultCard key={pending.key} tone="warn" status={{ icon: 'bin', label: 'That’s a bin' }} title={hit.bin} detail={hit.location}>
         <Button label="OK" variant="secondary" compact onPress={onSkip} />
       </ScanResultCard>
     );
@@ -70,7 +70,7 @@ export function ConfirmScanCard({
         : { icon: 'warning' as const, label: 'Unknown code' };
 
   return (
-    <ScanResultCard key={pending.key} tone={known ? 'surface' : 'warning'} status={status} title={title} detail={known ? code : null}>
+    <ScanResultCard key={pending.key} tone={known ? 'neutral' : 'warn'} status={status} title={title} detail={known ? code : null}>
       <View className="flex-row items-center gap-3">
         <Quantity total={qty} name={title} onStep={onStep} onSet={onSet} />
         <View className="flex-1">

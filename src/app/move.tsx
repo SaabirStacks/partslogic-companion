@@ -8,11 +8,11 @@ import { BinChip } from '@/ui/bin-chip';
 import { Button } from '@/ui/button';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
-import { Plate } from '@/ui/plate';
+import { Card } from '@/ui/surface';
 import { Quantity } from '@/ui/quantity';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { SectionLabel } from '@/ui/section-label';
-import { Detail } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 
 const idParam = (value: string | undefined) => {
@@ -65,7 +65,7 @@ export default function Move() {
               ))}
             </View>
           ) : (
-            <Detail className="px-1">{moving.loading ? 'Checking the bins' : 'Not in any bin'}</Detail>
+            <Txt variant="caption" className="px-1">{moving.loading ? 'Checking the bins' : 'Not in any bin'}</Txt>
           )}
         </>
       ) : null}
@@ -79,7 +79,7 @@ export default function Move() {
             </View>
           ) : (
             <>
-              <Detail className="px-1">Scan the bin label, or choose:</Detail>
+              <Txt variant="caption" className="px-1">Scan the bin label, or choose:</Txt>
               <View className="flex-row flex-wrap gap-2">
                 {moving.stock
                   .filter((line) => line.binId !== from.binId)
@@ -91,13 +91,13 @@ export default function Move() {
           )}
 
           <SectionLabel>How many</SectionLabel>
-          <Plate className="flex-row items-center justify-between gap-3 px-3 py-2">
+          <Card className="flex-row items-center justify-between gap-3 px-3 py-2">
             <Quantity total={moving.qty} name={moving.name ?? 'the part'} onStep={(change) => moving.setQty(moving.qty + change)} onSet={moving.setQty} />
             {moving.available > 1 && moving.qty !== moving.available ? (
               <Button label={`All ${formatQty(moving.available)}`} variant="secondary" compact onPress={() => moving.setQty(moving.available)} />
             ) : null}
-          </Plate>
-          {moving.problem && to ? <Detail ink="text-stop-ink" className="px-1">{moving.problem}</Detail> : null}
+          </Card>
+          {moving.problem && to ? <Txt variant="caption" ink="text-stop-ink" className="px-1">{moving.problem}</Txt> : null}
         </>
       ) : null}
     </JobScreen>
@@ -107,7 +107,7 @@ export default function Move() {
 function Answer({ moving }: { moving: ReturnType<typeof useMove> }) {
   const { result, notice } = moving;
   if (result) {
-    const tone = result.kind === 'moved' ? 'safe' : result.kind === 'unknown' ? 'warning' : 'stop';
+    const tone = result.kind === 'moved' ? 'ok' : result.kind === 'unknown' ? 'warn' : 'stop';
     return (
       <ScanResultCard
         tone={tone}
@@ -124,7 +124,7 @@ function Answer({ moving }: { moving: ReturnType<typeof useMove> }) {
     );
   }
   if (notice) {
-    return <ScanResultCard key={`${notice.title}:${notice.detail}`} tone="warning" status={{ icon: 'warning', label: 'Not used' }} title={notice.title} detail={notice.detail} />;
+    return <ScanResultCard key={`${notice.title}:${notice.detail}`} tone="warn" status={{ icon: 'warning', label: 'Not used' }} title={notice.title} detail={notice.detail} />;
   }
   return null;
 }

@@ -1,4 +1,4 @@
-import { ScrollView, View } from 'react-native';
+import { ScrollView } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { syncState } from '@/features/board/sync-state';
@@ -10,14 +10,15 @@ import { Button } from '@/ui/button';
 import { Fact, Facts } from '@/ui/facts';
 import { Icon } from '@/ui/icon';
 import { APPEAR, SETTLE } from '@/ui/motion';
-import { ON_TONE, Plate, TEXT_ON } from '@/ui/plate';
+import { StatusChip } from '@/ui/status-chip';
+import { Card } from '@/ui/surface';
 import { SectionLabel } from '@/ui/section-label';
-import { Detail, SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 
 const number = (value: number) => new Intl.NumberFormat('en-GB').format(value);
 
-// Sync: whether this phone's work has reached PartsLogic. The sign on top says it in two words; problems
+// Sync: whether this phone's work has reached PartsLogic. The card on top says it in two words; problems
 // come first, each with Try again, then what's waiting, then what was sent. Nothing to read when all is sent.
 export default function Sync() {
   const outbox = useOutbox();
@@ -30,70 +31,62 @@ export default function Sync() {
   const sent = outbox.items.filter((item) => item.status === 'done');
 
   return (
-    <ScrollView className="bg-ground" contentContainerClassName="gap-3 px-3 pb-10 pt-3">
+    <ScrollView className="bg-ground" contentContainerClassName="gap-3 px-4 pb-10 pt-3">
       <Animated.View key={state.label} entering={APPEAR}>
-        <Plate tone={state.tone} heavy accessible accessibilityRole="header" className="gap-1 p-4">
-          <View className="flex-row items-center gap-2">
-            <Icon name={state.icon} size={32} colour={ON_TONE[state.tone]} />
-            <SignText size="display" weight="heavy" ink={TEXT_ON[state.tone]}>
-              {state.label}
-            </SignText>
-          </View>
-          {outbox.lastSentAt ? (
-            <SignText size="tag" ink={TEXT_ON[state.tone]}>
-              {`Last sent ${clock(outbox.lastSentAt)}`}
-            </SignText>
-          ) : null}
-        </Plate>
+        <Card accessible accessibilityRole="header" accessibilityLabel={state.label} className="gap-2 p-4">
+          <StatusChip tone={state.tone} icon={state.icon} label={state.label} large />
+          {outbox.lastSentAt ? <Txt variant="caption">{`Last sent ${clock(outbox.lastSentAt)}`}</Txt> : null}
+        </Card>
       </Animated.View>
 
       {outbox.waiting > 0 && online ? (
         <Button label="Send now" icon="sync" variant="secondary" onPress={outbox.sendNow} />
       ) : null}
       {outbox.lastProblem && outbox.waiting > 0 ? (
-        <StatusStrip tone="warning" icon="retry" text={`Last try didn’t get through · ${outbox.lastProblem}`} />
+        <StatusStrip tone="warn" icon="retry" text={`Last try didn’t get through · ${outbox.lastProblem}`} />
       ) : null}
 
       {attention.length > 0 ? <SectionLabel>Problems</SectionLabel> : null}
       {attention.map((item) => (
         <Animated.View key={item.clientId} entering={APPEAR} layout={SETTLE}>
-          <Plate tone="stop" className="gap-2 p-3">
-            <SignText size="label" weight="heavy" ink={TEXT_ON.stop}>
+          <Card className="gap-2 p-4">
+            <StatusChip tone="stop" icon="stop" label="Not sent" />
+            <Txt variant="label" className="font-bold">
               {item.label}
-            </SignText>
-            {item.lastError ? <Detail ink={TEXT_ON.stop}>{item.lastError}</Detail> : null}
+            </Txt>
+            {item.lastError ? <Txt variant="caption" ink="text-stop-ink">{item.lastError}</Txt> : null}
             <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => void outbox.retry(item.clientId)} />
-          </Plate>
+          </Card>
         </Animated.View>
       ))}
 
       {waiting.length > 0 ? <SectionLabel>{`Waiting · ${waiting.length}`}</SectionLabel> : null}
       {waiting.slice(0, 50).map((item) => (
         <Animated.View key={item.clientId} entering={APPEAR} layout={SETTLE}>
-          <Plate className="min-h-14 flex-row items-center gap-3 px-3 py-2">
-            <Icon name="waiting" size={18} colour="warning-ink" />
-            <SignText size="label" numberOfLines={2} caps={false} className="flex-1">
+          <Card className="min-h-14 flex-row items-center gap-3 px-4 py-2">
+            <Icon name="waiting" size={18} colour="warn-ink" />
+            <Txt variant="label" numberOfLines={2} className="flex-1">
               {item.label}
-            </SignText>
-          </Plate>
+            </Txt>
+          </Card>
         </Animated.View>
       ))}
 
       {sent.length > 0 ? <SectionLabel>Sent</SectionLabel> : null}
       {sent.slice(0, 10).map((item) => (
         <Animated.View key={item.clientId} entering={APPEAR} layout={SETTLE}>
-          <Plate className="min-h-14 flex-row items-center gap-3 px-3 py-2">
-            <Icon name="sent" size={18} colour="safe-ink" />
-            <SignText size="label" numberOfLines={2} caps={false} className="flex-1">
+          <Card className="min-h-14 flex-row items-center gap-3 px-3 py-2">
+            <Icon name="sent" size={18} colour="ok-ink" />
+            <Txt variant="label" numberOfLines={2} className="flex-1">
               {item.label}
-            </SignText>
-            <Detail>{clock(item.updatedAt)}</Detail>
-          </Plate>
+            </Txt>
+            <Txt variant="caption">{clock(item.updatedAt)}</Txt>
+          </Card>
         </Animated.View>
       ))}
 
       <SectionLabel>Scan list on this phone</SectionLabel>
-      {scanIndex.failed ? <StatusStrip tone="warning" icon="warning" text="Last update didn’t finish · tries again with signal" /> : null}
+      {scanIndex.failed ? <StatusStrip tone="warn" icon="warning" text="Last update didn’t finish · tries again with signal" /> : null}
       <Facts>
         <Fact
           label="Codes"

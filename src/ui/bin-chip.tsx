@@ -1,10 +1,11 @@
 import { View } from 'react-native';
 
-import { Plate, PressablePlate, TEXT_ON } from './plate';
-import { SignText } from './sign-text';
+import { cx } from './cx';
+import { Card, PressableCard } from './surface';
+import { Txt } from './text';
 
-// A bin as a small label plate: its code and, when it holds stock, how many (A-01 ×4). Selected bins turn
-// blue, like any choice that is about to be acted on.
+// A bin as a small label: its code and, when it holds stock, how many (A-01 ×4). A chosen bin gets a dark
+// outline, the same mark as any choice in a list.
 export function BinChip({
   code,
   qty,
@@ -16,28 +17,27 @@ export function BinChip({
   selected?: boolean;
   onPress?: () => void;
 }) {
-  const tone = selected ? 'mandatory' : 'surface';
   const label = qty === undefined ? code : `${code}, ${qty}`;
   const face = (
     <View className="flex-row items-baseline gap-1.5">
-      <SignText size="label" weight="heavy" ink={TEXT_ON[tone]}>
+      <Txt variant="label" className="font-bold">
         {code}
-      </SignText>
+      </Txt>
       {qty !== undefined ? (
-        <SignText size="label" weight="semi" ink={TEXT_ON[tone]}>
+        <Txt variant="label" numbers ink="text-quiet-ink">
           ×{qty}
-        </SignText>
+        </Txt>
       ) : null}
     </View>
   );
-  const frame = 'min-h-12 justify-center px-3';
+  const frame = cx('min-h-12 justify-center px-3', selected && 'border-2 border-ink');
   return onPress ? (
-    <PressablePlate tone={tone} accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} className={frame}>
+    <PressableCard accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} className={frame}>
       {face}
-    </PressablePlate>
+    </PressableCard>
   ) : (
-    <Plate tone={tone} accessible accessibilityLabel={label} className={frame}>
+    <Card accessible accessibilityLabel={label} className={frame}>
       {face}
-    </Plate>
+    </Card>
   );
 }

@@ -1,19 +1,20 @@
 import { View } from 'react-native';
 
-import { SignText } from './sign-text';
+import { Txt } from './text';
 
-// What a job is locked to, as a strip above the camera: the delivery's receipt number, the bin being
-// counted. Big enough to check at arm's length before every scan.
-export function JobBanner({ title, detail, size = 'title' }: { title: string; detail?: string | null; size?: 'title' | 'display' }) {
+// What a job is locked to, as a strip above the camera: whose delivery it is, the bin being counted. Big
+// enough to check at arm's length before every scan; the detail line says the rest (receipt number,
+// delivery note, where the stock goes).
+export function JobBanner({ title, detail, size = 'title' }: { title: string; detail?: string | null; size?: 'title' | 'headline' }) {
   return (
-    <View accessible accessibilityRole="header" className="flex-row items-baseline gap-3 border-b-2 border-rule bg-plate px-4 py-2">
-      <SignText size={size} weight="heavy" numberOfLines={1} className="flex-1">
+    <View accessible accessibilityRole="header" className="gap-0.5 border-b border-edge bg-surface px-4 py-2.5">
+      <Txt variant={size} numberOfLines={1} className="font-extrabold">
         {title}
-      </SignText>
+      </Txt>
       {detail ? (
-        <SignText size="tag" ink="text-quiet-ink" numberOfLines={1}>
+        <Txt variant="caption" numberOfLines={1}>
           {detail}
-        </SignText>
+        </Txt>
       ) : null}
     </View>
   );

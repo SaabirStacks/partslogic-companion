@@ -8,7 +8,7 @@ import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { Fact, Facts } from '@/ui/facts';
-import { SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
@@ -23,9 +23,9 @@ export function AccountSection() {
 
   return (
     <View className="gap-4 px-4 pb-10 pt-6">
-      <SignText accessibilityRole="header" size="headline" weight="heavy">
+      <Txt accessibilityRole="header" variant="headline">
         Account
-      </SignText>
+      </Txt>
       <Facts>
         <Fact label="Signed in" value={state.email} />
         <Fact label="Role" value={capitalise(state.member.role)} />
@@ -36,7 +36,7 @@ export function AccountSection() {
       <ConfirmSheet
         visible={confirming}
         title="Sign out?"
-        facts={unsent > 0 ? [{ value: unsent, label: 'Not sent yet', tone: 'warning' }] : undefined}
+        facts={unsent > 0 ? [{ value: unsent, label: 'Not sent yet', tone: 'warn' }] : undefined}
         note={unsent > 0 ? `${unsent === 1 ? 'It stays' : 'They stay'} on this phone and send when you sign back in.` : null}
         confirm={{ label: 'Sign out', destructive: true, onPress: () => void signOut() }}
         onCancel={() => setConfirming(false)}

@@ -28,15 +28,13 @@ export type LiveWorkflow = Base & {
   availability: 'live';
   icon: IconName;
   href: Href;
-  // Blue for a job; black for a tool with no state of its own (Add part).
-  tone: 'mandatory' | 'plain';
 };
 export type FutureWorkflow = Base & { availability: 'server-ready' | 'planned'; needs: string };
 
 const LIVE = {
-  lookup: { family: 'parts', label: 'Look up', minRole: 'viewer', availability: 'live', icon: 'lookup', href: '/lookup', tone: 'mandatory' },
-  'add-part': { family: 'parts', label: 'Add part', minRole: 'counter', availability: 'live', icon: 'add', href: '/quick-add', tone: 'plain' },
-  receive: { family: 'inbound', label: 'Receive goods', minRole: 'counter', availability: 'live', icon: 'receive', href: '/receive', tone: 'mandatory' },
+  lookup: { family: 'parts', label: 'Look up', minRole: 'viewer', availability: 'live', icon: 'lookup', href: '/lookup' },
+  'add-part': { family: 'parts', label: 'Add part', minRole: 'counter', availability: 'live', icon: 'add', href: '/quick-add' },
+  receive: { family: 'inbound', label: 'Receive goods', minRole: 'counter', availability: 'live', icon: 'receive', href: '/receive' },
   // Put away and Stock count share the bin count: counting a bin is how PartsLogic moves stock out of
   // Unbinned onto the shelf.
   'put-away': {
@@ -46,7 +44,6 @@ const LIVE = {
     availability: 'live',
     icon: 'putAway',
     href: { pathname: '/count', params: { purpose: 'put-away' } },
-    tone: 'mandatory',
   },
   'stock-count': {
     family: 'stock',
@@ -55,9 +52,8 @@ const LIVE = {
     availability: 'live',
     icon: 'count',
     href: { pathname: '/count', params: { purpose: 'stock-count' } },
-    tone: 'mandatory',
   },
-  transfer: { family: 'stock', label: 'Transfer stock', minRole: 'counter', availability: 'live', icon: 'move', href: '/move', tone: 'mandatory' },
+  transfer: { family: 'stock', label: 'Transfer stock', minRole: 'counter', availability: 'live', icon: 'move', href: '/move' },
 } as const satisfies Record<string, LiveWorkflow>;
 
 const FUTURE = {

@@ -14,7 +14,7 @@ import { addRecent } from './recent';
 export type LookUpView =
   | { kind: 'idle' }
   | { kind: 'working'; code: string }
-  // A part, shown on the result plate. at is when it was scanned, so scanning it again lands afresh.
+  // A part, shown on the result card. at is when it was scanned, so scanning it again lands afresh.
   | { kind: 'part'; code: string; part: RecentPart; at: number }
   | { kind: 'bin'; code: string; binId: number; bin: string; location: string }
   | { kind: 'unknown'; code: string }
@@ -24,7 +24,7 @@ export type LookUpView =
 
 const isConnectionProblem = (error: unknown) => classifyQueueError(error as { code?: string; message?: string }) === 'retry';
 
-// Everything Look up does with a code: a part lands on the result plate (tap it for the full part), a bin
+// Everything Look up does with a code: a part lands on the result card (tap it for the full part), a bin
 // offers a count, anything else is searched (typed) or reported as unknown (scanned). The server decides;
 // nothing is guessed.
 export function useLookUp() {

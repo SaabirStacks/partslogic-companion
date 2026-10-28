@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import { countWorkflow, type CountWorkflow } from '@/features/count/count-store';
+import { CountReceipt } from '@/features/count/count-receipt';
 import { countResultText, countSummary } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
 import { NeedsLocation } from '@/features/location/needs-location';
@@ -19,11 +20,11 @@ import { Icon } from '@/ui/icon';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
 import { LineRow } from '@/ui/line-row';
-import { ON_TONE, Plate, PressablePlate, TEXT_ON } from '@/ui/plate';
+import { Card, PressableCard } from '@/ui/surface';
 import { Quantity } from '@/ui/quantity';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { SectionLabel } from '@/ui/section-label';
-import { Detail, SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { Tally } from '@/ui/tally';
 import { unlocatedStockSummary } from '@/vendor/partslogic/shared/floor';
@@ -92,7 +93,7 @@ function Start({ counting, purpose }: { counting: Counting; purpose: CountWorkfl
       {unbinned.data && unbinned.data.parts > 0 ? (
         <Tally
           items={[
-            { value: unbinned.data.qty, label: 'Unbinned units', tone: 'warning' },
+            { value: unbinned.data.qty, label: 'Unbinned units', tone: 'warn' },
             { value: unbinned.data.parts, label: 'Parts' },
           ]}
         />
@@ -105,28 +106,28 @@ function Start({ counting, purpose }: { counting: Counting; purpose: CountWorkfl
             const face = (
               <>
                 <View className="flex-1">
-                  <SignText size="label" weight="heavy">{`Bin ${item.binCode}`}</SignText>
-                  <Detail ink={result.problem ? 'text-stop-ink' : 'text-quiet-ink'} numberOfLines={2}>
+                  <Txt variant="label">{`Bin ${item.binCode}`}</Txt>
+                  <Txt variant="caption" ink={result.problem ? 'text-stop-ink' : 'text-quiet-ink'} numberOfLines={2}>
                     {result.text}
-                  </Detail>
+                  </Txt>
                 </View>
-                {item.finishedAt ? <Detail>{clock(item.finishedAt)}</Detail> : null}
+                {item.finishedAt ? <Txt variant="caption">{clock(item.finishedAt)}</Txt> : null}
               </>
             );
             return result.problem ? (
-              <PressablePlate
+              <PressableCard
                 key={item.stocktakeId}
-                tone="surface"
+                tone="neutral"
                 accessibilityLabel={`Bin ${item.binCode}, ${result.text}. Open Sync`}
                 onPress={() => router.navigate('/sync')}
                 className="min-h-16 flex-row items-center gap-3 px-3 py-2">
                 {face}
                 <Icon name="forward" size={16} />
-              </PressablePlate>
+              </PressableCard>
             ) : (
-              <Plate key={item.stocktakeId} className="min-h-16 flex-row items-center gap-3 px-3 py-2">
+              <Card key={item.stocktakeId} className="min-h-16 flex-row items-center gap-3 px-3 py-2">
                 {face}
-              </Plate>
+              </Card>
             );
           })}
         </>
@@ -139,17 +140,17 @@ function StartAnswer({ counting, locationName }: { counting: Counting; locationN
   const { start } = counting;
   switch (start.kind) {
     case 'checking':
-      return <ScanResultCard tone="surface" status={{ icon: 'waiting', label: 'Checking' }} title={start.code} />;
+      return <ScanResultCard tone="neutral" status={{ icon: 'waiting', label: 'Checking' }} title={start.code} />;
     case 'create':
       return (
-        <ScanResultCard key={start.code} tone="warning" status={{ icon: 'bin', label: `Not a bin in ${locationName}` }} title={start.code}>
+        <ScanResultCard key={start.code} tone="warn" status={{ icon: 'bin', label: `Not a bin in ${locationName}` }} title={start.code}>
           <Button label={`Create bin ${start.code}`} icon="plus" compact onPress={() => void counting.createBin(start.code)} />
           <Button label="Cancel" variant="secondary" compact onPress={counting.resetStart} />
         </ScanResultCard>
       );
     case 'message':
       return (
-        <ScanResultCard key={start.title} tone="warning" status={{ icon: 'warning', label: 'Not started' }} title={start.title} detail={start.body}>
+        <ScanResultCard key={start.title} tone="warn" status={{ icon: 'warning', label: 'Not started' }} title={start.title} detail={start.body}>
           <Button label="OK" variant="secondary" compact onPress={counting.resetStart} />
         </ScanResultCard>
       );
@@ -170,7 +171,7 @@ function CountingBin({ counting }: { counting: Counting }) {
         placeholder="Barcode or part number"
         scanEnabled={!counting.held.pending}
         onScan={counting.scan}
-        banner={<JobBanner size="display" title={`Bin ${count.binCode}`} detail={[count.location, 'Blind count'].filter(Boolean).join(' · ')} />}
+        banner={<JobBanner size="headline" title={`Bin ${count.binCode}`} detail={[count.location, 'Blind count'].filter(Boolean).join(' · ')} />}
         result={<LastScan counting={counting} />}
         action={
           // While a scan waits on Count or Skip, it's the only decision on screen.
@@ -200,7 +201,7 @@ function CountingBin({ counting }: { counting: Counting }) {
               key={line.clientCountId}
               name={name}
               code={name !== line.code ? line.code : null}
-              status={unknown ? { text: 'Unknown · kept for the office', icon: 'warning', tone: 'warning' } : null}
+              status={unknown ? { text: 'Unknown · kept for the office', icon: 'warning', tone: 'warn' } : null}
               quantity={
                 <Quantity
                   total={line.qty}
@@ -255,7 +256,7 @@ function CountingBin({ counting }: { counting: Counting }) {
   );
 }
 
-// The plate over the camera's edge: the scan being held for a decision, or else the part just counted and
+// The card over the camera's edge: the scan being held for a decision, or else the part just counted and
 // how many of it are counted now.
 function LastScan({ counting }: { counting: Counting }) {
   const { held, lastScan, count } = counting;
@@ -281,7 +282,7 @@ function LastScan({ counting }: { counting: Counting }) {
   return (
     <ScanResultCard
       key={lastScan.key}
-      tone={unknown ? 'warning' : 'safe'}
+      tone={unknown ? 'warn' : 'ok'}
       status={unknown ? { icon: 'warning', label: 'Counted · unknown code' } : { icon: 'sent', label: 'Counted' }}
       title={name}
       detail={name !== line.code ? line.code : null}
@@ -296,18 +297,7 @@ function Result({ counting }: { counting: Counting }) {
   const summary = countSummary(counting.progressOf(finished.stocktakeId));
   return (
     <ScrollView className="bg-ground" contentContainerClassName="flex-grow justify-center gap-4 px-4 py-8">
-      <Plate tone={summary.tone} heavy className="gap-2 p-4">
-        <View className="flex-row items-center gap-2">
-          <Icon name={summary.icon} size={20} colour={ON_TONE[summary.tone]} />
-          <SignText size="label" ink={TEXT_ON[summary.tone]} numberOfLines={2} className="flex-1">
-            {summary.label}
-          </SignText>
-        </View>
-        <SignText accessibilityRole="header" size="hero" weight="heavy" ink={TEXT_ON[summary.tone]}>
-          {`Bin ${finished.binCode}`}
-        </SignText>
-      </Plate>
-      <Tally items={summary.items.length > 0 ? summary.items : [{ value: finished.units, label: 'Counted' }]} />
+      <CountReceipt binCode={finished.binCode} summary={summary} units={finished.units} />
       <Button label="Count next bin" icon="count" onPress={counting.dismissFinished} />
       <Button label="Board" variant="secondary" onPress={() => router.dismissTo('/')} />
     </ScrollView>

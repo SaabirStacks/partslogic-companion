@@ -99,7 +99,11 @@ back office, so what the phone does and what the office sees agree.
   - **Nothing playful or gamey.** No confetti, mascots or streaks.
   - **No explanation text.** No paragraphs telling staff what a screen does. The design must be intuitive
     and focused on the job, not a reference app.
-- The current Stock Blue look is **not** binding. It may be replaced.
+- The look is the **trade counter** (chosen 24 Oct with the task screens mock-up): white cards on a light
+  grey counter, the phone's own typeface in sentence case, and colour with two jobs only. Blue is the
+  button to press; green, yellow and red are states, always a word and a symbol on a soft chip. The
+  tokens live once in `src/ui/palette.ts`; the parts in `src/ui/surface.tsx`, `text.tsx`,
+  `status-chip.tsx` and `choice.tsx`.
 
 ## Evidence on Hand
 
