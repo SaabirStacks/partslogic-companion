@@ -5,6 +5,7 @@ import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
 export function streamKeyOf(item: QueueItem): string {
   switch (item.kind) {
     case 'receipt_lines':
+    case 'receipt_details':
     case 'close_receipt':
       return `receipt:${item.documentId}`;
     case 'open_bin_count':

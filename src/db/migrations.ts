@@ -66,4 +66,12 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE bin_counts ADD COLUMN workflow TEXT NOT NULL DEFAULT 'put-away';
   `,
+  // 5: who a delivery is from (a Sender as JSON, src/features/receive/sender.ts) and its delivery note,
+  // chosen before the first scan; deliveries from before this have neither. saved_lists keeps the last
+  // copy of a pick list (the suppliers) so a delivery can start without signal.
+  `
+  ALTER TABLE deliveries ADD COLUMN sender TEXT;
+  ALTER TABLE deliveries ADD COLUMN reference TEXT;
+  CREATE TABLE saved_lists (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL, saved_at TEXT NOT NULL);
+  `,
 ];

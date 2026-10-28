@@ -8,7 +8,7 @@ import { visibleLines } from '@/vendor/partslogic/shared/bin-session';
 
 // Work left open on this phone: a delivery still being received, a bin still being counted.
 export type OpenWork =
-  | { kind: 'delivery'; units: number; startedAt: string }
+  | { kind: 'delivery'; from: string | null; units: number; startedAt: string }
   | { kind: 'count'; bin: string; units: number; startedAt: string };
 
 export async function readOpenWork(database: SQLiteDatabase, userId: string): Promise<OpenWork[]> {
@@ -17,7 +17,12 @@ export async function readOpenWork(database: SQLiteDatabase, userId: string): Pr
   const work: OpenWork[] = [];
   if (delivery) {
     const lines = await deliveries.lines(delivery.documentId);
-    work.push({ kind: 'delivery', units: lines.reduce((sum, line) => sum + line.qty, 0), startedAt: delivery.startedAt });
+    work.push({
+      kind: 'delivery',
+      from: delivery.sender?.name ?? null,
+      units: lines.reduce((sum, line) => sum + line.qty, 0),
+      startedAt: delivery.startedAt,
+    });
   }
   if (count) {
     const units = visibleLines(count.session).reduce((sum, line) => sum + line.qty, 0);
@@ -30,6 +35,6 @@ export async function readOpenWork(database: SQLiteDatabase, userId: string): Pr
 export function resumeText(work: OpenWork): { title: string; detail: string; href: Href } {
   const detail = `${plural(work.units, 'unit', 'units')} · started ${clock(work.startedAt)}`;
   return work.kind === 'delivery'
-    ? { title: 'Delivery', detail, href: '/receive' }
+    ? { title: work.from ? `Delivery from ${work.from}` : 'Delivery', detail, href: '/receive' }
     : { title: `Bin ${work.bin}`, detail, href: '/count' };
 }

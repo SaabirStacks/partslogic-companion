@@ -5,8 +5,12 @@ import { resumeText } from '../open-work';
 const startedAt = '2026-10-08T09:14:00.000Z';
 
 describe('resumeText', () => {
-  it('describes an open delivery', () => {
-    expect(resumeText({ kind: 'delivery', units: 12, startedAt })).toEqual({
+  it('describes an open delivery by who it is from', () => {
+    expect(resumeText({ kind: 'delivery', from: 'BGA', units: 12, startedAt })).toMatchObject({ title: 'Delivery from BGA' });
+  });
+
+  it('describes a delivery started before the phone asked who it was from', () => {
+    expect(resumeText({ kind: 'delivery', from: null, units: 12, startedAt })).toEqual({
       title: 'Delivery',
       detail: `12 units · started ${clock(startedAt)}`,
       href: '/receive',

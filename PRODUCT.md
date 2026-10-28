@@ -48,8 +48,12 @@ back office, so what the phone does and what the office sees agree.
       alternatives.
     - **Add part:** add an unknown barcode as a new part. Waiting scans of that barcode then match up.
   - **Inbound:**
-    - **Receive goods:** a delivery becomes a goods receipt (GR-0042), and the stock lands in the
-      location's **Unbinned** bin, which serves as inbound staging.
+    - **Receive goods:** it starts with **Who's it from?**: one of PartsLogic's suppliers, or a
+      manufacturer when the box comes direct (required), and the delivery note if there is one. Then
+      it scans box by box and ends with a receipt. The delivery becomes a goods receipt (GR-0042) that
+      names its supplier and delivery note in the office, and the stock lands in the location's
+      **Unbinned** bin, which serves as inbound staging. Later, a delivery is matched against the
+      purchase order it fills.
     - **Put away:** choose a bin and count it, blind. Counting a bin pulls stock from Unbinned onto the
       shelf; anything not scanned goes back to Unbinned.
     - Later: inbound staging areas, customer returns.

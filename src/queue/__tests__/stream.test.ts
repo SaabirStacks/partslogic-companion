@@ -3,6 +3,10 @@ import { streamKeyOf } from '../stream';
 describe('streamKeyOf', () => {
   it('groups a delivery, a bin count and a bin by their ids', () => {
     expect(streamKeyOf({ kind: 'close_receipt', clientId: 'c', documentId: 'R1' })).toBe('receipt:R1');
+    // A delivery's supplier is sent in the delivery's own stream, after its lines.
+    expect(
+      streamKeyOf({ kind: 'receipt_details', clientId: 'c', documentId: 'R1', sourceId: 7, brandId: null, reference: null }),
+    ).toBe('receipt:R1');
     expect(streamKeyOf({ kind: 'commit_bin_count', clientId: 'c', stocktakeId: 'S1', confirmEmpty: false })).toBe(
       'count:S1',
     );

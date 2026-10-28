@@ -4,10 +4,14 @@ import { View } from 'react-native';
 
 import { NeedsLocation } from '@/features/location/needs-location';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
+import { DeliveryReceipt } from '@/features/receive/delivery-receipt';
+import type { Delivery } from '@/features/receive/delivery-store';
 import type { LineGroup } from '@/features/receive/lines';
+import { deliveryName } from '@/features/receive/sender';
 import { statusText } from '@/features/receive/status-text';
 import { useDelivery } from '@/features/receive/use-delivery';
-import { clock, plural } from '@/lib/format';
+import { WhoIsItFrom } from '@/features/receive/who-is-it-from';
+import { plural } from '@/lib/format';
 import { useWorkingLocation } from '@/session/location-provider';
 import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
@@ -16,20 +20,16 @@ import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
 import { LineRow } from '@/ui/line-row';
-import { Notice } from '@/ui/notice';
-import { Card } from '@/ui/surface';
 import { Quantity } from '@/ui/quantity';
 import { ScanResultCard } from '@/ui/scan-result-card';
-import { SectionLabel } from '@/ui/section-label';
-import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { Tally } from '@/ui/tally';
 
 type Receiving = ReturnType<typeof useDelivery>;
 
-// Receive goods: scan box after box, one at a time. Each scan pauses the camera on a card to check it and
-// set how many, then Add (or Skip). The first line added opens the delivery; Finish books it all into
-// Unbinned.
+// Receive goods: first who it's from, then box after box, one at a time. Each scan pauses the camera on
+// a card to check it and set how many, then Add (or Skip). Finish books it all into Unbinned and ends on
+// a receipt.
 export default function Receive() {
   const { location } = useWorkingLocation();
   const receiving = useDelivery();
@@ -39,6 +39,7 @@ export default function Receive() {
   if (!receiving.loaded) return <View className="flex-1 bg-ground" />;
   if (receiving.finished && !delivery) return <Finished receiving={receiving} />;
   if (!location && !delivery) return <NeedsLocation />;
+  if (!delivery) return <WhoIsItFrom onStart={(sender, reference) => void receiving.start(sender, reference)} />;
 
   const unknown = groups.filter((group) => group.status === 'unknown').length;
   const toCheck = groups.filter((group) => statusText(group.status, group.reason).tone !== 'ok' && group.status !== 'waiting').length;
@@ -49,14 +50,7 @@ export default function Receive() {
         placeholder="Barcode or part number"
         scanEnabled={!receiving.held.pending}
         onScan={receiving.scan}
-        banner={
-          delivery ? (
-            <JobBanner
-              title={receiving.number ?? `Delivery ${clock(delivery.startedAt)}`}
-              detail={delivery.locationName ? `Into ${delivery.locationName} Unbinned` : null}
-            />
-          ) : null
-        }
+        banner={<JobBanner size="headline" title={deliveryName(delivery.sender)} detail={bannerDetail(delivery, receiving.number)} />}
         result={<LastScan receiving={receiving} />}
         action={
           // While a scan waits on Add or Skip, it's the only decision on screen.
@@ -86,18 +80,8 @@ export default function Receive() {
         {groups.map((group) => (
           <GroupRow key={group.code} group={group} receiving={receiving} />
         ))}
-        {!delivery && receiving.recent.length > 0 ? (
-          <>
-            <SectionLabel>Finished on this phone</SectionLabel>
-            {receiving.recent.map((item) => (
-              <Card key={item.documentId} className="min-h-14 flex-row items-center gap-3 px-3 py-2">
-                <Txt variant="label" className="flex-1">
-                  {`Delivery ${clock(item.startedAt)}`}
-                </Txt>
-                {item.finishedAt ? <Txt variant="caption">{`Finished ${clock(item.finishedAt)}`}</Txt> : null}
-              </Card>
-            ))}
-          </>
+        {groups.length === 0 && !receiving.held.pending ? (
+          <Button label="Cancel delivery" icon="close" variant="secondary" onPress={() => void receiving.cancel()} />
         ) : null}
       </JobScreen>
       <ConfirmSheet
@@ -189,20 +173,24 @@ function GroupRow({ group, receiving }: { group: LineGroup; receiving: Receiving
   );
 }
 
-// After Finish: the receipt number, where the stock went, and the next job.
+// The strip's second line: the receipt number once PartsLogic gives one, the delivery note, and where the
+// stock goes.
+function bannerDetail(delivery: Delivery, number: string | null): string {
+  const place = delivery.locationName ? `into ${delivery.locationName} Unbinned` : 'into Unbinned';
+  return [number ?? 'Not sent yet', delivery.reference, place].filter(Boolean).join(' · ');
+}
+
+// After Finish: the receipt, and the next job.
 function Finished({ receiving }: { receiving: Receiving }) {
   const finished = receiving.finished!;
-  const place = finished.delivery.locationName ? `${finished.delivery.locationName} Unbinned` : 'Unbinned';
   return (
-    <View className="flex-1 bg-ground">
-      <Notice
-        icon="sent"
-        tone="ok"
-        title={receiving.finishedNumber ?? 'Delivery finished'}
-        line={`${plural(finished.units, 'unit', 'units')} into ${place}`}>
-        <Button label="Put away now" icon="count" onPress={() => router.replace({ pathname: '/count', params: { purpose: 'put-away' } })} />
-        <Button label="Next delivery" variant="secondary" onPress={receiving.dismissFinished} />
-      </Notice>
-    </View>
+    <DeliveryReceipt
+      delivery={finished.delivery}
+      number={finished.number}
+      units={finished.units}
+      summary={finished.summary}
+      onPutAway={() => router.replace({ pathname: '/count', params: { purpose: 'put-away' } })}
+      onNext={receiving.dismissFinished}
+    />
   );
 }
