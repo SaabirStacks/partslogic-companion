@@ -16,7 +16,7 @@ import type { BoardSection, LiveWorkflow } from '@/workflows/catalogue';
 import { boardLayout } from './board-layout';
 import { openWorkKey, resumeText, type OpenWork } from './open-work';
 import type { SyncState } from './sync-state';
-import { tileDetail } from './tile-detail';
+import { tileBadge } from './tile-badge';
 
 type BoardProps = {
   sections: BoardSection[];
@@ -40,7 +40,7 @@ const pairs = <T,>(items: readonly T[]): T[][] =>
 
 // Home. The app's name with the account button, where this phone works and whether its work is sent, the
 // search field (Look up), open work to carry on with, then every job as a tile under its family, each with
-// its open work or progress (tile-detail.ts). Every job is one tap away.
+// a corner badge for its open work or what's waiting (tile-badge.ts). Every job is one tap away.
 export function BoardView({ sections, openWork, unbinned = null, update, location, sync, onJob, onResume, onLocation, onSync, onAccount }: BoardProps) {
   const insets = useSafeAreaInsets();
   const layout = boardLayout(sections);
@@ -125,7 +125,7 @@ export function BoardView({ sections, openWork, unbinned = null, update, locatio
                     <JobTile
                       label={workflow.label}
                       icon={workflow.icon}
-                      detail={tileDetail(workflow.id, openWork, unbinned)}
+                      badge={tileBadge(workflow.id, openWork, unbinned)}
                       onPress={() => onJob(workflow)}
                     />
                   </View>

@@ -28,6 +28,8 @@ export type LiveWorkflow = Base & {
   availability: 'live';
   icon: IconName;
   href: Href;
+  // false for a job started from inside another one rather than from its own tile.
+  onBoard?: false;
 };
 export type FutureWorkflow = Base & { availability: 'server-ready' | 'planned'; needs: string };
 
@@ -55,7 +57,8 @@ const LIVE = {
   },
   // Stock take and Opening stock are planned runs of bin counts: the phone keeps the run together and each
   // bin is a count PartsLogic records with the run and its purpose. Opening stock books found stock as
-  // opening stock.
+  // opening stock. A location is set up once (at go-live, or a new branch), so Opening stock has no tile:
+  // Stock take's first step asks which it is.
   'stock-take': {
     family: 'stock',
     label: 'Stock take',
@@ -71,6 +74,7 @@ const LIVE = {
     availability: 'live',
     icon: 'opening',
     href: { pathname: '/count', params: { purpose: 'opening-stock' } },
+    onBoard: false,
   },
   transfer: { family: 'stock', label: 'Transfer stock', minRole: 'counter', availability: 'live', icon: 'move', href: '/move' },
 } as const satisfies Record<string, LiveWorkflow>;
@@ -109,14 +113,15 @@ export function liveWorkflow(id: LiveWorkflowId): LiveWorkflow & { id: LiveWorkf
 
 export type BoardSection = { family: WorkflowFamily; label: string; workflows: (LiveWorkflow & { id: LiveWorkflowId })[] };
 
-// The board for a role: each family with at least one live workflow that role may do, in family order.
+// The board for a role: each family with at least one live workflow that role may do and that has a tile,
+// in family order.
 export function boardFor(role: AppRole): BoardSection[] {
   return FAMILIES.map(({ id, label }) => ({
     family: id,
     label,
     workflows: WORKFLOWS.filter(
       (entry): entry is LiveWorkflow & { id: LiveWorkflowId } =>
-        entry.family === id && entry.availability === 'live' && roleAtLeast(role, entry.minRole),
+        entry.family === id && entry.availability === 'live' && entry.onBoard !== false && roleAtLeast(role, entry.minRole),
     ),
   })).filter((section) => section.workflows.length > 0);
 }
