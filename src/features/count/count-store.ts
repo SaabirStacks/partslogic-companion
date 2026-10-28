@@ -1,10 +1,14 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { BinSession } from '@/vendor/partslogic/shared/bin-session';
+import type { CountPurpose } from '@/vendor/partslogic/shared/floor';
 
 // The two workflows a bin count serves (see src/workflows/catalogue.ts).
 export type CountWorkflow = 'put-away' | 'stock-count';
 export const countWorkflow = (value: unknown): CountWorkflow => (value === 'stock-count' ? 'stock-count' : 'put-away');
+
+// What PartsLogic records as the count's job (stocktakes.purpose), which also names it in the office.
+export const COUNT_PURPOSE: Record<CountWorkflow, CountPurpose> = { 'put-away': 'put_away', 'stock-count': 'stock_count' };
 
 export type BinCount = {
   stocktakeId: string;
