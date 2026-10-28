@@ -374,7 +374,13 @@ const SCREENS: Record<string, () => ReactNode> = {
   'run-plan': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />
-      <RunPlanView noun="stock take" locationName="Main" list={binList()} onStart={noop} />
+      <RunPlanView initial="stock-take" locationName="Main" list={binList()} onStart={noop} />
+    </View>
+  ),
+  'run-plan-opening': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunPlanView initial="opening-stock" locationName="Main" list={binList()} onStart={noop} />
     </View>
   ),
   'run-overview': () => (

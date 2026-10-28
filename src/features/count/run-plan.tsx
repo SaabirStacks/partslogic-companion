@@ -6,30 +6,41 @@ import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
 import { Choice } from '@/ui/choice';
 import { SectionLabel } from '@/ui/section-label';
+import { Segmented } from '@/ui/segmented';
 import { StatusStrip } from '@/ui/status-strip';
 import { Txt } from '@/ui/text';
 import { useColour } from '@/ui/theme';
 
 import { countedText, type BinChoice } from './bin-choices';
+import type { RunWorkflow } from './count-store';
 import { planBins, type RunPlan } from './run-progress';
 import type { RunBinPlan } from './run-store';
 
+const KINDS: readonly { value: RunWorkflow; label: string }[] = [
+  { value: 'stock-take', label: 'Stock take' },
+  { value: 'opening-stock', label: 'Opening stock' },
+];
+
 type BinList = { choices: BinChoice[]; loading: boolean; failed: boolean; savedAt: string | null; reload: () => void };
 
-// Step 1 of a stock take or opening stock: which bins. The whole location, a hand-picked set (an aisle or
-// a few shelves), or only bins never counted. noun is what the job is called ("stock take").
+// Step 1 of a stock take: which bins (the whole location, a hand-picked set such as an aisle or a few
+// shelves, or only bins never counted), and whether it's a stock take or opening stock. Opening stock is
+// setting a location up, done once, so it's asked here rather than having a tile; initial is the one asked
+// for.
 export function RunPlanView({
-  noun,
+  initial,
   locationName,
   list,
   onStart,
 }: {
-  noun: string;
+  initial: RunWorkflow;
   locationName: string;
   list: BinList;
-  onStart: (bins: RunBinPlan[]) => void;
+  onStart: (bins: RunBinPlan[], as: RunWorkflow) => void;
 }) {
   const colourOf = useColour();
+  const [kind, setKind] = useState<RunWorkflow>(initial);
+  const noun = kind === 'opening-stock' ? 'opening stock' : 'stock take';
   const [plan, setPlan] = useState<RunPlan>('every');
   const [chosen, setChosen] = useState<ReadonlySet<number>>(new Set());
   const bins = planBins(plan, list.choices, chosen);
@@ -46,6 +57,10 @@ export function RunPlanView({
   return (
     <View className="flex-1 bg-ground">
       <ScrollView contentContainerClassName="gap-3 px-4 pb-6 pt-4">
+        <Segmented options={KINDS} value={kind} onChange={setKind} />
+        {kind === 'opening-stock' ? (
+          <StatusStrip tone="warn" icon="opening" text={`Setting up ${locationName}: what’s found becomes its opening stock`} />
+        ) : null}
         <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
           Which bins?
         </Txt>
@@ -89,7 +104,7 @@ export function RunPlanView({
         label={bins.length > 0 ? `Start ${noun} · ${plural(bins.length, 'bin', 'bins')}` : plan === 'choose' ? 'Choose the bins' : 'No bins to count'}
         icon={bins.length > 0 ? 'count' : undefined}
         disabled={bins.length === 0}
-        onPress={() => onStart(bins)}
+        onPress={() => onStart(bins, kind)}
       />
     </View>
   );

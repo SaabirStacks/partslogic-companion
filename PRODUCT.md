@@ -42,8 +42,9 @@ back office, so what the phone does and what the office sees agree.
 ## Operating Context
 
 - **Workflows,** in the standard warehouse families (one list in `src/workflows/catalogue.ts`; the board
-  shows only the ones PartsLogic supports today). Each job's tile carries one line about its open work or
-  progress: "Open · 12 units", "Counting A-01", "1 of 4 bins", "24 in Unbinned".
+  shows only the ones PartsLogic supports today). A job's tile carries a badge in its corner for its open
+  work (amber: "Open", "Counting", "1 of 4") or what's waiting for it (blue: "24 waiting"); every tile is
+  the same size.
   - **Parts:**
     - **Look up:** scan or type, then see the part, on-hand stock per bin, prices, codes and
       alternatives.
@@ -68,8 +69,9 @@ back office, so what the phone does and what the office sees agree.
       counted), then count them one at a time, blind. Pause puts a Resume row on the board ("Stock take,
       1 of 4 bins"). It ends with a receipt. Each bin is its own count, and PartsLogic groups them as one
       run.
-    - **Opening stock:** the same run, for setting up a location. Stock found is booked as opening
-      stock.
+    - **Opening stock:** the same run, for setting up a location (at go-live, or a new branch), so it has
+      no tile of its own: Stock take's first step switches between Stock take and Opening stock. Stock
+      found is booked as opening stock.
     - **Transfer stock:** move stock between bins. Needs signal.
     - Later: adjust stock.
   - **Outbound** (later): pick, pack, outbound staging, dispatch, return to supplier.

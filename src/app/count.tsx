@@ -70,7 +70,8 @@ export default function Count() {
   if (!loaded) return <View className="flex-1 bg-ground" />;
   return (
     <>
-      <Stack.Screen options={{ title }} />
+      {/* A run names its screen itself: Stock take can open an opening-stock run. */}
+      {isRunWorkflow(workflow) ? null : <Stack.Screen options={{ title }} />}
       {isRunWorkflow(workflow) ? (
         <RunFlow workflow={workflow} counting={counting} />
       ) : counting.finished && !count ? (
@@ -169,13 +170,43 @@ function StartAnswer({ counting, locationName }: { counting: Counting; locationN
 // count as below, carrying the run's id), pause and resume from the board, and finish with a receipt.
 function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Counting }) {
   const { location } = useWorkingLocation();
-  const label = liveWorkflow(workflow).label;
-  const noun = label.toLowerCase();
   // Read again whenever one of the run's counts starts, moves on or finishes.
   const runFlow = useCountRun(workflow, `${counting.count?.stocktakeId ?? ''}:${counting.units}:${counting.recent.length}`);
   const bins = useBinChoices(!runFlow.loaded || runFlow.run ? null : (location?.id ?? null));
   const [overview, setOverview] = useState(false);
+  // Named for the run on screen (or finished), else for the job asked for.
+  const shown = runFlow.finished?.run.workflow ?? runFlow.run?.workflow ?? workflow;
+  const label = liveWorkflow(shown).label;
+  const noun = label.toLowerCase();
 
+  return (
+    <>
+      <Stack.Screen options={{ title: runFlow.run || runFlow.finished ? label : liveWorkflow('stock-take').label }} />
+      <RunStep runFlow={runFlow} counting={counting} workflow={workflow} label={label} noun={noun} bins={bins} overview={overview} setOverview={setOverview} />
+    </>
+  );
+}
+
+function RunStep({
+  runFlow,
+  counting,
+  workflow,
+  label,
+  noun,
+  bins,
+  overview,
+  setOverview,
+}: {
+  runFlow: ReturnType<typeof useCountRun>;
+  counting: Counting;
+  workflow: RunWorkflow;
+  label: string;
+  noun: string;
+  bins: ReturnType<typeof useBinChoices>;
+  overview: boolean;
+  setOverview: (shown: boolean) => void;
+}) {
+  const { location } = useWorkingLocation();
   if (!runFlow.loaded) return <View className="flex-1 bg-ground" />;
 
   if (runFlow.finished) {
@@ -202,7 +233,7 @@ function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Coun
   const run = runFlow.run;
   if (!run) {
     if (!location) return <NeedsLocation />;
-    return <RunPlanView noun={noun} locationName={location.name} list={bins} onStart={(planned) => void runFlow.start(planned)} />;
+    return <RunPlanView initial={workflow} locationName={location.name} list={bins} onStart={(planned, as) => void runFlow.start(planned, as)} />;
   }
 
   const progress = runFlow.progress!;
@@ -219,7 +250,7 @@ function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Coun
           setOverview(false);
           return;
         }
-        void counting.begin({ binId: bin.binId, binCode: bin.code, location: location?.code ?? null }, run.runId, workflow).then(() => setOverview(false));
+        void counting.begin({ binId: bin.binId, binCode: bin.code, location: location?.code ?? null }, run.runId, run.workflow).then(() => setOverview(false));
       }}
       onPause={() => router.back()}
       onFinish={() => void runFlow.finish()}

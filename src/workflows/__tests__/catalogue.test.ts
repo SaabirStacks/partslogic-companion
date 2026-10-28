@@ -30,13 +30,19 @@ describe('boardFor', () => {
       expect(boardFor(role).map((section) => [section.family, section.workflows.map((workflow) => workflow.id)])).toEqual([
         ['parts', ['lookup', 'add-part']],
         ['inbound', ['receive', 'put-away']],
-        ['stock', ['stock-count', 'stock-take', 'opening-stock', 'transfer']],
+        ['stock', ['stock-count', 'stock-take', 'transfer']],
       ]);
     }
   });
 
   it('gives viewers look up only', () => {
     expect(boardFor('viewer').map((section) => section.workflows.map((workflow) => workflow.id))).toEqual([['lookup']]);
+  });
+
+  it('starts Opening stock from inside Stock take, not from a tile of its own', () => {
+    const shown = boardFor('owner').flatMap((section) => section.workflows.map((workflow) => workflow.id));
+    expect(shown).not.toContain('opening-stock');
+    expect(WORKFLOWS.find((workflow) => workflow.id === 'opening-stock')?.availability).toBe('live');
   });
 
   it('never shows a workflow PartsLogic cannot support yet', () => {
