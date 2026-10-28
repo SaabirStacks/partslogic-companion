@@ -33,4 +33,8 @@ describe('countProgress', () => {
     expect(countProgress([item('commit_bin_count', 'done', result)], 'S1')).toEqual({ stage: 'done', result });
     expect(countProgress([item('commit_bin_count', 'pending')], 'S1')).toEqual({ stage: 'waiting' });
   });
+
+  it('counts one with nothing left in the outbox as sent: unsent work is always there', () => {
+    expect(countProgress([item('commit_bin_count', 'pending')], 'S2')).toEqual({ stage: 'sent' });
+  });
 });

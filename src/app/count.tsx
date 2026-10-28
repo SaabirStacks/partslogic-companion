@@ -15,7 +15,7 @@ import { useBinChoices } from '@/features/count/use-bin-choices';
 import { WhichBinView } from '@/features/count/which-bin';
 import { NeedsLocation } from '@/features/location/needs-location';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
-import { clock, plural } from '@/lib/format';
+import { plural, when } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
 import { useWorkingLocation } from '@/session/location-provider';
@@ -121,7 +121,7 @@ function CountedHere({ counting }: { counting: Counting }) {
                 {result.text}
               </Txt>
             </View>
-            {item.finishedAt ? <Txt variant="caption">{clock(item.finishedAt)}</Txt> : null}
+            {item.finishedAt ? <Txt variant="caption">{when(item.finishedAt)}</Txt> : null}
           </>
         );
         return result.problem ? (

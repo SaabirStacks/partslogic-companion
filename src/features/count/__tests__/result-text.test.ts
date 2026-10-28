@@ -32,4 +32,9 @@ describe('countSummary', () => {
     expect(countSummary({ stage: 'attention', reason: null }).tone).toBe('stop');
     expect(countSummary({ stage: 'waiting' }).items).toEqual([]);
   });
+
+  it('says a count sent a while ago was sent, never that it is waiting', () => {
+    expect(countResultText({ stage: 'sent' })).toEqual({ text: 'Sent', problem: false });
+    expect(countSummary({ stage: 'sent' })).toMatchObject({ tone: 'ok', label: 'Sent' });
+  });
 });
