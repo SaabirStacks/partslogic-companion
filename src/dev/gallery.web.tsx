@@ -20,6 +20,7 @@ import type { RunBin, RunProgress } from '@/features/count/run-progress';
 import { RunReceipt } from '@/features/count/run-receipt';
 import type { CountRun } from '@/features/count/run-store';
 import { WhichBinView } from '@/features/count/which-bin';
+import { WaitingView } from '@/features/put-away/waiting-view';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
 import { DeliveryReceipt } from '@/features/receive/delivery-receipt';
@@ -263,6 +264,8 @@ const SCREENS: Record<string, () => ReactNode> = {
     <BoardView
       sections={boardFor('counter')}
       openWork={[{ kind: 'delivery', from: 'BGA', units: 12, startedAt }]}
+      unbinned={24}
+      update={{ ready: true, restart: noop }}
       location="Main"
       sync={syncState({ waiting: 3, needsAttention: 0, online: true })}
       onJob={noop}
@@ -277,7 +280,7 @@ const SCREENS: Record<string, () => ReactNode> = {
       sections={boardFor('counter')}
       openWork={[
         { kind: 'delivery', from: 'BGA', units: 12, startedAt },
-        { kind: 'count', bin: 'A-01', units: 7, startedAt },
+        { kind: 'count', workflow: 'put-away', bin: 'A-01', units: 7, startedAt },
       ]}
       location="Main"
       sync={syncState({ waiting: 2, needsAttention: 1, online: true })}
@@ -320,7 +323,26 @@ const SCREENS: Record<string, () => ReactNode> = {
   'count-start': () => (
     <View className="flex-1">
       <StackHeader title="Put away" />
-      <WhichBinView list={binList()} waiting={{ units: 24, location: 'Main' }} online onChoose={noop} onCreate={noop} />
+      <WhichBinView list={binList()} waiting={{ units: 24, location: 'Main' }} online onChoose={noop} onCreate={noop} onWaiting={noop} />
+    </View>
+  ),
+  waiting: () => (
+    <View className="flex-1">
+      <StackHeader title="To put away" />
+      <WaitingView
+        location="Main"
+        rows={[
+          { partId: 1, name: 'Bosch 0 986 494 119', qty: 12, shelf: { binId: 3, code: 'B-01' } },
+          { partId: 2, name: 'Mann HU 816 x', qty: 8, shelf: { binId: 1, code: 'A-01' } },
+          { partId: 3, name: 'NGK BKR6E', qty: 4, shelf: null },
+        ]}
+        loading={false}
+        failed={false}
+        online
+        limit={200}
+        onRow={noop}
+        onRetry={noop}
+      />
     </View>
   ),
   'count-start-stock': () => (

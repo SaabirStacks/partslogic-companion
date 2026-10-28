@@ -22,7 +22,7 @@ describe('resumeText', () => {
   });
 
   it('describes an open bin count by its bin', () => {
-    expect(resumeText({ kind: 'count', bin: 'A-01', units: 1, startedAt })).toEqual({
+    expect(resumeText({ kind: 'count', workflow: 'stock-count', bin: 'A-01', units: 1, startedAt })).toEqual({
       title: 'Bin A-01',
       detail: `1 unit · started ${clock(startedAt)}`,
       href: '/count',
@@ -82,6 +82,6 @@ describe('runWork', () => {
 
   it('keeps two runs apart on the board', () => {
     expect(openWorkKey(runWork(run, []))).toBe('run:r1');
-    expect(openWorkKey({ kind: 'count', bin: 'A-01', units: 1, startedAt })).toBe('count');
+    expect(openWorkKey({ kind: 'count', workflow: 'stock-count', bin: 'A-01', units: 1, startedAt })).toBe('count');
   });
 });
