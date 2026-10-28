@@ -26,21 +26,21 @@ export type CountSummary = { tone: Tone; icon: IconName; label: string; items: T
 // The result screen after a count, in big numbers: what went onto the shelf from Unbinned, what went back
 // to Unbinned, and what turned up that PartsLogic didn't expect.
 export function countSummary(progress: CountProgress): CountSummary {
-  if (progress.stage === 'waiting') return { tone: 'surface', icon: 'waiting', label: 'Waiting to send', items: [] };
+  if (progress.stage === 'waiting') return { tone: 'neutral', icon: 'waiting', label: 'Waiting to send', items: [] };
   if (progress.stage === 'attention') {
     return { tone: 'stop', icon: 'stop', label: progress.reason ? `Not finished · ${progress.reason}` : 'Not finished', items: [] };
   }
   const { result } = progress;
   const review = result.partial || result.needsReview;
   return {
-    tone: review ? 'warning' : 'safe',
+    tone: review ? 'warn' : 'ok',
     icon: review ? 'warning' : 'sent',
     label: review ? 'Done · office will review' : 'Done',
     items: [
-      { value: result.putAway, label: 'Put away', tone: result.putAway > 0 ? 'safe' : undefined },
+      { value: result.putAway, label: 'Put away', tone: result.putAway > 0 ? 'ok' : undefined },
       { value: result.returned, label: 'To Unbinned' },
       { value: result.found, label: 'Found' },
-      ...(result.unresolved > 0 ? [{ value: result.unresolved, label: 'Unknown', tone: 'warning' as const }] : []),
+      ...(result.unresolved > 0 ? [{ value: result.unresolved, label: 'Unknown', tone: 'warn' as const }] : []),
     ],
   };
 }

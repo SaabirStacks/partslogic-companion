@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { Icon } from './icon';
-import { plateClass, PressablePlate } from './plate';
-import { SignText } from './sign-text';
+import { surfaceClass, PressableCard } from './surface';
+import { Txt } from './text';
 import { useColour } from './theme';
 
 function Step({ label, icon, onPress, disabled }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {
   return (
-    <PressablePlate accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-12 w-12 items-center justify-center">
+    <PressableCard accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-12 w-12 items-center justify-center">
       <Icon name={icon} size={22} />
-    </PressablePlate>
+    </PressableCard>
   );
 }
 
@@ -49,7 +49,7 @@ export function Quantity({
           if (text.trim() !== '' && Number.isFinite(target)) onSet(target);
         }}
         onBlur={() => setEditing(false)}
-        className={plateClass({ className: 'h-12 w-24 border-focus text-center font-sign-heavy text-[28px] text-ink' })}
+        className={surfaceClass({ className: 'h-12 w-24 border-[1.5px] border-focus text-center font-extrabold text-[26px] text-ink' })}
       />
     );
   }
@@ -65,9 +65,9 @@ export function Quantity({
           setEditing(true);
         }}
         className="h-12 min-w-12 items-center justify-center px-1">
-        <SignText size="display" weight="heavy">
+        <Txt variant="headline" numbers className="font-extrabold">
           {total}
-        </SignText>
+        </Txt>
       </Pressable>
       <Step label={`One more ${name}`} icon="plus" onPress={() => onStep(1)} />
     </View>

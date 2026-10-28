@@ -127,6 +127,8 @@ created: `SaabirStacks/partslogic-companion`.
   SDK 57 template uses), each tab a folder with its own native `Stack`; icons are `expo-symbols`, SF
   Symbols on iOS and Material symbols on Android (`src/ui/icons.ts`); colours live once in
   `src/ui/palette.ts` and reach NativeWind through `vars()`.
+- **Settled 28 Oct:** the trade-counter look replaces the safety-sign look everywhere at once (shared parts
+  in `src/ui`), and the board puts Look up in a search field at the top, as in the task screens mock-up.
 - **Settled in Phase 2:** a scan's bin or unknown result appears in place under the camera (a panel),
   not in a sheet, so the camera stays in view; the part card is pushed inside the Look up tab
   (`/lookup/part/[id]`); a repeat read of the same code only counts after it has been out of view for

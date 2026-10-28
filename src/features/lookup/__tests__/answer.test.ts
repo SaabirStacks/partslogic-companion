@@ -24,9 +24,9 @@ const stocked = (overrides: Partial<Item> = {}): Item => ({
 });
 
 describe('partAnswer', () => {
-  it('is a white plate for a part in stock, with its bins (most first) and sell price', () => {
+  it('is green for a part in stock, with its bins (most first) and sell price', () => {
     const answer = partAnswer(detail(stocked()), 'GBP');
-    expect(answer.tone).toBe('surface');
+    expect(answer.tone).toBe('ok');
     expect(answer.status.label).toBe('In stock');
     expect(answer.onHand).toBe('12');
     expect(answer.bins.map((bin) => bin.place)).toEqual(['MAIN/C-03', 'MAIN/A-01']);
@@ -34,9 +34,9 @@ describe('partAnswer', () => {
     expect(answer.name).toBe('Oil filter');
   });
 
-  it('follows the stock sign: red when out, yellow when it needs reordering', () => {
+  it('follows the stock state: red when out, yellow when it needs reordering', () => {
     expect(partAnswer(detail(stocked({ onHand: 0, stock: [] })), 'GBP')).toMatchObject({ tone: 'stop', status: { label: 'Out of stock' } });
-    expect(partAnswer(detail(stocked({ onHand: 2, belowReorder: true })), 'GBP')).toMatchObject({ tone: 'warning', status: { label: 'Reorder' } });
+    expect(partAnswer(detail(stocked({ onHand: 2, belowReorder: true })), 'GBP')).toMatchObject({ tone: 'warn', status: { label: 'Reorder' } });
   });
 
   it('shows three bins and counts the rest, skipping empty ones', () => {
@@ -47,6 +47,6 @@ describe('partAnswer', () => {
   });
 
   it('says so when the part isn’t in the range', () => {
-    expect(partAnswer(detail(null), 'GBP')).toMatchObject({ tone: 'surface', status: { label: 'Not in your range' }, onHand: null });
+    expect(partAnswer(detail(null), 'GBP')).toMatchObject({ tone: 'neutral', status: { label: 'Not in your range' }, onHand: null });
   });
 });

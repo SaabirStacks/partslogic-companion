@@ -20,7 +20,7 @@ export function navigationTheme(scheme: Scheme): Theme {
     ...base,
     colors: {
       ...base.colors,
-      primary: colour(scheme, 'mandatory-ink'),
+      primary: colour(scheme, 'action-ink'),
       background: colour(scheme, 'ground'),
       card: colour(scheme, 'ground'),
       text: colour(scheme, 'ink'),

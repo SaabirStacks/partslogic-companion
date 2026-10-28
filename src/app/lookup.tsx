@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { partAnswer } from '@/features/lookup/answer';
-import { PartAnswerPlate } from '@/features/lookup/part-answer-plate';
+import { PartAnswerCard } from '@/features/lookup/part-answer-card';
 import { useLookUp, type LookUpView } from '@/features/lookup/use-look-up';
 import { loadPart } from '@/features/part/load-part';
 import { PartRow } from '@/features/part/part-row';
@@ -17,7 +17,7 @@ import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 
 type LookUpApi = ReturnType<typeof useLookUp>;
 
-// Look up: scan or type, and the answer lands on the result plate. A part shows its stock, bins and
+// Look up: scan or type, and the answer lands on the result card. A part shows its stock, bins and
 // price at a glance, and tapping it opens the whole part. The camera holds on the answer until Scan next.
 export default function LookUp() {
   const lookUp = useLookUp();
@@ -64,20 +64,20 @@ export default function LookUp() {
 function Answer({ view, lookUp, currency }: { view: LookUpView; lookUp: LookUpApi; currency: string }) {
   switch (view.kind) {
     case 'working':
-      return <ScanResultCard tone="surface" status={{ icon: 'waiting', label: 'Looking up' }} title={view.code} />;
+      return <ScanResultCard tone="neutral" status={{ icon: 'waiting', label: 'Looking up' }} title={view.code} />;
     case 'part':
-      return <PartPlate key={view.at} part={view.part} currency={currency} onOpen={() => lookUp.openPart(view.part)} />;
+      return <PartCard key={view.at} part={view.part} currency={currency} onOpen={() => lookUp.openPart(view.part)} />;
     case 'bin':
-      return <ScanResultCard tone="surface" status={{ icon: 'bin', label: 'Bin' }} title={view.bin} detail={view.location} />;
+      return <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'Bin' }} title={view.bin} detail={view.location} />;
     case 'unknown':
       return (
-        <ScanResultCard tone="warning" status={{ icon: 'warning', label: 'Unknown code' }} title={view.code} detail={barcodeProblem(view.code)}>
+        <ScanResultCard tone="warn" status={{ icon: 'warning', label: 'Unknown code' }} title={view.code} detail={barcodeProblem(view.code)}>
           <Button label="Search instead" icon="lookup" variant="secondary" compact onPress={() => lookUp.search(view.code)} />
         </ScanResultCard>
       );
     case 'offline':
       return (
-        <ScanResultCard tone="warning" status={{ icon: 'offline', label: 'No signal' }} title={view.code} detail="Not in the scan list on this phone">
+        <ScanResultCard tone="warn" status={{ icon: 'offline', label: 'No signal' }} title={view.code} detail="Not in the scan list on this phone">
           <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => lookUp.retry(view.code, view.typed)} />
         </ScanResultCard>
       );
@@ -89,25 +89,25 @@ function Answer({ view, lookUp, currency }: { view: LookUpView; lookUp: LookUpAp
       );
     case 'results':
       return view.results.length === 0 ? (
-        <ScanResultCard tone="warning" status={{ icon: 'lookup', label: 'No match' }} title={view.query} detail="Check the number, or scan the box" />
+        <ScanResultCard tone="warn" status={{ icon: 'lookup', label: 'No match' }} title={view.query} detail="Check the number, or scan the box" />
       ) : null;
     default:
       return null;
   }
 }
 
-// A scanned part: stock and price from PartsLogic (or the copy saved on this phone), drawn as the stock
-// sign. Until they arrive it shows the part with a dash for the quantity.
-function PartPlate({ part, currency, onOpen }: { part: RecentPart; currency: string; onOpen: () => void }) {
+// A scanned part: stock and price from PartsLogic (or the copy saved on this phone), with its stock chip.
+// Until they arrive it shows the part with a dash for the quantity.
+function PartCard({ part, currency, onOpen }: { part: RecentPart; currency: string; onOpen: () => void }) {
   const { data, error } = useRemote(`part:${part.partId}`, () => loadPart(part.partId));
   const title = `${part.brand} ${part.number}`;
 
   if (!data) {
     return error ? (
-      <ScanResultCard tone="warning" status={{ icon: 'offline', label: 'No signal' }} title={title} detail="Stock shows when you’re back online" />
+      <ScanResultCard tone="warn" status={{ icon: 'offline', label: 'No signal' }} title={title} detail="Stock shows when you’re back online" />
     ) : (
       <ScanResultCard
-        tone="surface"
+        tone="neutral"
         status={{ icon: 'waiting', label: data === null ? 'Not found' : 'Checking stock' }}
         title={title}
         quantity={{ value: '–', label: 'On hand' }}
@@ -115,7 +115,7 @@ function PartPlate({ part, currency, onOpen }: { part: RecentPart; currency: str
     );
   }
 
-  return <PartAnswerPlate title={title} answer={partAnswer(data.detail, currency)} savedAt={data.savedAt} onOpen={onOpen} />;
+  return <PartAnswerCard title={title} answer={partAnswer(data.detail, currency)} savedAt={data.savedAt} onOpen={onOpen} />;
 }
 
 // The one main action for what was scanned: open the part, count the bin, or add the unknown code. Scan
@@ -141,7 +141,7 @@ function Action({ view, lookUp, canCount }: { view: LookUpView; lookUp: LookUpAp
       <ActionBar
         label="Add part"
         icon="add"
-        tone="plain"
+        tone="neutral"
         onPress={() => router.push({ pathname: '/quick-add', params: { code: view.code } })}
       />
     );

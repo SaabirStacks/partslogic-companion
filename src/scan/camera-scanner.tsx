@@ -4,8 +4,7 @@ import { useEffect } from 'react';
 import { Linking, View } from 'react-native';
 
 import { Button } from '@/ui/button';
-import { Icon } from '@/ui/icon';
-import { SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 
 import { aimDistance } from './aim';
 import { classifyRead, PRODUCT_SYMBOLOGIES } from './code-kind';
@@ -44,10 +43,9 @@ export function CameraScanner({ onScan, enabled = true, onResume }: CameraScanne
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-black px-8">
         <View className="flex-row items-center gap-2">
-          <Icon name="barcode" size={28} colour="warning" />
-          <SignText size="title" weight="heavy" ink="text-warning">
+          <Txt variant="title" ink="text-white" className="font-bold">
             Camera off
-          </SignText>
+          </Txt>
         </View>
         <View className="self-stretch">
           {permission.canAskAgain ? (

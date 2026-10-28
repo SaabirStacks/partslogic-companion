@@ -7,7 +7,7 @@ import { PartView } from '@/features/part/part-view';
 import { useRemote } from '@/lib/use-remote';
 import { Button } from '@/ui/button';
 import { Notice } from '@/ui/notice';
-import { Plate } from '@/ui/plate';
+import { Card } from '@/ui/surface';
 import { classifyQueueError } from '@/vendor/partslogic/shared/errors';
 
 // The whole part, one tap from any scan. Nothing about stock is hidden (see PartView).
@@ -29,14 +29,14 @@ export default function PartCard() {
     }, [reload]),
   );
 
-  if (!valid || data === null) return <Notice icon="lookup" tone="warning" title="Part not found" line="It may have been merged or removed." />;
+  if (!valid || data === null) return <Notice icon="lookup" tone="warn" title="Part not found" line="It may have been merged or removed." />;
   if (data) return <PartView detail={data.detail} savedAt={data.savedAt} />;
   if (error && !loading) {
     const offline = classifyQueueError(error as { code?: string; message?: string }) === 'retry';
     return (
       <Notice
         icon={offline ? 'offline' : 'stop'}
-        tone={offline ? 'warning' : 'stop'}
+        tone={offline ? 'warn' : 'stop'}
         title={offline ? 'No signal' : 'Didn’t load'}
         line={offline ? 'This part isn’t saved on this phone yet.' : (error as Error).message}>
         <Button label="Try again" icon="retry" variant="secondary" onPress={reload} />
@@ -49,10 +49,10 @@ export default function PartCard() {
 function Skeleton() {
   return (
     <View accessibilityLabel="Loading part" className="gap-3 bg-ground px-3 pt-3">
-      <Plate className="h-24" />
-      <Plate className="h-28" />
-      <Plate className="h-16" />
-      <Plate className="h-16" />
+      <Card className="h-24" />
+      <Card className="h-28" />
+      <Card className="h-16" />
+      <Card className="h-16" />
     </View>
   );
 }

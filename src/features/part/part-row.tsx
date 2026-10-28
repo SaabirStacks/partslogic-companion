@@ -1,10 +1,10 @@
 import { View } from 'react-native';
 
 import { Icon } from '@/ui/icon';
-import { PressablePlate } from '@/ui/plate';
-import { Detail, SignText } from '@/ui/sign-text';
+import { PressableCard } from '@/ui/surface';
+import { Txt } from '@/ui/text';
 
-// One part in a list (recent scans, search matches, alternatives): brand and number as a sign, the
+// One part in a list (recent scans, search matches, alternatives): brand and number in bold, the
 // description under it, and an optional figure on the right such as how many are on hand.
 export function PartRow({
   brand,
@@ -20,22 +20,22 @@ export function PartRow({
   onPress: () => void;
 }) {
   return (
-    <PressablePlate
+    <PressableCard
       accessibilityLabel={[`${brand} ${number}`, description, value].filter(Boolean).join(', ')}
       onPress={onPress}
       className="min-h-16 flex-row items-center gap-3 px-3 py-2">
       <View className="flex-1">
-        <SignText size="label" weight="heavy" numberOfLines={1}>
+        <Txt variant="label" numberOfLines={1}>
           {`${brand} ${number}`}
-        </SignText>
-        {description ? <Detail numberOfLines={1}>{description}</Detail> : null}
+        </Txt>
+        {description ? <Txt variant="caption" numberOfLines={1}>{description}</Txt> : null}
       </View>
       {value ? (
-        <SignText size="label" weight="heavy" numberOfLines={1}>
+        <Txt variant="label" numberOfLines={1}>
           {value}
-        </SignText>
+        </Txt>
       ) : null}
       <Icon name="forward" size={16} />
-    </PressablePlate>
+    </PressableCard>
   );
 }

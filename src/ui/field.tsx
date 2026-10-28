@@ -1,24 +1,23 @@
 import type { Ref } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
 
-import { plateClass } from './plate';
-import { SignText } from './sign-text';
+import { Txt } from './text';
 import { useColour } from './theme';
 
-// A labelled text box on a white plate, 56 tall. The label is a sign above it, not a placeholder that
+// A labelled text box, 56 tall, on a white surface. The label sits above it, never a placeholder that
 // disappears while typing.
 export function Field({ label, ref, ...props }: TextInputProps & { label: string; ref?: Ref<TextInput> }) {
   const colourOf = useColour();
   return (
     <View className="gap-1.5">
-      <SignText size="tag" ink="text-quiet-ink">
+      <Txt variant="caption" className="px-0.5 font-semibold">
         {label}
-      </SignText>
+      </Txt>
       <TextInput
         ref={ref}
         accessibilityLabel={label}
         placeholderTextColor={colourOf('quiet-ink')}
-        className={plateClass({ className: 'h-14 px-3 text-[18px] text-ink focus:border-focus' })}
+        className="h-14 rounded-card border-[1.5px] border-edge bg-surface px-4 text-[17px] text-ink focus:border-focus"
         {...props}
       />
     </View>

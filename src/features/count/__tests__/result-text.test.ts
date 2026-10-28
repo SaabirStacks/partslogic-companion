@@ -17,7 +17,7 @@ describe('countResultText', () => {
 describe('countSummary', () => {
   it('gives the result in big numbers, green when done', () => {
     const summary = countSummary({ stage: 'done', result: { ...result, putAway: 6, returned: 1, found: 2 } });
-    expect(summary.tone).toBe('safe');
+    expect(summary.tone).toBe('ok');
     expect(summary.items.map((item) => [item.label, item.value])).toEqual([
       ['Put away', 6],
       ['To Unbinned', 1],
@@ -27,8 +27,8 @@ describe('countSummary', () => {
 
   it('adds unknown codes, turns yellow for an office review, and red when stuck', () => {
     const review = countSummary({ stage: 'done', result: { ...result, unresolved: 1, needsReview: true } });
-    expect(review.tone).toBe('warning');
-    expect(review.items.at(-1)).toEqual({ value: 1, label: 'Unknown', tone: 'warning' });
+    expect(review.tone).toBe('warn');
+    expect(review.items.at(-1)).toEqual({ value: 1, label: 'Unknown', tone: 'warn' });
     expect(countSummary({ stage: 'attention', reason: null }).tone).toBe('stop');
     expect(countSummary({ stage: 'waiting' }).items).toEqual([]);
   });

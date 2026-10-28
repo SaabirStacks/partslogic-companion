@@ -26,7 +26,7 @@ export async function readOpenWork(database: SQLiteDatabase, userId: string): Pr
   return work;
 }
 
-// The resume plate's words: what's open, and how far it got.
+// The resume row's words: what's open, and how far it got.
 export function resumeText(work: OpenWork): { title: string; detail: string; href: Href } {
   const detail = `${plural(work.units, 'unit', 'units')} · started ${clock(work.startedAt)}`;
   return work.kind === 'delivery'

@@ -52,7 +52,7 @@ export function useBinCount(workflow: CountWorkflow) {
   const [recent, setRecent] = useState<BinCount[]>([]);
   const [start, setStart] = useState<StartState>({ kind: 'idle' });
   // The scan waiting on Count or Skip (the camera pauses on it), and the scan last counted. key is new for
-  // every scan, so the result plate rises even when the same part is scanned again.
+  // every scan, so the result card rises even when the same part is scanned again.
   const check = useCallback(
     async (code: string) => {
       const hit = await checkScan(code, location);

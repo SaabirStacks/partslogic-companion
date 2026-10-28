@@ -17,11 +17,11 @@ import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
 import { LineRow } from '@/ui/line-row';
 import { Notice } from '@/ui/notice';
-import { Plate } from '@/ui/plate';
+import { Card } from '@/ui/surface';
 import { Quantity } from '@/ui/quantity';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { SectionLabel } from '@/ui/section-label';
-import { Detail, SignText } from '@/ui/sign-text';
+import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { Tally } from '@/ui/tally';
 
@@ -41,7 +41,7 @@ export default function Receive() {
   if (!location && !delivery) return <NeedsLocation />;
 
   const unknown = groups.filter((group) => group.status === 'unknown').length;
-  const toCheck = groups.filter((group) => statusText(group.status, group.reason).tone !== 'safe' && group.status !== 'waiting').length;
+  const toCheck = groups.filter((group) => statusText(group.status, group.reason).tone !== 'ok' && group.status !== 'waiting').length;
 
   return (
     <>
@@ -77,7 +77,7 @@ export default function Receive() {
           items={[
             { value: units, label: 'Units' },
             { value: groups.length, label: 'Codes' },
-            { value: toCheck, label: 'To check', tone: toCheck > 0 ? 'warning' : undefined },
+            { value: toCheck, label: 'To check', tone: toCheck > 0 ? 'warn' : undefined },
           ]}
         />
         {receiving.problems > 0 ? (
@@ -90,12 +90,12 @@ export default function Receive() {
           <>
             <SectionLabel>Finished on this phone</SectionLabel>
             {receiving.recent.map((item) => (
-              <Plate key={item.documentId} className="min-h-14 flex-row items-center gap-3 px-3 py-2">
-                <SignText size="label" weight="heavy" className="flex-1">
+              <Card key={item.documentId} className="min-h-14 flex-row items-center gap-3 px-3 py-2">
+                <Txt variant="label" className="flex-1">
                   {`Delivery ${clock(item.startedAt)}`}
-                </SignText>
-                {item.finishedAt ? <Detail>{`Finished ${clock(item.finishedAt)}`}</Detail> : null}
-              </Plate>
+                </Txt>
+                {item.finishedAt ? <Txt variant="caption">{`Finished ${clock(item.finishedAt)}`}</Txt> : null}
+              </Card>
             ))}
           </>
         ) : null}
@@ -122,7 +122,7 @@ export default function Receive() {
   );
 }
 
-// The plate over the camera's edge: the scan being held for a decision, or else the line just added and
+// The card over the camera's edge: the scan being held for a decision, or else the line just added and
 // how many of it are in the delivery now.
 function LastScan({ receiving }: { receiving: Receiving }) {
   const { held, lastLine, groups } = receiving;
@@ -147,7 +147,7 @@ function LastScan({ receiving }: { receiving: Receiving }) {
     return (
       <ScanResultCard
         key={lastLine.clientLineId}
-        tone="surface"
+        tone="neutral"
         status={{ icon: 'undo', label: 'Taken off' }}
         title={lastLine.label ?? lastLine.code}
         quantity={{ value: String(lastLine.qty).replace('-', '−'), label: `${total} in delivery` }}
@@ -158,7 +158,7 @@ function LastScan({ receiving }: { receiving: Receiving }) {
   return (
     <ScanResultCard
       key={lastLine.clientLineId}
-      tone={known ? 'safe' : 'warning'}
+      tone={known ? 'ok' : 'warn'}
       status={known ? { icon: 'sent', label: 'Added' } : { icon: 'warning', label: 'Added · unknown code' }}
       title={lastLine.label ?? lastLine.code}
       detail={known ? lastLine.code : null}
@@ -197,7 +197,7 @@ function Finished({ receiving }: { receiving: Receiving }) {
     <View className="flex-1 bg-ground">
       <Notice
         icon="sent"
-        tone="safe"
+        tone="ok"
         title={receiving.finishedNumber ?? 'Delivery finished'}
         line={`${plural(finished.units, 'unit', 'units')} into ${place}`}>
         <Button label="Put away now" icon="count" onPress={() => router.replace({ pathname: '/count', params: { purpose: 'put-away' } })} />

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { Icon } from '@/ui/icon';
-import { plateClass } from '@/ui/plate';
+import { surfaceClass } from '@/ui/surface';
 import { useColour } from '@/ui/theme';
 
 // Typed entry for when a barcode won't scan. Bluetooth and USB scanners type into it too: they send the
@@ -22,7 +22,7 @@ export function ScanField({
   const [text, setText] = useState('');
 
   return (
-    <View className={plateClass({ className: 'h-14 flex-row items-center gap-2 px-3' })}>
+    <View className={surfaceClass({ className: 'h-14 flex-row items-center gap-2 px-3' })}>
       <Icon name="keyboard" size={20} colour="quiet-ink" />
       <TextInput
         accessibilityLabel={placeholder}
@@ -42,7 +42,7 @@ export function ScanField({
           setText('');
           onSubmit(value);
         }}
-        className="h-14 flex-1 font-sign-bold text-[22px] text-ink"
+        className="h-14 flex-1 font-bold text-[22px] text-ink"
       />
     </View>
   );

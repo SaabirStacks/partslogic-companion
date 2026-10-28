@@ -10,9 +10,9 @@ describe('statusText', () => {
   });
 
   it('is green once booked, yellow when the office must look, and plain while waiting', () => {
-    expect(statusText('booked', null).tone).toBe('safe');
-    expect(statusText('unknown', null).tone).toBe('warning');
-    expect(statusText('void', null).tone).toBe('warning');
-    expect(statusText('waiting', null).tone).toBe('surface');
+    expect(statusText('booked', null).tone).toBe('ok');
+    expect(statusText('unknown', null).tone).toBe('warn');
+    expect(statusText('void', null).tone).toBe('warn');
+    expect(statusText('waiting', null).tone).toBe('neutral');
   });
 });

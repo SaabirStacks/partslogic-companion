@@ -7,10 +7,10 @@ import { Easing, FadeIn, FadeInDown, LinearTransition, ReduceMotion } from 'reac
 
 export const EASE_OUT = Easing.out(Easing.exp);
 
-// The result plate rising over the camera after a scan.
+// The result card rising over the camera after a scan.
 export const RISE = FadeInDown.duration(160).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
 
-// Something new arriving in place: a resume plate, a changed status.
+// Something new arriving in place: a resume row, a changed status.
 export const APPEAR = FadeIn.duration(160).reduceMotion(ReduceMotion.Never);
 
 // Neighbours sliding to make room when a line is added or removed.
