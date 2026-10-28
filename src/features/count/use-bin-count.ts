@@ -6,9 +6,9 @@ import { deviceLabel } from '@/lib/device';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import { useOutbox } from '@/queue/outbox-provider';
-import { feedbackFor, scanFeedback } from '@/scan/feedback';
+import { feedbackFor } from '@/scan/feedback';
 import { usePendingScan } from '@/scan/pending-scan';
-import { checkScan, partLabel, resolveCode, worthRechecking, type ScanCheck } from '@/scan/resolve';
+import { checkScan, partLabel, worthRechecking, type ScanCheck } from '@/scan/resolve';
 import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import {
@@ -20,10 +20,9 @@ import {
   type QueueItem,
 } from '@/vendor/partslogic/shared/bin-session';
 import { ensureBin } from '@/vendor/partslogic/shared/floor';
-import { looksLikeBarcode } from '@/vendor/partslogic/shared/gtin';
 
 import { countLineOutcomes, countProgress } from './count-results';
-import { CountStore, type BinCount, type CountWorkflow } from './count-store';
+import { COUNT_PURPOSE, CountStore, type BinCount, type CountWorkflow } from './count-store';
 
 export type BinToCount = { binId: number; binCode: string; location: string | null };
 
@@ -31,7 +30,6 @@ export type BinToCount = { binId: number; binCode: string; location: string | nu
 export type StartState =
   | { kind: 'idle' }
   | { kind: 'checking'; code: string }
-  | { kind: 'create'; code: string }
   | { kind: 'message'; title: string; body: string };
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -121,7 +119,15 @@ export function useBinCount(workflow: CountWorkflow) {
     };
     await store.create(created);
     await outbox.enqueue(
-      { kind: 'open_bin_count', clientId: Crypto.randomUUID(), stocktakeId, binId: bin.binId, startedAt, device: deviceLabel() },
+      {
+        kind: 'open_bin_count',
+        clientId: Crypto.randomUUID(),
+        stocktakeId,
+        binId: bin.binId,
+        startedAt,
+        device: deviceLabel(),
+        purpose: COUNT_PURPOSE[workflow],
+      },
       label(created),
     );
     setStart({ kind: 'idle' });
@@ -150,38 +156,6 @@ export function useBinCount(workflow: CountWorkflow) {
     finished,
     online,
     progressOf: (id: string) => countProgress(outbox.items, id),
-
-    // A typed (or scanned) code before a count: it must be a bin. Bins carry a name, not a barcode, so a
-    // product barcode here is a slip, never a bin to create.
-    async chooseBin(code: string) {
-      setStart({ kind: 'checking', code });
-      try {
-        const hit = await resolveCode(code, location);
-        if (hit.type === 'bin') {
-          scanFeedback.found();
-          await begin({ binId: hit.binId, binCode: hit.bin, location: hit.location });
-        } else if (hit.type === 'part') {
-          scanFeedback.unknown();
-          setStart({ kind: 'message', title: 'That’s a part', body: 'Type the bin name' });
-        } else if (looksLikeBarcode(code)) {
-          scanFeedback.unknown();
-          setStart({ kind: 'message', title: 'That’s a product barcode', body: 'Type the bin name' });
-        } else if (hit.type === 'unknown' && !hit.offline && location) {
-          scanFeedback.unknown();
-          setStart({ kind: 'create', code });
-        } else {
-          scanFeedback.unknown();
-          setStart({
-            kind: 'message',
-            title: `${code} isn’t a bin`,
-            body: online ? 'Choose a location to create it' : 'Not in the scan list · connect to create it',
-          });
-        }
-      } catch (error) {
-        scanFeedback.failed();
-        setStart({ kind: 'message', title: 'Didn’t work', body: (error as Error).message });
-      }
-    },
 
     // Creates the bin in the working location (needs signal: the count needs its id).
     async createBin(code: string) {

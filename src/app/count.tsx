@@ -6,6 +6,8 @@ import { countWorkflow, type CountWorkflow } from '@/features/count/count-store'
 import { CountReceipt } from '@/features/count/count-receipt';
 import { countResultText, countSummary } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
+import { useBinChoices } from '@/features/count/use-bin-choices';
+import { WhichBinView } from '@/features/count/which-bin';
 import { NeedsLocation } from '@/features/location/needs-location';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
 import { clock, plural } from '@/lib/format';
@@ -73,66 +75,62 @@ function Start({ counting, purpose }: { counting: Counting; purpose: CountWorkfl
   // Read the id here, not inside the loader: the React Compiler reads what a callback uses while the screen
   // renders, so `location!.id` in the callback crashed before a location was chosen.
   const locationId = location?.id ?? null;
+  const bins = useBinChoices(locationId);
   // Putting away starts from what's waiting in Unbinned, so it shows how much is there.
   const unbinned = useRemote(purpose === 'put-away' && locationId !== null && counting.online ? `unbinned:${locationId}` : null, () =>
     unlocatedStockSummary(supabase, locationId),
   );
-  const { start } = counting;
 
   if (!location) return <NeedsLocation />;
 
   return (
-    <JobScreen
-      placeholder="Bin name, for example A-01"
-      // Bins carry a name, not a barcode, so the keyboard is ready on arrival.
-      typeFirst
-      scanEnabled={start.kind !== 'checking'}
-      onScan={(code) => void counting.chooseBin(code)}
-      banner={<JobBanner title="Choose a bin" detail={location.name} />}
-      result={<StartAnswer counting={counting} locationName={location.name} />}>
-      {unbinned.data && unbinned.data.parts > 0 ? (
-        <Tally
-          items={[
-            { value: unbinned.data.qty, label: 'Unbinned units', tone: 'warn' },
-            { value: unbinned.data.parts, label: 'Parts' },
-          ]}
-        />
-      ) : null}
-      {counting.recent.length > 0 ? (
-        <>
-          <SectionLabel>Counted on this phone</SectionLabel>
-          {counting.recent.map((item) => {
-            const result = countResultText(counting.progressOf(item.stocktakeId));
-            const face = (
-              <>
-                <View className="flex-1">
-                  <Txt variant="label">{`Bin ${item.binCode}`}</Txt>
-                  <Txt variant="caption" ink={result.problem ? 'text-stop-ink' : 'text-quiet-ink'} numberOfLines={2}>
-                    {result.text}
-                  </Txt>
-                </View>
-                {item.finishedAt ? <Txt variant="caption">{clock(item.finishedAt)}</Txt> : null}
-              </>
-            );
-            return result.problem ? (
-              <PressableCard
-                key={item.stocktakeId}
-                tone="neutral"
-                accessibilityLabel={`Bin ${item.binCode}, ${result.text}. Open Sync`}
-                onPress={() => router.navigate('/sync')}
-                className="min-h-16 flex-row items-center gap-3 px-3 py-2">
-                {face}
-                <Icon name="forward" size={16} />
-              </PressableCard>
-            ) : (
-              <Card key={item.stocktakeId} className="min-h-16 flex-row items-center gap-3 px-3 py-2">
-                {face}
-              </Card>
-            );
-          })}
-        </>
-      ) : null}
-    </JobScreen>
+    <WhichBinView
+      list={bins}
+      online={counting.online}
+      waiting={unbinned.data ? { units: unbinned.data.qty, location: location.name } : null}
+      onChoose={(bin) => void counting.begin({ binId: bin.binId, binCode: bin.code, location: location.code })}
+      onCreate={(code) => void counting.createBin(code)}
+      notice={<StartAnswer counting={counting} locationName={location.name} />}
+      footer={<CountedHere counting={counting} />}
+    />
+  );
+}
+
+// Counts finished on this phone, so a problem with one is a tap from Sync.
+function CountedHere({ counting }: { counting: Counting }) {
+  if (counting.recent.length === 0) return null;
+  return (
+    <>
+      <SectionLabel>Counted on this phone</SectionLabel>
+      {counting.recent.map((item) => {
+        const result = countResultText(counting.progressOf(item.stocktakeId));
+        const face = (
+          <>
+            <View className="flex-1">
+              <Txt variant="label" className="font-bold">{`Bin ${item.binCode}`}</Txt>
+              <Txt variant="caption" ink={result.problem ? 'text-stop-ink' : 'text-quiet-ink'} numberOfLines={2}>
+                {result.text}
+              </Txt>
+            </View>
+            {item.finishedAt ? <Txt variant="caption">{clock(item.finishedAt)}</Txt> : null}
+          </>
+        );
+        return result.problem ? (
+          <PressableCard
+            key={item.stocktakeId}
+            accessibilityLabel={`Bin ${item.binCode}, ${result.text}. Open Sync`}
+            onPress={() => router.navigate('/sync')}
+            className="min-h-16 flex-row items-center gap-3 px-4 py-2">
+            {face}
+            <Icon name="forward" size={16} colour="quiet-ink" />
+          </PressableCard>
+        ) : (
+          <Card key={item.stocktakeId} className="min-h-16 flex-row items-center gap-3 px-4 py-2">
+            {face}
+          </Card>
+        );
+      })}
+    </>
   );
 }
 
@@ -141,13 +139,6 @@ function StartAnswer({ counting, locationName }: { counting: Counting; locationN
   switch (start.kind) {
     case 'checking':
       return <ScanResultCard tone="neutral" status={{ icon: 'waiting', label: 'Checking' }} title={start.code} />;
-    case 'create':
-      return (
-        <ScanResultCard key={start.code} tone="warn" status={{ icon: 'bin', label: `Not a bin in ${locationName}` }} title={start.code}>
-          <Button label={`Create bin ${start.code}`} icon="plus" compact onPress={() => void counting.createBin(start.code)} />
-          <Button label="Cancel" variant="secondary" compact onPress={counting.resetStart} />
-        </ScanResultCard>
-      );
     case 'message':
       return (
         <ScanResultCard key={start.title} tone="warn" status={{ icon: 'warning', label: 'Not started' }} title={start.title} detail={start.body}>

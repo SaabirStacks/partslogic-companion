@@ -14,6 +14,7 @@ import { PartView } from '@/features/part/part-view';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
 import { AddForm } from '@/features/quick-add/add-part-screens';
 import { CountReceipt } from '@/features/count/count-receipt';
+import { WhichBinView } from '@/features/count/which-bin';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
 import { DeliveryReceipt } from '@/features/receive/delivery-receipt';
@@ -214,6 +215,20 @@ function WhoScreen({ kind, chosen, reference, savedAt = null }: { kind: Sender['
   );
 }
 
+// Bins for the Which bin? screens: two counted, two never.
+const binList = (savedAt: string | null = null) => ({
+  choices: [
+    { binId: 1, code: 'A-01', description: null, units: 18, lastCounted: '2026-10-03T10:00:00Z' },
+    { binId: 2, code: 'A-02', description: null, units: 9, lastCounted: null },
+    { binId: 3, code: 'B-01', description: 'Top shelf', units: 31, lastCounted: '2026-10-09T10:00:00Z' },
+    { binId: 4, code: 'B-02', description: null, units: 0, lastCounted: null },
+  ],
+  loading: false,
+  failed: false,
+  savedAt,
+  reload: noop,
+});
+
 const SCREENS: Record<string, () => ReactNode> = {
   board: () => (
     <BoardView
@@ -263,14 +278,13 @@ const SCREENS: Record<string, () => ReactNode> = {
   'count-start': () => (
     <View className="flex-1">
       <StackHeader title="Put away" />
-      <JobScreen placeholder="Bin name, for example A-01" typeFirst onScan={noop} banner={<JobBanner title="Choose a bin" detail="Main" />}>
-        <Tally
-          items={[
-            { value: 24, label: 'Unbinned units', tone: 'warn' },
-            { value: 7, label: 'Parts' },
-          ]}
-        />
-      </JobScreen>
+      <WhichBinView list={binList()} waiting={{ units: 24, location: 'Main' }} online onChoose={noop} onCreate={noop} />
+    </View>
+  ),
+  'count-start-stock': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock count" />
+      <WhichBinView list={binList(startedAt)} waiting={null} online={false} onChoose={noop} onCreate={noop} />
     </View>
   ),
   count: () => (

@@ -25,6 +25,8 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
         binId: item.binId,
         device: item.device,
         startedAt: item.startedAt,
+        purpose: item.purpose,
+        runId: item.runId,
       });
     case 'bin_count_lines':
       return recordCounts(supabase, { stocktakeId: item.stocktakeId, binId: item.binId, lines: item.lines });

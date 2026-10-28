@@ -54,8 +54,10 @@ back office, so what the phone does and what the office sees agree.
       names its supplier and delivery note in the office, and the stock lands in the location's
       **Unbinned** bin, which serves as inbound staging. Later, a delivery is matched against the
       purchase order it fills.
-    - **Put away:** choose a bin and count it, blind. Counting a bin pulls stock from Unbinned onto the
-      shelf; anything not scanned goes back to Unbinned.
+    - **Put away:** choose a bin from the list (bins carry a name on the shelf, not a barcode; each shows
+      when it was last counted, and what's waiting in Unbinned sits on top) and count it, blind.
+      Counting a bin pulls stock from Unbinned onto the shelf; anything not scanned goes back to
+      Unbinned. PartsLogic records each count as a put away or a stock count.
     - Later: inbound staging areas, customer returns.
   - **Stock control:**
     - **Stock count:** the same blind bin count, to check a shelf.
