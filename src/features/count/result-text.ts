@@ -7,6 +7,7 @@ import type { CountProgress } from './count-results';
 // What a finished count did, in a few words for a list row.
 export function countResultText(progress: CountProgress): { text: string; problem: boolean } {
   if (progress.stage === 'waiting') return { text: 'Waiting to send', problem: false };
+  if (progress.stage === 'sent') return { text: 'Sent', problem: false };
   if (progress.stage === 'attention') {
     return { text: progress.reason ? `Not finished · ${progress.reason}` : 'Not finished', problem: true };
   }
@@ -27,6 +28,7 @@ export type CountSummary = { tone: Tone; icon: IconName; label: string; items: T
 // to Unbinned, and what turned up that PartsLogic didn't expect.
 export function countSummary(progress: CountProgress): CountSummary {
   if (progress.stage === 'waiting') return { tone: 'neutral', icon: 'waiting', label: 'Waiting to send', items: [] };
+  if (progress.stage === 'sent') return { tone: 'ok', icon: 'sent', label: 'Sent', items: [] };
   if (progress.stage === 'attention') {
     return { tone: 'stop', icon: 'stop', label: progress.reason ? `Not finished · ${progress.reason}` : 'Not finished', items: [] };
   }

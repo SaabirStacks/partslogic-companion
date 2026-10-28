@@ -5,7 +5,7 @@ import Animated from 'react-native-reanimated';
 import { db } from '@/db/database';
 import { syncState } from '@/features/board/sync-state';
 import { CountStore } from '@/features/count/count-store';
-import { clock } from '@/lib/format';
+import { when } from '@/lib/format';
 import { useOnline } from '@/lib/network';
 import { countOfStream, discardPlan } from '@/queue/discard';
 import { useOutbox } from '@/queue/outbox-provider';
@@ -55,7 +55,7 @@ export default function Sync() {
       <Animated.View key={state.label} entering={APPEAR}>
         <Card accessible accessibilityRole="header" accessibilityLabel={state.label} className="gap-2 p-4">
           <StatusChip tone={state.tone} icon={state.icon} label={state.label} large />
-          {outbox.lastSentAt ? <Txt variant="caption">{`Last sent ${clock(outbox.lastSentAt)}`}</Txt> : null}
+          {outbox.lastSentAt ? <Txt variant="caption">{`Last sent ${when(outbox.lastSentAt)}`}</Txt> : null}
         </Card>
       </Animated.View>
 
@@ -107,7 +107,7 @@ export default function Sync() {
             <Txt variant="label" numberOfLines={2} className="flex-1">
               {item.label}
             </Txt>
-            <Txt variant="caption">{clock(item.updatedAt)}</Txt>
+            <Txt variant="caption">{when(item.updatedAt)}</Txt>
           </Card>
         </Animated.View>
       ))}
@@ -126,7 +126,7 @@ export default function Sync() {
           }
           last={!scanIndex.saved}
         />
-        {scanIndex.saved ? <Fact label="Updated" value={clock(scanIndex.saved.syncedAt)} last /> : null}
+        {scanIndex.saved ? <Fact label="Updated" value={when(scanIndex.saved.syncedAt)} last /> : null}
       </Facts>
       {online && scanIndex.progress === null ? (
         <Button label="Update scan list" icon="retry" variant="secondary" onPress={scanIndex.update} />

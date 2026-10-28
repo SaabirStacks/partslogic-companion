@@ -144,12 +144,15 @@ export class SqliteOutboxStore implements OutboxStore {
   }
 
   async recent(userId: string, since: string) {
-    const rows = await this.db.getAllAsync<Row>(
-      `SELECT * FROM outbox WHERE user_id = ? AND (status != 'done' OR updated_at >= ?) ORDER BY seq DESC LIMIT 200`,
+    // Every unsent item, then at most 200 sent since `since`: a busy day of sent work never hides one
+    // still waiting.
+    const unsent = await this.db.getAllAsync<Row>(`SELECT * FROM outbox WHERE user_id = ? AND status != 'done'`, userId);
+    const sent = await this.db.getAllAsync<Row>(
+      `SELECT * FROM outbox WHERE user_id = ? AND status = 'done' AND updated_at >= ? ORDER BY seq DESC LIMIT 200`,
       userId,
       since,
     );
-    return rows.map(toItem);
+    return [...unsent, ...sent].sort((a, b) => b.seq - a.seq).map(toItem);
   }
 
   async recover() {

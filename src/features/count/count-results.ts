@@ -16,12 +16,17 @@ export function countLineOutcomes(items: OutboxItem[], stocktakeId: string): Map
 
 export type CountProgress =
   | { stage: 'waiting' }
+  // Sent a while ago: the outbox no longer holds what PartsLogic said about it.
+  | { stage: 'sent' }
   | { stage: 'attention'; reason: string | null }
   | { stage: 'done'; result: BinCountCommit };
 
-// Where a finished count stands: still on the phone, stuck, or completed with what it changed.
+// Where a finished count stands: still on the phone, stuck, or completed with what it changed. items always
+// holds every unsent item but only the last day's sent ones (OutboxStore.recent), so a count with nothing
+// in it was sent before that.
 export function countProgress(items: OutboxItem[], stocktakeId: string): CountProgress {
   const stream = items.filter((item) => 'stocktakeId' in item.payload && item.payload.stocktakeId === stocktakeId);
+  if (stream.length === 0) return { stage: 'sent' };
   const stuck = stream.find((item) => item.status === 'attention');
   if (stuck) return { stage: 'attention', reason: stuck.lastError };
   const commit = stream.find((item) => item.payload.kind === 'commit_bin_count' && item.status === 'done');
