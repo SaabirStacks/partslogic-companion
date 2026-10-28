@@ -25,21 +25,24 @@ type BinList = { choices: BinChoice[]; loading: boolean; failed: boolean; savedA
 
 // Step 1 of a stock take: which bins (the whole location, a hand-picked set such as an aisle or a few
 // shelves, or only bins never counted), and whether it's a stock take or opening stock. Opening stock is
-// setting a location up, done once, so it's asked here rather than having a tile; initial is the one asked
-// for.
+// setting a location up, done once, so it's asked here rather than having a tile, and only until the
+// location's opening stock is done (openingOffered). initial is the one asked for.
 export function RunPlanView({
   initial,
+  openingOffered = true,
   locationName,
   list,
   onStart,
 }: {
   initial: RunWorkflow;
+  openingOffered?: boolean;
   locationName: string;
   list: BinList;
   onStart: (bins: RunBinPlan[], as: RunWorkflow) => void;
 }) {
   const colourOf = useColour();
-  const [kind, setKind] = useState<RunWorkflow>(initial);
+  const [asked, setKind] = useState<RunWorkflow>(initial);
+  const kind: RunWorkflow = openingOffered ? asked : 'stock-take';
   const noun = kind === 'opening-stock' ? 'opening stock' : 'stock take';
   const [plan, setPlan] = useState<RunPlan>('every');
   const [chosen, setChosen] = useState<ReadonlySet<number>>(new Set());
@@ -57,7 +60,7 @@ export function RunPlanView({
   return (
     <View className="flex-1 bg-ground">
       <ScrollView contentContainerClassName="gap-3 px-4 pb-6 pt-4">
-        <Segmented options={KINDS} value={kind} onChange={setKind} />
+        {openingOffered ? <Segmented options={KINDS} value={kind} onChange={setKind} /> : null}
         {kind === 'opening-stock' ? (
           <StatusStrip tone="warn" icon="opening" text={`Setting up ${locationName}: what’s found becomes its opening stock`} />
         ) : null}

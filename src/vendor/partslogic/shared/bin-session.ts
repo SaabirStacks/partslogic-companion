@@ -130,6 +130,9 @@ export type QueueItem =
       number: string;
       code?: string;
       confirmNewBrand?: boolean;
-    };
+    }
+  // The location's opening stock is done: someone finished opening stock and said it's fully set up
+  // (markOpeningStockDone; the first time is kept, so a replay is success).
+  | { kind: 'opening_stock_done'; clientId: string; locationId: number };
 
 export type QueueKind = QueueItem['kind'];

@@ -16,5 +16,9 @@ export function streamKeyOf(item: QueueItem): string {
       return `bin:${item.locationId}:${item.code.toUpperCase()}`;
     case 'quick_add':
       return `quick-add:${item.clientId}`;
+    // Its own stream: the location's queued opening counts don't wait on it, and PartsLogic still takes the
+    // ones begun before it was marked done.
+    case 'opening_stock_done':
+      return `opening:${item.locationId}`;
   }
 }

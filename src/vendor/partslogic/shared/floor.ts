@@ -51,6 +51,33 @@ export type ReceiptSupplier = { sourceId: number; name: string };
 export type ReceiptManufacturer = { brandId: number; name: string };
 export type CountRun = { id: string; startedAt: string; bins: number };
 
+// A stock take or opening-stock run several people count together (count_runs), as count_run_status gives
+// it: every planned bin, in order, with where it stands. active is false for a count nobody has scanned
+// into for 2 hours, which no longer holds its bin; mine is the caller's own count.
+export type SharedRunPurpose = Extract<CountPurpose, 'stock_take' | 'opening'>;
+export type SharedRunBinState = 'not_started' | 'counting' | 'counted';
+export type SharedRunBin = {
+  binId: number;
+  code: string;
+  state: SharedRunBinState;
+  active: boolean;
+  by: string | null;
+  mine: boolean;
+  stocktakeId: string | null;
+  units: number;
+};
+export type SharedRun = {
+  runId: string;
+  locationId: number;
+  purpose: SharedRunPurpose;
+  status: 'open' | 'finished';
+  startedAt: string;
+  startedBy: string;
+  finishedAt: string | null;
+  finishedBy: string | null;
+  bins: SharedRunBin[];
+};
+
 export type FloorActivityRow = {
   id: string;
   kind: FloorDocumentKind;
@@ -265,6 +292,113 @@ export async function openBinCount(
     created: readBoolean(row.created) === true,
     needsReview: readBoolean(row.needs_review) === true,
   };
+}
+
+// Where a location's opening stock stands: done (when, by whom) or still being set up (doneAt null).
+export type OpeningStockStatus = { locationId: number; doneAt: string | null; doneBy: string | null };
+
+function openingStock(row: { location_id?: number | null; done_at?: string | null; done_by?: string | null }, fallback?: number): OpeningStockStatus | null {
+  const locationId = row.location_id ?? fallback;
+  if (locationId == null) return null;
+  return { locationId, doneAt: row.done_at ?? null, doneBy: row.done_by ?? null };
+}
+
+// Every location's opening stock, or one location's.
+export async function openingStockStatus(supabase: Client, locationId?: number): Promise<OpeningStockStatus[]> {
+  const { data, error } = await supabase.rpc('opening_stock_status', { p_location: locationId });
+  if (error) throw dataError(error);
+  return (data ?? []).flatMap((row) => openingStock(row) ?? []);
+}
+
+// Marks a location's opening stock done (it's fully set up), so it's no longer offered there. Counter and
+// up; the first time is kept.
+export async function markOpeningStockDone(supabase: Client, locationId: number): Promise<OpeningStockStatus> {
+  const { data, error } = await supabase.rpc('mark_opening_stock_done', { p_location: locationId });
+  if (error) throw dataError(error);
+  const row = requireRecord(data, 'The location could not be marked set up.');
+  return openingStock({ location_id: readNumber(row.location_id), done_at: readString(row.done_at), done_by: readString(row.done_by) }, locationId)!;
+}
+
+// Offers opening stock at a location again (a missed aisle, a setup gone wrong). Editors and up.
+export async function reopenOpeningStock(supabase: Client, locationId: number): Promise<OpeningStockStatus> {
+  const { error } = await supabase.rpc('reopen_opening_stock', { p_location: locationId });
+  if (error) throw dataError(error);
+  return { locationId, doneAt: null, doneBy: null };
+}
+
+const RUN_BIN_STATES: readonly SharedRunBinState[] = ['not_started', 'counting', 'counted'];
+
+function sharedRunBin(item: Json): SharedRunBin | null {
+  const row = readRecord(item);
+  const binId = readNumber(row?.bin_id);
+  const code = readString(row?.code);
+  if (!row || binId == null || !code) return null;
+  const state = RUN_BIN_STATES.find((value) => value === row.state) ?? 'not_started';
+  return {
+    binId,
+    code,
+    state,
+    active: readBoolean(row.active) === true,
+    by: readString(row.by),
+    mine: readBoolean(row.mine) === true,
+    stocktakeId: readString(row.stocktake_id),
+    units: readNumber(row.units) ?? 0,
+  };
+}
+
+function sharedRun(data: unknown): SharedRun {
+  const row = requireRecord(data, 'The stock take could not be read.');
+  const runId = readString(row.run_id);
+  const locationId = readNumber(row.location_id);
+  if (!runId || locationId == null) throw new DataError('The stock take could not be read.', 'P0001');
+  return {
+    runId,
+    locationId,
+    purpose: row.purpose === 'opening' ? 'opening' : 'stock_take',
+    status: row.status === 'finished' ? 'finished' : 'open',
+    startedAt: readString(row.started_at) ?? '',
+    startedBy: readString(row.started_by) ?? 'Someone',
+    finishedAt: readString(row.finished_at),
+    finishedBy: readString(row.finished_by),
+    bins: readArray(row.bins).flatMap((item) => sharedRunBin(item) ?? []),
+  };
+}
+
+// Starts a shared stock take or opening-stock run of these bins, or joins the one already open in the
+// location for the same job (created false, with that run's id). Needs signal.
+export async function startCountRun(
+  supabase: Client,
+  input: { runId: string; locationId: number; purpose: SharedRunPurpose; binIds: number[] },
+): Promise<SharedRun & { created: boolean }> {
+  const { data, error } = await supabase.rpc('start_count_run', {
+    p_run: input.runId,
+    p_location: input.locationId,
+    p_purpose: input.purpose,
+    p_bins: input.binIds,
+  });
+  if (error) throw dataError(error);
+  return { ...sharedRun(data), created: readBoolean(readRecord(data as Json)?.created) === true };
+}
+
+// Where a shared run stands now: who is counting or has counted each bin.
+export async function countRunStatus(supabase: Client, runId: string): Promise<SharedRun> {
+  const { data, error } = await supabase.rpc('count_run_status', { p_run: runId });
+  if (error) throw dataError(error);
+  return sharedRun(data);
+}
+
+// A location's open stock takes and opening-stock runs, oldest first, to join.
+export async function openCountRuns(supabase: Client, locationId: number): Promise<SharedRun[]> {
+  const { data, error } = await supabase.rpc('open_count_runs', { p_location: locationId });
+  if (error) throw dataError(error);
+  return readArray(data as Json).map((item) => sharedRun(item));
+}
+
+// Ends a shared run for everyone; counts still open on it can still finish. Safe to repeat.
+export async function finishCountRun(supabase: Client, runId: string): Promise<SharedRun> {
+  const { data, error } = await supabase.rpc('finish_count_run', { p_run: runId });
+  if (error) throw dataError(error);
+  return sharedRun(data);
 }
 
 function countLine(item: Json): CountLineResult | null {
