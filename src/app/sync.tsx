@@ -1,12 +1,18 @@
-import { ScrollView } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { db } from '@/db/database';
 import { syncState } from '@/features/board/sync-state';
+import { CountStore } from '@/features/count/count-store';
 import { clock } from '@/lib/format';
 import { useOnline } from '@/lib/network';
+import { countOfStream, discardPlan } from '@/queue/discard';
 import { useOutbox } from '@/queue/outbox-provider';
+import type { OutboxItem } from '@/queue/types';
 import { useScanIndex } from '@/scan/scan-index-provider';
 import { Button } from '@/ui/button';
+import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { Fact, Facts } from '@/ui/facts';
 import { Icon } from '@/ui/icon';
 import { APPEAR, SETTLE } from '@/ui/motion';
@@ -19,7 +25,8 @@ import { StatusStrip } from '@/ui/status-strip';
 const number = (value: number) => new Intl.NumberFormat('en-GB').format(value);
 
 // Sync: whether this phone's work has reached PartsLogic. The card on top says it in two words; problems
-// come first, each with Try again, then what's waiting, then what was sent. Nothing to read when all is sent.
+// come first, each with Try again or Discard (for work PartsLogic will never take, such as a count of a
+// system bin), then what's waiting, then what was sent. Nothing to read when all is sent.
 export default function Sync() {
   const outbox = useOutbox();
   const scanIndex = useScanIndex();
@@ -27,6 +34,19 @@ export default function Sync() {
   const state = syncState({ waiting: outbox.waiting, needsAttention: outbox.needsAttention, online });
 
   const attention = outbox.items.filter((item) => item.status === 'attention');
+  // The refused item being discarded, and what would go with it (discard.ts).
+  const [discarding, setDiscarding] = useState<OutboxItem | null>(null);
+  const plan = discarding ? discardPlan(outbox.items, discarding.clientId) : [];
+  const behind = plan.length - 1;
+  const isCount = discarding ? countOfStream(discarding.streamKey) !== null : false;
+
+  // Throws the refused work away, and for a bin count also the count kept on this phone, so it stops
+  // showing as open work.
+  async function discardProblem(item: OutboxItem) {
+    const removed = await outbox.discard(item.clientId);
+    const stocktakeId = countOfStream(item.streamKey);
+    if (removed.length > 0 && stocktakeId) await new CountStore(db()).discard(stocktakeId);
+  }
   const waiting = outbox.items.filter((item) => item.status === 'pending' || item.status === 'sending');
   const sent = outbox.items.filter((item) => item.status === 'done');
 
@@ -55,7 +75,14 @@ export default function Sync() {
               {item.label}
             </Txt>
             {item.lastError ? <Txt variant="caption" ink="text-stop-ink">{item.lastError}</Txt> : null}
-            <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => void outbox.retry(item.clientId)} />
+            <View className="flex-row gap-2">
+              <View className="flex-1">
+                <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => void outbox.retry(item.clientId)} />
+              </View>
+              <View className="flex-1">
+                <Button label="Discard" icon="close" variant="secondary" compact onPress={() => setDiscarding(item)} />
+              </View>
+            </View>
           </Card>
         </Animated.View>
       ))}
@@ -104,6 +131,28 @@ export default function Sync() {
       {online && scanIndex.progress === null ? (
         <Button label="Update scan list" icon="retry" variant="secondary" onPress={scanIndex.update} />
       ) : null}
+      <ConfirmSheet
+        visible={discarding !== null}
+        title="Discard this?"
+        note={[
+          'PartsLogic refused it, and it never reaches PartsLogic.',
+          behind > 0 ? `The ${behind === 1 ? 'item' : `${behind} items`} waiting behind it go too.` : null,
+          isCount ? 'The count is forgotten on this phone.' : null,
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        confirm={{
+          label: 'Discard',
+          destructive: true,
+          onPress: () => {
+            const item = discarding;
+            setDiscarding(null);
+            if (item) void discardProblem(item);
+          },
+        }}
+        cancelLabel="Keep it"
+        onCancel={() => setDiscarding(null)}
+      />
     </ScrollView>
   );
 }

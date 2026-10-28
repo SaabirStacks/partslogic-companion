@@ -6,6 +6,7 @@ import { loadPart } from '@/features/part/load-part';
 import { PartRow } from '@/features/part/part-row';
 import type { RecentPart } from '@/lib/prefs';
 import { useRemote } from '@/lib/use-remote';
+import { isSystemBin } from '@/scan/system-bins';
 import { useSession } from '@/session/session-provider';
 import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
@@ -68,7 +69,11 @@ function Answer({ view, lookUp, currency }: { view: LookUpView; lookUp: LookUpAp
     case 'part':
       return <PartCard key={view.at} part={view.part} currency={currency} onOpen={() => lookUp.openPart(view.part)} />;
     case 'bin':
-      return <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'Bin' }} title={view.bin} detail={view.location} />;
+      return isSystemBin(view.bin) ? (
+        <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'System bin' }} title={view.bin} detail={`${view.location} · Can’t be counted`} />
+      ) : (
+        <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'Bin' }} title={view.bin} detail={view.location} />
+      );
     case 'unknown':
       return (
         <ScanResultCard tone="warn" status={{ icon: 'warning', label: 'Unknown code' }} title={view.code} detail={barcodeProblem(view.code)}>
@@ -118,13 +123,13 @@ function PartCard({ part, currency, onOpen }: { part: RecentPart; currency: stri
   return <PartAnswerCard title={title} answer={partAnswer(data.detail, currency)} savedAt={data.savedAt} onOpen={onOpen} />;
 }
 
-// The one main action for what was scanned: open the part, count the bin, or add the unknown code. Scan
-// next sits on the paused camera.
+// The one main action for what was scanned: open the part, count the bin (never a system bin), or add the
+// unknown code. Scan next sits on the paused camera.
 function Action({ view, lookUp, canCount }: { view: LookUpView; lookUp: LookUpApi; canCount: boolean }) {
   if (view.kind === 'part') {
     return <ActionBar label="Open part" icon="forward" onPress={() => lookUp.openPart(view.part)} />;
   }
-  if (view.kind === 'bin' && canCount) {
+  if (view.kind === 'bin' && canCount && !isSystemBin(view.bin)) {
     return (
       <ActionBar
         label={`Count bin ${view.bin}`}

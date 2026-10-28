@@ -7,6 +7,7 @@ import { useSession } from '@/session/session-provider';
 import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
 
 import { sendQueued } from './handlers';
+import { discardPlan } from './discard';
 import { backoffMs, runOutbox } from './runner';
 import { SqliteOutboxStore } from './sqlite-store';
 import type { Coalesce, OutboxItem } from './types';
@@ -22,6 +23,8 @@ export type OutboxContextValue = {
   // The last passing failure (no signal, timeout), cleared once sending works again.
   lastProblem: string | null;
   retry: (clientId: string) => Promise<void>;
+  // Throws away a refused item and what waits behind it in its stream (discard.ts); returns what went.
+  discard: (clientId: string) => Promise<OutboxItem[]>;
   sendNow: () => void;
 };
 
@@ -123,6 +126,18 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
     [store, refresh, run],
   );
 
+  const discard = useCallback(
+    async (clientId: string) => {
+      const removed = discardPlan(items, clientId);
+      if (removed.length === 0) return [];
+      await store.remove(removed.map((item) => item.clientId));
+      await refresh();
+      void run();
+      return removed;
+    },
+    [items, store, refresh, run],
+  );
+
   const value = useMemo(() => {
     const waiting = items.filter((item) => item.status === 'pending' || item.status === 'sending').length;
     const needsAttention = items.filter((item) => item.status === 'attention').length;
@@ -134,9 +149,10 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       lastSentAt,
       lastProblem,
       retry,
+      discard,
       sendNow: () => void run(),
     };
-  }, [enqueue, items, lastSentAt, lastProblem, retry, run]);
+  }, [enqueue, items, lastSentAt, lastProblem, retry, discard, run]);
 
   return <OutboxContext value={value}>{children}</OutboxContext>;
 }

@@ -9,6 +9,7 @@ import { useOutbox } from '@/queue/outbox-provider';
 import { feedbackFor } from '@/scan/feedback';
 import { usePendingScan } from '@/scan/pending-scan';
 import { checkScan, partLabel, worthRechecking, type ScanCheck } from '@/scan/resolve';
+import { isSystemBin } from '@/scan/system-bins';
 import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import {
@@ -97,6 +98,11 @@ export function useBinCount(workflow: CountWorkflow) {
 
   async function begin(bin: BinToCount) {
     if (!userId) return;
+    // PartsLogic refuses to count its system bins, and the refusal would block Sync, so never start one.
+    if (isSystemBin(bin.binCode)) {
+      setStart({ kind: 'message', title: `${bin.binCode.trim().toUpperCase()} is a system bin`, body: 'PartsLogic doesn’t count UNBINNED or UNASSIGNED. Pick a shelf bin instead.' });
+      return;
+    }
     const stocktakeId = Crypto.randomUUID();
     const startedAt = new Date().toISOString();
     const session = reduceBinSession(emptyBinSession(stocktakeId, startedAt), {

@@ -48,6 +48,7 @@ export function Fixtures({
     lastSentAt: items.find((item) => item.status === 'done')?.updatedAt ?? null,
     lastProblem: null,
     retry: later,
+    discard: async () => [],
     sendNow: noop,
   };
   const scanIndexValue: ScanIndexContextValue = { saved: null, progress: null, failed: false, update: noop };

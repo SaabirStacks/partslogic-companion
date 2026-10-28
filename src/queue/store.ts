@@ -13,6 +13,8 @@ export interface OutboxStore {
   release(clientId: string, error: string): Promise<void>;
   // A person asked to try an item that needed attention again.
   retry(clientId: string): Promise<void>;
+  // A person discarded items that can never be sent (see discard.ts). Sent items are never removed.
+  remove(clientIds: string[]): Promise<void>;
   // Everything for the Outbox tab: unsent items, and items sent since `since`.
   recent(userId: string, since: string): Promise<OutboxItem[]>;
   // After a restart, items left mid-send go back to pending.
