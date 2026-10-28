@@ -14,6 +14,11 @@ import { PartView } from '@/features/part/part-view';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
 import { AddForm } from '@/features/quick-add/add-part-screens';
 import { CountReceipt } from '@/features/count/count-receipt';
+import { RunOverview } from '@/features/count/run-overview';
+import { RunPlanView } from '@/features/count/run-plan';
+import type { RunBin, RunProgress } from '@/features/count/run-progress';
+import { RunReceipt } from '@/features/count/run-receipt';
+import type { CountRun } from '@/features/count/run-store';
 import { WhichBinView } from '@/features/count/which-bin';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
@@ -229,6 +234,30 @@ const binList = (savedAt: string | null = null) => ({
   reload: noop,
 });
 
+// A stock take of the four bins above, part way: one counted, one being counted, two to go.
+const RUN: CountRun = {
+  runId: 'R1',
+  userId: 'u',
+  workflow: 'stock-take',
+  locationId: 1,
+  locationName: 'Main',
+  bins: binList().choices.map((bin) => ({ binId: bin.binId, code: bin.code })),
+  startedAt,
+  finishedAt: null,
+};
+function runProgressOf(states: RunBin['state'][], units: number[]): RunProgress {
+  const bins: RunBin[] = RUN.bins.map((bin, index) => ({ ...bin, state: states[index], units: units[index], stocktakeId: `S${bin.binId}` }));
+  const counted = bins.filter((bin) => bin.state === 'counted').length;
+  return {
+    bins,
+    counted,
+    total: bins.length,
+    units: bins.reduce((sum, bin) => sum + (bin.state === 'counted' ? bin.units : 0), 0),
+    next: bins.find((bin) => bin.state === 'counting') ?? bins.find((bin) => bin.state === 'not-started') ?? null,
+    done: counted === bins.length,
+  };
+}
+
 const SCREENS: Record<string, () => ReactNode> = {
   board: () => (
     <BoardView
@@ -252,6 +281,19 @@ const SCREENS: Record<string, () => ReactNode> = {
       ]}
       location="Main"
       sync={syncState({ waiting: 2, needsAttention: 1, online: true })}
+      onJob={noop}
+      onResume={noop}
+      onLocation={noop}
+      onSync={noop}
+      onAccount={noop}
+    />
+  ),
+  'board-run': () => (
+    <BoardView
+      sections={boardFor('counter')}
+      openWork={[{ kind: 'run', runId: 'R1', workflow: 'stock-take', counted: 1, total: 4, counting: 'A-02', startedAt }]}
+      location="Main"
+      sync={syncState({ waiting: 1, needsAttention: 0, online: true })}
       onJob={noop}
       onResume={noop}
       onLocation={noop}
@@ -305,6 +347,56 @@ const SCREENS: Record<string, () => ReactNode> = {
         <LineRow name="Mann HU 816 x" code="4011558726304" quantity={<Quantity total={6} name="Mann HU 816 x" onStep={noop} onSet={noop} />} />
         <LineRow name="NGK BKR6E" code="087295104401" quantity={<Quantity total={3} name="NGK BKR6E" onStep={noop} onSet={noop} />} />
       </JobScreen>
+    </View>
+  ),
+  'run-plan': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunPlanView noun="stock take" locationName="Main" list={binList()} onStart={noop} />
+    </View>
+  ),
+  'run-overview': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunOverview noun="stock take" run={RUN} progress={runProgressOf(['counted', 'counting', 'not-started', 'not-started'], [18, 4, 0, 0])} onBin={noop} onPause={noop} onFinish={noop} />
+    </View>
+  ),
+  'run-overview-next': () => (
+    <View className="flex-1">
+      <StackHeader title="Opening stock" />
+      <RunOverview noun="opening stock" run={{ ...RUN, workflow: 'opening-stock' }} progress={runProgressOf(['counted', 'counted', 'not-started', 'not-started'], [18, 0, 0, 0])} onBin={noop} onPause={noop} onFinish={noop} />
+    </View>
+  ),
+  'run-counting': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <JobScreen
+        placeholder="Barcode or part number"
+        onScan={noop}
+        banner={<JobBanner size="headline" title="Bin A-02" detail="Stock take · 1 of 4 bins · Blind count" />}
+        result={<ScanResultCard tone="ok" status={{ icon: 'sent', label: 'Counted' }} title="NGK BKR6E" detail="087295104401" quantity={{ value: '4', label: 'Counted' }} />}
+        action={<ActionBar label="Finish · 4 units" icon="check" onPress={noop} secondary={{ label: 'Discard', icon: 'close', onPress: noop }} />}>
+        <Button label="All bins" icon="stockTake" variant="secondary" compact onPress={noop} />
+        <Tally
+          items={[
+            { value: 4, label: 'Units' },
+            { value: 1, label: 'Parts' },
+          ]}
+        />
+        <LineRow name="NGK BKR6E" code="087295104401" quantity={<Quantity total={4} name="NGK BKR6E" onStep={noop} onSet={noop} />} />
+      </JobScreen>
+    </View>
+  ),
+  'run-receipt': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunReceipt
+        title="Stock take"
+        run={{ ...RUN, finishedAt: new Date(new Date(startedAt).getTime() + 48 * 60000).toISOString() }}
+        progress={runProgressOf(['counted', 'counted', 'counted', 'counted'], [18, 9, 31, 0])}
+        toCheck={1}
+        onDone={noop}
+      />
     </View>
   ),
   'count-result': () => {

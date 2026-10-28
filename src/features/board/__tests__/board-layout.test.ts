@@ -11,7 +11,7 @@ describe('boardLayout', () => {
     expect(layout.search?.id).toBe('lookup');
     expect(ids(layout)).toEqual([
       ['inbound', ['receive', 'put-away']],
-      ['stock', ['stock-count', 'transfer']],
+      ['stock', ['stock-count', 'stock-take', 'opening-stock', 'transfer']],
       ['parts', ['add-part']],
     ]);
   });

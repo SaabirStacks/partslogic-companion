@@ -61,10 +61,17 @@ back office, so what the phone does and what the office sees agree.
     - Later: inbound staging areas, customer returns.
   - **Stock control:**
     - **Stock count:** the same blind bin count, to check a shelf.
+    - **Stock take:** plan the bins first (every bin in the location, a chosen set, or only bins never
+      counted), then count them one at a time, blind. Pause puts a Resume row on the board ("Stock take,
+      1 of 4 bins"). It ends with a receipt. Each bin is its own count, and PartsLogic groups them as one
+      run.
+    - **Opening stock:** the same run, for setting up a location. Stock found is booked as opening
+      stock.
     - **Transfer stock:** move stock between bins. Needs signal.
-    - Later: full stock take, opening stock (initial setup), adjust stock.
+    - Later: adjust stock.
   - **Outbound** (later): pick, pack, outbound staging, dispatch, return to supplier.
-  - **Sync:** what's waiting to send, what needs attention, and what was sent.
+  - **Sync:** what's waiting to send, what needs attention, and what was sent. Work PartsLogic refuses
+    for good (a count of a bin since removed, say) can be discarded, together with what waits behind it.
 - **Working location:** each phone works in one location at a time, chosen once and remembered.
 - **Labels in use:** manufacturer and supplier labels. PartsLogic's own labels come later; bins carry a
   name on the shelf, not a barcode, so bins are typed or picked.
@@ -76,7 +83,7 @@ back office, so what the phone does and what the office sees agree.
   - typing a part number
   - hardware scanners that type like a keyboard
 - **Terms used on the floor:** Unbinned, GR-0042, bin codes like A-01 and `LOC/BIN`, on hand, reorder,
-  out of stock.
+  out of stock. UNBINNED and UNASSIGNED are system bins: they hold stock but are never counted.
 
 ## Capabilities and Constraints
 
@@ -88,7 +95,7 @@ back office, so what the phone does and what the office sees agree.
 - **Fixes:** reach phones as over-the-air updates (EAS Update, channel `preview`).
 - **Blind counts:** expected quantities are never shown during a count.
 - **Not yet built:**
-  - full stock take
+  - a stock take that freezes a whole location (the phone's stock take is a run of bin counts)
   - labels
   - creating bins offline
   - registration lookup (needs a vehicle-lookup function that doesn't exist yet)

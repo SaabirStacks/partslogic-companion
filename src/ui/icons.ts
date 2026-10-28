@@ -12,6 +12,8 @@ export const ICONS = {
   putAway: symbol('tray.and.arrow.down.fill', 'move_to_inbox'),
   move: symbol('arrow.left.arrow.right', 'swap_horiz'),
   add: symbol('plus.square.fill', 'add_box'),
+  stockTake: symbol('checklist', 'checklist'),
+  opening: symbol('flag.fill', 'flag'),
   sync: symbol('arrow.triangle.2.circlepath', 'sync'),
   account: symbol('person.crop.circle.fill', 'account_circle'),
   // Scanning

@@ -134,13 +134,8 @@ export default function Sync() {
       <ConfirmSheet
         visible={discarding !== null}
         title="Discard this?"
-        note={[
-          'PartsLogic refused it, and it never reaches PartsLogic.',
-          behind > 0 ? `The ${behind === 1 ? 'item' : `${behind} items`} waiting behind it go too.` : null,
-          isCount ? 'The count is forgotten on this phone.' : null,
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        facts={behind > 0 ? [{ value: 1, label: 'refused', tone: 'stop' }, { value: behind, label: 'waiting behind it' }] : undefined}
+        note={isCount ? 'None of it reaches PartsLogic, and the count is forgotten here.' : 'None of it reaches PartsLogic.'}
         confirm={{
           label: 'Discard',
           destructive: true,

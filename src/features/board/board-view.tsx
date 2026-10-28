@@ -13,7 +13,7 @@ import { Txt } from '@/ui/text';
 import type { BoardSection, LiveWorkflow } from '@/workflows/catalogue';
 
 import { boardLayout } from './board-layout';
-import { resumeText, type OpenWork } from './open-work';
+import { openWorkKey, resumeText, type OpenWork } from './open-work';
 import type { SyncState } from './sync-state';
 
 type BoardProps = {
@@ -70,7 +70,7 @@ export function BoardView({ sections, openWork, location, sync, onJob, onResume,
               const text = resumeText(work);
               return (
                 <PressableCard
-                  key={work.kind}
+                  key={openWorkKey(work)}
                   accessibilityLabel={`Resume ${text.title}, ${text.detail}`}
                   onPress={() => onResume(work)}
                   className={index > 0 ? 'rounded-none border-0 border-t border-rule' : 'rounded-none border-0'}>
