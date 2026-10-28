@@ -1,7 +1,7 @@
 import type { Href } from 'expo-router';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { CountStore, type BinCount, type RunWorkflow } from '@/features/count/count-store';
+import { CountStore, type BinCount, type CountWorkflow, type RunWorkflow } from '@/features/count/count-store';
 import { runCountText, runProgress } from '@/features/count/run-progress';
 import { RunStore, type CountRun } from '@/features/count/run-store';
 import { DeliveryStore } from '@/features/receive/delivery-store';
@@ -13,7 +13,7 @@ import { visibleLines } from '@/vendor/partslogic/shared/bin-session';
 // or opening-stock run paused part way (its bin being counted, if any, is part of it).
 export type OpenWork =
   | { kind: 'delivery'; from: string | null; units: number; startedAt: string }
-  | { kind: 'count'; bin: string; units: number; startedAt: string }
+  | { kind: 'count'; workflow: CountWorkflow; bin: string; units: number; startedAt: string }
   | { kind: 'run'; runId: string; workflow: RunWorkflow; counted: number; total: number; counting: string | null; startedAt: string };
 
 // A run's resume row, from its counts on this phone.
@@ -41,7 +41,7 @@ export async function readOpenWork(database: SQLiteDatabase, userId: string): Pr
   // A bin being counted for a run is already on the run's row.
   if (count && !runs.some((run) => run.runId === count.runId)) {
     const units = visibleLines(count.session).reduce((sum, line) => sum + line.qty, 0);
-    work.push({ kind: 'count', bin: count.binCode, units, startedAt: count.startedAt });
+    work.push({ kind: 'count', workflow: count.workflow, bin: count.binCode, units, startedAt: count.startedAt });
   }
   return work;
 }

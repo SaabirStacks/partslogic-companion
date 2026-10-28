@@ -42,7 +42,8 @@ back office, so what the phone does and what the office sees agree.
 ## Operating Context
 
 - **Workflows,** in the standard warehouse families (one list in `src/workflows/catalogue.ts`; the board
-  shows only the ones PartsLogic supports today):
+  shows only the ones PartsLogic supports today). Each job's tile carries one line about its open work or
+  progress: "Open · 12 units", "Counting A-01", "1 of 4 bins", "24 in Unbinned".
   - **Parts:**
     - **Look up:** scan or type, then see the part, on-hand stock per bin, prices, codes and
       alternatives.
@@ -55,7 +56,9 @@ back office, so what the phone does and what the office sees agree.
       **Unbinned** bin, which serves as inbound staging. Later, a delivery is matched against the
       purchase order it fills.
     - **Put away:** choose a bin from the list (bins carry a name on the shelf, not a barcode; each shows
-      when it was last counted, and what's waiting in Unbinned sits on top) and count it, blind.
+      when it was last counted, and what's waiting in Unbinned sits on top) and count it, blind. Tapping
+      what's waiting lists it part by part with the shelf each already lives on; tapping a part puts it
+      away on that shelf.
       Counting a bin pulls stock from Unbinned onto the shelf; anything not scanned goes back to
       Unbinned. PartsLogic records each count as a put away or a stock count.
     - Later: inbound staging areas, customer returns.
@@ -92,7 +95,8 @@ back office, so what the phone does and what the office sees agree.
   - outbox kept in SQLite
   - a scan list saved on the phone for offline lookups
   - part cards saved after viewing
-- **Fixes:** reach phones as over-the-air updates (EAS Update, channel `preview`).
+- **Fixes:** reach phones as over-the-air updates (EAS Update, channel `preview`). The phone checks when
+  it opens and when it comes back to the front, and the board says "New version ready" with Restart.
 - **Blind counts:** expected quantities are never shown during a count.
 - **Not yet built:**
   - a stock take that freezes a whole location (the phone's stock take is a run of bin counts)

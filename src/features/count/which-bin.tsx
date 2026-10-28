@@ -27,6 +27,7 @@ export function WhichBinView({
   online,
   onChoose,
   onCreate,
+  onWaiting,
   notice,
   footer,
 }: {
@@ -34,6 +35,8 @@ export function WhichBinView({
   waiting: Waiting;
   online: boolean;
   onChoose: (bin: BinChoice) => void;
+  // Opens what's waiting in Unbinned, part by part.
+  onWaiting?: () => void;
   // Makes a bin with this name in the location and starts counting it (needs signal).
   onCreate: (code: string) => void;
   // An answer to the last choice (checking, a bin that couldn't be made), under the search box.
@@ -68,7 +71,11 @@ export function WhichBinView({
         {notice}
 
         {waiting && waiting.units > 0 ? (
-          <Card accessible accessibilityLabel={`${plural(waiting.units, 'unit', 'units')} waiting in ${waiting.location} Unbinned`} className="min-h-16 flex-row items-center gap-3 px-4 py-3">
+          <PressableCard
+            accessibilityLabel={`${plural(waiting.units, 'unit', 'units')} waiting in ${waiting.location} Unbinned. See what's waiting`}
+            onPress={onWaiting ?? (() => {})}
+            disabled={!onWaiting}
+            className="min-h-16 flex-row items-center gap-3 px-4 py-3">
             <View className="flex-1 gap-0.5">
               <Txt variant="label" numbers className="font-bold">
                 {`${plural(waiting.units, 'unit', 'units')} waiting`}
@@ -76,7 +83,8 @@ export function WhichBinView({
               <Txt variant="caption">{`In ${waiting.location} Unbinned`}</Txt>
             </View>
             <StatusChip tone="warn" icon="putAway" label="To put away" />
-          </Card>
+            {onWaiting ? <Icon name="forward" size={16} colour="quiet-ink" /> : null}
+          </PressableCard>
         ) : null}
 
         {list.savedAt ? <StatusStrip tone="warn" icon="offline" text={`No signal · bins saved ${clock(list.savedAt)}`} /> : null}

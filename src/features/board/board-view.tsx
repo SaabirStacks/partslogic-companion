@@ -2,6 +2,7 @@ import { ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Button } from '@/ui/button';
 import { Icon } from '@/ui/icon';
 import { JobTile } from '@/ui/job-tile';
 import { APPEAR, SETTLE } from '@/ui/motion';
@@ -15,10 +16,15 @@ import type { BoardSection, LiveWorkflow } from '@/workflows/catalogue';
 import { boardLayout } from './board-layout';
 import { openWorkKey, resumeText, type OpenWork } from './open-work';
 import type { SyncState } from './sync-state';
+import { tileDetail } from './tile-detail';
 
 type BoardProps = {
   sections: BoardSection[];
   openWork: OpenWork[];
+  // Units waiting in the location's Unbinned bin, for Put away's tile (null when not known).
+  unbinned?: number | null;
+  // A new version is downloaded and Restart switches to it (use-app-update.ts).
+  update?: { ready: boolean; restart: () => void };
   location: string | null;
   sync: SyncState;
   onJob: (workflow: LiveWorkflow) => void;
@@ -33,9 +39,9 @@ const pairs = <T,>(items: readonly T[]): T[][] =>
   Array.from({ length: Math.ceil(items.length / 2) }, (_, index) => items.slice(index * 2, index * 2 + 2));
 
 // Home. The app's name with the account button, where this phone works and whether its work is sent, the
-// search field (Look up), open work to carry on with, then every job as a tile under its family. Every job
-// is one tap away.
-export function BoardView({ sections, openWork, location, sync, onJob, onResume, onLocation, onSync, onAccount }: BoardProps) {
+// search field (Look up), open work to carry on with, then every job as a tile under its family, each with
+// its open work or progress (tile-detail.ts). Every job is one tap away.
+export function BoardView({ sections, openWork, unbinned = null, update, location, sync, onJob, onResume, onLocation, onSync, onAccount }: BoardProps) {
   const insets = useSafeAreaInsets();
   const layout = boardLayout(sections);
 
@@ -60,6 +66,20 @@ export function BoardView({ sections, openWork, location, sync, onJob, onResume,
           <SyncPill state={sync} onPress={onSync} />
         </Animated.View>
       </View>
+
+      {update?.ready ? (
+        <Animated.View entering={APPEAR}>
+          <Card className="flex-row items-center gap-3 px-4 py-3">
+            <View className="flex-1 gap-0.5">
+              <Txt variant="label" className="font-bold">
+                New version ready
+              </Txt>
+              <Txt variant="caption">Nothing you’ve done is lost</Txt>
+            </View>
+            <Button label="Restart" icon="retry" compact onPress={update.restart} />
+          </Card>
+        </Animated.View>
+      ) : null}
 
       {layout.search ? <SearchField onPress={() => onJob(layout.search!)} /> : null}
 
@@ -102,7 +122,12 @@ export function BoardView({ sections, openWork, location, sync, onJob, onResume,
               <View key={row.map((workflow) => workflow.id).join()} className="flex-row gap-2">
                 {row.map((workflow) => (
                   <View key={workflow.id} className="flex-1">
-                    <JobTile label={workflow.label} icon={workflow.icon} onPress={() => onJob(workflow)} />
+                    <JobTile
+                      label={workflow.label}
+                      icon={workflow.icon}
+                      detail={tileDetail(workflow.id, openWork, unbinned)}
+                      onPress={() => onJob(workflow)}
+                    />
                   </View>
                 ))}
                 {row.length === 1 ? <View className="flex-1" /> : null}

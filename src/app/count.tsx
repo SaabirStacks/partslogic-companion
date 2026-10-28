@@ -52,8 +52,13 @@ export default function Count() {
   // The "Count this bin" request already acted on, so a re-render can't start it twice.
   const handled = useRef<string | null>(null);
 
-  // "Count bin" from Look up.
+  // "Count bin" from Look up, or a shelf from what's waiting to put away.
   useEffect(() => {
+    // Once the request is cleared it's forgotten, so the same bin can be asked for again later.
+    if (!params.binId) {
+      handled.current = null;
+      return;
+    }
     const binId = Number(params.binId);
     if (!loaded || count || !Number.isInteger(binId) || binId <= 0 || !params.bin) return;
     if (handled.current === params.binId) return;
@@ -99,6 +104,7 @@ function Start({ counting, purpose }: { counting: Counting; purpose: CountWorkfl
       waiting={unbinned.data ? { units: unbinned.data.qty, location: location.name } : null}
       onChoose={(bin) => void counting.begin({ binId: bin.binId, binCode: bin.code, location: location.code })}
       onCreate={(code) => void counting.createBin(code)}
+      onWaiting={purpose === 'put-away' ? () => router.push('/waiting') : undefined}
       notice={<StartAnswer counting={counting} locationName={location.name} />}
       footer={<CountedHere counting={counting} />}
     />
