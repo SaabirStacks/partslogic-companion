@@ -137,6 +137,12 @@ export class SqliteOutboxStore implements OutboxStore {
     );
   }
 
+  async remove(clientIds: string[]) {
+    for (const clientId of clientIds) {
+      await this.db.runAsync(`DELETE FROM outbox WHERE client_id = ? AND status IN ('pending', 'attention')`, clientId);
+    }
+  }
+
   async recent(userId: string, since: string) {
     const rows = await this.db.getAllAsync<Row>(
       `SELECT * FROM outbox WHERE user_id = ? AND (status != 'done' OR updated_at >= ?) ORDER BY seq DESC LIMIT 200`,

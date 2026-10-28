@@ -16,7 +16,8 @@ const messageOf = (error: unknown) => (error instanceof Error ? error.message : 
 
 // Sends this user's queued work, oldest first. Within a stream, order is kept: an item needing attention
 // holds back the rest of its stream (they depend on it) but not other streams. A passing failure stops
-// the whole run, because the next item would fail the same way. Nothing is ever dropped.
+// the whole run, because the next item would fail the same way. Nothing is dropped unless a person
+// discards a refused item from Sync (discard.ts).
 export async function runOutbox(store: OutboxStore, userId: string, send: Send): Promise<RunReport> {
   const report: RunReport = { sent: 0, stoppedBy: null, needsAttention: 0 };
   const blocked = new Set<string>();

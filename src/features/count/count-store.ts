@@ -63,7 +63,7 @@ export class CountStore {
 
   async recent(userId: string, limit = 10): Promise<BinCount[]> {
     const rows = await this.db.getAllAsync<Row>(
-      'SELECT * FROM bin_counts WHERE user_id = ? AND finished_at IS NOT NULL ORDER BY finished_at DESC LIMIT ?',
+      'SELECT * FROM bin_counts WHERE user_id = ? AND finished_at IS NOT NULL AND discarded = 0 ORDER BY finished_at DESC LIMIT ?',
       userId,
       limit,
     );

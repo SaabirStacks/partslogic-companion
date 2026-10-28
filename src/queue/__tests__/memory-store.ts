@@ -68,6 +68,10 @@ export class MemoryStore implements OutboxStore {
     Object.assign(this.find(clientId)!, { status: 'pending', lastError: null });
   }
 
+  async remove(clientIds: string[]) {
+    this.items = this.items.filter((row) => !(clientIds.includes(row.clientId) && (row.status === 'pending' || row.status === 'attention')));
+  }
+
   async recent(userId: string) {
     return this.items.filter((row) => row.userId === userId);
   }
