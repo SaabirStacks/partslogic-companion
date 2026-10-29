@@ -49,6 +49,7 @@ export function Fixtures({
     lastProblem: null,
     retry: later,
     discard: async () => [],
+    forget: later,
     sendNow: noop,
   };
   const scanIndexValue: ScanIndexContextValue = { saved: null, progress: null, failed: false, update: noop };

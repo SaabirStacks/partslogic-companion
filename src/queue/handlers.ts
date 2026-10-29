@@ -5,6 +5,7 @@ import { classifyQueueError, DataError } from '@/vendor/partslogic/shared/errors
 import {
   closeStockDocument,
   commitBinCount,
+  discardBinCount,
   ensureBin,
   markOpeningStockDone,
   openBinCount,
@@ -33,6 +34,8 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
       return recordCounts(supabase, { stocktakeId: item.stocktakeId, binId: item.binId, lines: item.lines });
     case 'commit_bin_count':
       return commitBinCount(supabase, item.stocktakeId, item.confirmEmpty);
+    case 'discard_bin_count':
+      return sendDiscard(item);
     case 'receipt_lines':
       return recordReceiptLines(supabase, {
         documentId: item.documentId,
@@ -48,6 +51,17 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
       return sendQuickAdd(item);
     case 'opening_stock_done':
       return markOpeningStockDone(supabase, item.locationId);
+  }
+}
+
+// A PartsLogic without discard_bin_count yet (PGRST202, no such function) can't be told; its own clean-up
+// cancels the count after 24 hours, so this is done rather than stuck in Sync.
+async function sendDiscard(item: Extract<QueueItem, { kind: 'discard_bin_count' }>) {
+  try {
+    return await discardBinCount(supabase, item.stocktakeId);
+  } catch (error) {
+    if ((error as { code?: string | null }).code === 'PGRST202') return { stocktakeId: item.stocktakeId, discarded: false };
+    throw error;
   }
 }
 

@@ -4141,6 +4141,7 @@ export type Database = {
         }
         Returns: number
       }
+      discard_bin_count: { Args: { p_stocktake: string }; Returns: Json }
       effective_sell_price: {
         Args: {
           p_part: number

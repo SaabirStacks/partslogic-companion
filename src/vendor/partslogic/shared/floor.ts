@@ -294,6 +294,16 @@ export async function openBinCount(
   };
 }
 
+// Cancels a bin count that was discarded on the phone, so it no longer shows in progress or holds its bin.
+// Only the person counting it (or an editor), only while it's still being counted. Safe to repeat: one
+// already cancelled, or never opened, comes back discarded false.
+export async function discardBinCount(supabase: Client, stocktakeId: string): Promise<{ stocktakeId: string; discarded: boolean }> {
+  const { data, error } = await supabase.rpc('discard_bin_count', { p_stocktake: stocktakeId });
+  if (error) throw dataError(error);
+  const row = requireRecord(data, 'The count could not be discarded.');
+  return { stocktakeId: readString(row.stocktake_id) ?? stocktakeId, discarded: readBoolean(row.discarded) === true };
+}
+
 // Where a location's opening stock stands: done (when, by whom) or still being set up (doneAt null).
 export type OpeningStockStatus = { locationId: number; doneAt: string | null; doneBy: string | null };
 
