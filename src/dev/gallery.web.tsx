@@ -395,6 +395,25 @@ const SCREENS: Record<string, () => ReactNode> = {
       <RunOverview noun="opening stock" run={{ ...RUN, workflow: 'opening-stock' }} progress={runProgressOf(['counted', 'counted', 'not-started', 'not-started'], [18, 0, 0, 0])} onBin={noop} onPause={noop} onFinish={noop} />
     </View>
   ),
+  'run-plan-set-up': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunPlanView initial="stock-take" openingOffered={false} locationName="Main" list={binList()} onStart={noop} />
+    </View>
+  ),
+  'run-receipt-opening': () => (
+    <View className="flex-1">
+      <StackHeader title="Opening stock" />
+      <RunReceipt
+        title="Opening stock"
+        run={{ ...RUN, workflow: 'opening-stock', finishedAt: new Date(new Date(startedAt).getTime() + 95 * 60000).toISOString() }}
+        progress={runProgressOf(['counted', 'counted', 'counted', 'counted'], [18, 9, 31, 0])}
+        toCheck={0}
+        setUp={{ location: 'Main', answer: 'ask', onYes: noop, onNotYet: noop }}
+        onDone={noop}
+      />
+    </View>
+  ),
   'run-counting': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />

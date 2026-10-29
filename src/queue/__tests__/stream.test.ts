@@ -12,5 +12,6 @@ describe('streamKeyOf', () => {
     );
     expect(streamKeyOf({ kind: 'ensure_bin', clientId: 'c', locationId: 3, code: 'a-07' })).toBe('bin:3:A-07');
     expect(streamKeyOf({ kind: 'quick_add', clientId: 'q1', number: '123' })).toBe('quick-add:q1');
+    expect(streamKeyOf({ kind: 'opening_stock_done', clientId: 'o1', locationId: 3 })).toBe('opening:3');
   });
 });

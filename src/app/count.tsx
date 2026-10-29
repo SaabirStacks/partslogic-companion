@@ -6,8 +6,9 @@ import { countWorkflow, isRunWorkflow, type CountWorkflow, type RunWorkflow } fr
 import { RunOverview } from '@/features/count/run-overview';
 import { RunPlanView } from '@/features/count/run-plan';
 import { runCountText } from '@/features/count/run-progress';
-import { RunReceipt } from '@/features/count/run-receipt';
+import { RunReceipt, type SetUpQuestion } from '@/features/count/run-receipt';
 import { useCountRun } from '@/features/count/use-count-run';
+import { useOpeningStock } from '@/features/count/use-opening-stock';
 import { CountReceipt } from '@/features/count/count-receipt';
 import { countResultText, countSummary } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
@@ -174,6 +175,9 @@ function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Coun
   const runFlow = useCountRun(workflow, `${counting.count?.stocktakeId ?? ''}:${counting.units}:${counting.recent.length}`);
   const bins = useBinChoices(!runFlow.loaded || runFlow.run ? null : (location?.id ?? null));
   const [overview, setOverview] = useState(false);
+  const opening = useOpeningStock(location?.id ?? null);
+  // The answer to "Is the location fully set up?" after opening stock.
+  const [setUp, setSetUp] = useState<SetUpQuestion['answer']>('ask');
   // Named for the run on screen (or finished), else for the job asked for.
   const shown = runFlow.finished?.run.workflow ?? runFlow.run?.workflow ?? workflow;
   const label = liveWorkflow(shown).label;
@@ -182,7 +186,31 @@ function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Coun
   return (
     <>
       <Stack.Screen options={{ title: runFlow.run || runFlow.finished ? label : liveWorkflow('stock-take').label }} />
-      <RunStep runFlow={runFlow} counting={counting} workflow={workflow} label={label} noun={noun} bins={bins} overview={overview} setOverview={setOverview} />
+      <RunStep
+        runFlow={runFlow}
+        counting={counting}
+        workflow={workflow}
+        label={label}
+        noun={noun}
+        bins={bins}
+        overview={overview}
+        setOverview={setOverview}
+        openingOffered={!opening.done}
+        setUp={
+          // Asked only where PartsLogic records it and the location isn't done already.
+          runFlow.finished?.run.workflow === 'opening-stock' && opening.known && (!opening.done || setUp === 'yes') && location
+            ? {
+                location: location.name,
+                answer: setUp,
+                onYes: () => {
+                  setSetUp('yes');
+                  void opening.markDone();
+                },
+                onNotYet: () => setSetUp('not-yet'),
+              }
+            : null
+        }
+      />
     </>
   );
 }
@@ -196,6 +224,8 @@ function RunStep({
   bins,
   overview,
   setOverview,
+  openingOffered,
+  setUp,
 }: {
   runFlow: ReturnType<typeof useCountRun>;
   counting: Counting;
@@ -205,6 +235,8 @@ function RunStep({
   bins: ReturnType<typeof useBinChoices>;
   overview: boolean;
   setOverview: (shown: boolean) => void;
+  openingOffered: boolean;
+  setUp: SetUpQuestion | null;
 }) {
   const { location } = useWorkingLocation();
   if (!runFlow.loaded) return <View className="flex-1 bg-ground" />;
@@ -222,6 +254,7 @@ function RunStep({
         run={run}
         progress={progress}
         toCheck={toCheck}
+        setUp={setUp}
         onDone={() => {
           runFlow.dismissFinished();
           router.dismissTo('/');
@@ -233,7 +266,15 @@ function RunStep({
   const run = runFlow.run;
   if (!run) {
     if (!location) return <NeedsLocation />;
-    return <RunPlanView initial={workflow} locationName={location.name} list={bins} onStart={(planned, as) => void runFlow.start(planned, as)} />;
+    return (
+      <RunPlanView
+        initial={workflow}
+        openingOffered={openingOffered}
+        locationName={location.name}
+        list={bins}
+        onStart={(planned, as) => void runFlow.start(planned, as)}
+      />
+    );
   }
 
   const progress = runFlow.progress!;

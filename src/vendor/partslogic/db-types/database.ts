@@ -2720,6 +2720,50 @@ export type Database = {
           },
         ]
       }
+      count_runs: {
+        Row: {
+          bin_ids: number[]
+          created_at: string
+          created_by: string | null
+          finished_at: string | null
+          finished_by: string | null
+          id: string
+          location_id: number
+          purpose: string
+          status: string
+        }
+        Insert: {
+          bin_ids: number[]
+          created_at?: string
+          created_by?: string | null
+          finished_at?: string | null
+          finished_by?: string | null
+          id: string
+          location_id: number
+          purpose: string
+          status?: string
+        }
+        Update: {
+          bin_ids?: number[]
+          created_at?: string
+          created_by?: string | null
+          finished_at?: string | null
+          finished_by?: string | null
+          id?: string
+          location_id?: number
+          purpose?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "count_runs_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_jobs: {
         Row: {
           completed_at: string | null
@@ -3008,18 +3052,24 @@ export type Database = {
           created_at: string
           id: number
           name: string
+          opening_stock_done_at: string | null
+          opening_stock_done_by: string | null
         }
         Insert: {
           code: string
           created_at?: string
           id?: never
           name: string
+          opening_stock_done_at?: string | null
+          opening_stock_done_by?: string | null
         }
         Update: {
           code?: string
           created_at?: string
           id?: never
           name?: string
+          opening_stock_done_at?: string | null
+          opening_stock_done_by?: string | null
         }
         Relationships: []
       }
@@ -4070,6 +4120,7 @@ export type Database = {
         Args: { p_confirm_empty?: boolean; p_stocktake: string }
         Returns: Json
       }
+      count_run_status: { Args: { p_run: string }; Returns: Json }
       create_bins: {
         Args: { p_codes: string[]; p_location: number }
         Returns: Json
@@ -4176,6 +4227,7 @@ export type Database = {
           sku: string
         }[]
       }
+      finish_count_run: { Args: { p_run: string }; Returns: Json }
       finish_counting: { Args: { p_stocktake: string }; Returns: undefined }
       floor_activity: {
         Args: { p_before?: string; p_kind?: string; p_limit?: number }
@@ -4404,6 +4456,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_opening_stock_done: { Args: { p_location: number }; Returns: Json }
       next_stock_document_number: { Args: { p_type: string }; Returns: string }
       normalise_name_key: { Args: { value: string }; Returns: string }
       normalise_part_number: { Args: { value: string }; Returns: string }
@@ -4417,6 +4470,15 @@ export type Database = {
           p_stocktake: string
         }
         Returns: Json
+      }
+      open_count_runs: { Args: { p_location: number }; Returns: Json }
+      opening_stock_status: {
+        Args: { p_location?: number }
+        Returns: {
+          done_at: string | null
+          done_by: string | null
+          location_id: number
+        }[]
       }
       part_alternatives: {
         Args: { min_confidence?: number; p_part: number }
@@ -4610,6 +4672,7 @@ export type Database = {
         Args: { p_code: string; p_source: number }
         Returns: undefined
       }
+      reopen_opening_stock: { Args: { p_location: number }; Returns: Json }
       reorder_enrichment_sources: {
         Args: { p_ids: number[] }
         Returns: undefined
@@ -4812,6 +4875,15 @@ export type Database = {
           p_source: number
         }
         Returns: string
+      }
+      start_count_run: {
+        Args: {
+          p_bins: number[]
+          p_location: number
+          p_purpose: string
+          p_run: string
+        }
+        Returns: Json
       }
       start_stocktake: { Args: { p_stocktake: string }; Returns: number }
       stock_valuation: {

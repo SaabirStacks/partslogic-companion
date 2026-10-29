@@ -6,6 +6,7 @@ import {
   closeStockDocument,
   commitBinCount,
   ensureBin,
+  markOpeningStockDone,
   openBinCount,
   quickAddPart,
   recordCounts,
@@ -45,6 +46,8 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
       return closeStockDocument(supabase, item.documentId);
     case 'quick_add':
       return sendQuickAdd(item);
+    case 'opening_stock_done':
+      return markOpeningStockDone(supabase, item.locationId);
   }
 }
 

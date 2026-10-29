@@ -71,7 +71,10 @@ back office, so what the phone does and what the office sees agree.
       run.
     - **Opening stock:** the same run, for setting up a location (at go-live, or a new branch), so it has
       no tile of its own: Stock take's first step switches between Stock take and Opening stock. Stock
-      found is booked as opening stock.
+      found is booked as opening stock. Finishing it asks "Is MAIN fully set up?": Yes marks the
+      location's opening stock done, and the switch no longer shows there; Not yet leaves it for another
+      run (a big location goes aisle by aisle). The office can reopen it from the location's page in
+      PartsLogic.
     - **Transfer stock:** move stock between bins. Needs signal.
     - Later: adjust stock.
   - **Outbound** (later): pick, pack, outbound staging, dispatch, return to supplier.
