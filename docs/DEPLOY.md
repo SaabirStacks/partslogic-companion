@@ -119,11 +119,11 @@ It asks a few questions on the way. The wording varies between versions:
 
 | When it asks about | Answer |
 |---|---|
-| Logging in to your Apple account | Yes. Use the Apple ID of the developer account, then enter the code Apple sends to your devices |
+| Logging in to your Apple account | Yes. At `Apple ID:` type the **email address** of the developer account (not the app's number), then enter the code Apple sends to your devices |
 | A distribution certificate | Make a new one, or reuse one you already have |
 | A provisioning profile | Make a new one |
 | Push notifications | No. The app doesn't send any |
-| An App Store Connect API key | Yes, make one. Later builds use it to reach TestFlight without your Apple login |
+| An App Store Connect API key | Yes, make one, with the **Admin** role. Later builds use it to reach TestFlight, and to renew the app's signing, without your Apple login |
 | The app's name, only if "PartsLogic" is taken in the App Store | Something like "PartsLogic Eclipse". Only you and your testers see it |
 
 The build itself runs on Expo's servers and takes about 20 minutes. EAS then uploads it to App Store
@@ -131,16 +131,18 @@ Connect, and Apple processes it, which usually takes 5 to 15 minutes. You can cl
 build has started: the build and the upload carry on without it, and the build page on expo.dev shows how
 they're doing.
 
-Then copy the app's **Apple ID** into `eas.json`, so later builds can reach TestFlight on their own. It's
-a number such as `6741234567`, under **App Information** in App Store Connect, and it isn't a secret:
+If Apple says the password is wrong when it isn't:
 
-```json
-"submit": {
-  "production": {
-    "ios": { "ascAppId": "6741234567" }
-  }
-}
-```
+1. Delete the tool's saved Apple sign-in, which can go stale: `rm -rf ~/.app-store` on a Mac, or
+   `Remove-Item -Recurse -Force $HOME\.app-store` in Windows PowerShell.
+2. Sign in at developer.apple.com and appstoreconnect.apple.com in a browser, and accept any agreement
+   they ask you to.
+3. Type the password by hand, because pasting into the hidden prompt often doesn't work.
+
+This was done on 29 October 2026. The app is in App Store Connect as **PartsLogic**, and its App Store
+Connect ID (`ascAppId`, `6828475146`, also shown as "Apple ID" under **App Information**) is in
+`eas.json`, so later builds reach TestFlight on their own. EAS keeps the signing certificate, the
+provisioning profile and an Admin App Store Connect API key.
 
 ### Add staff
 
@@ -148,11 +150,9 @@ TestFlight testers must be users on your App Store Connect team.
 
 1. In App Store Connect, open **Users and Access** and add each person. Give them the **Marketing** role,
    which can't change builds or users, with access to PartsLogic only.
-2. Open the app, go to **TestFlight**, then click **+** next to **Internal Testing**. Make a group called
-   "Eclipse staff" and leave **Enable automatic distribution** ticked, so every new build reaches the
-   group without anyone adding it.
-3. Add the staff to the group with **Invite Testers**.
-4. Each person installs the **TestFlight** app from the App Store and opens the invite email on their
+2. Open the app and go to **TestFlight**. The first build made an internal group called **Team (Expo)**
+   and added the account holder to it. Open it and add the staff with **Invite Testers**.
+3. Each person installs the **TestFlight** app from the App Store and opens the invite email on their
    iPhone. They tap **View in TestFlight**, then **Install**. Turning on **Automatic Updates** in
    TestFlight installs new builds as they arrive.
 
@@ -164,8 +164,7 @@ asks for a sign-in the reviewer can use.
 
 The workflow `.eas/workflows/testflight.yml` builds the iPhone app and sends it to TestFlight in one go.
 Start it from the project's **Workflows** page on expo.dev, with
-`npx eas-cli@latest workflow:run .eas/workflows/testflight.yml`, or through the Expo connector. It needs
-the `ascAppId` above.
+`npx eas-cli@latest workflow:run .eas/workflows/testflight.yml`, or through the Expo connector.
 
 **TestFlight builds stop opening 90 days after they're uploaded.** Over-the-air updates keep the code
 current but don't reset that clock; only a new build does. Run the workflow at least every 80 days, or
