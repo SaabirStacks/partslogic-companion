@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 
 import { clock, plural } from '@/lib/format';
 import { Button } from '@/ui/button';
@@ -10,6 +9,8 @@ import type { ChipState } from '@/ui/status-chip';
 import { StatusChip } from '@/ui/status-chip';
 import { Card, PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
+import { Scroll } from '@/ui/scroll';
+import { BottomBar } from '@/ui/action-bar';
 
 import { runCountText, type RunBin, type RunProgress } from './run-progress';
 import type { CountRun } from './run-store';
@@ -48,14 +49,13 @@ export function RunOverview({
   onPause: () => void;
   onFinish: () => void;
 }) {
-  const insets = useSafeAreaInsets();
   const share = progress.total > 0 ? progress.counted / progress.total : 0;
   const next = progress.next;
   const counting = progress.bins.find((bin) => bin.state === 'counting')?.code ?? null;
   const [finishingEarly, setFinishingEarly] = useState(false);
   return (
     <View className="flex-1 bg-ground">
-      <ScrollView contentContainerClassName="gap-3 px-4 pb-6 pt-4">
+      <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-4">
         <View className="gap-1" accessible accessibilityRole="header" accessibilityLabel={`${runCountText(progress)} counted`}>
           <Txt variant="headline" className="font-extrabold">
             {runCountText(progress)}
@@ -98,8 +98,8 @@ export function RunOverview({
             );
           })}
         </View>
-      </ScrollView>
-      <View style={{ paddingBottom: Math.max(insets.bottom, 12) }} className="gap-2 border-t border-edge bg-ground px-4 pt-3">
+      </Scroll>
+      <BottomBar className="gap-2">
         {next ? (
           <Button label={next.state === 'counting' ? `Carry on with ${next.code}` : `Start ${next.code}`} icon="count" onPress={() => onBin(next)} />
         ) : (
@@ -115,7 +115,7 @@ export function RunOverview({
             </View>
           ) : null}
         </View>
-      </View>
+      </BottomBar>
       <ConfirmSheet
         visible={finishingEarly}
         title={`Finish the ${noun} now?`}

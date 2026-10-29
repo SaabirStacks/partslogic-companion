@@ -47,7 +47,8 @@ back office, so what the phone does and what the office sees agree.
   the same size.
   - **Parts:**
     - **Look up:** scan or type, then see the part, on-hand stock per bin, prices, codes and
-      alternatives.
+      alternatives. A typed search also lists the location's bins whose names match ("02-A"), so a bin
+      can be found without its label.
     - **Add part:** add an unknown barcode as a new part. Waiting scans of that barcode then match up.
   - **Inbound:**
     - **Receive goods:** it starts with **Who's it from?**: one of PartsLogic's suppliers, or a
@@ -75,7 +76,9 @@ back office, so what the phone does and what the office sees agree.
       location's opening stock done, and the switch no longer shows there; Not yet leaves it for another
       run (a big location goes aisle by aisle). The office can reopen it from the location's page in
       PartsLogic.
-    - **Transfer stock:** move stock between bins. Needs signal.
+    - **Transfer stock:** move stock between bins. Needs signal. The bin it goes to is scanned, tapped
+      from the bins already holding the part, or chosen from every bin in the location, grouped by aisle
+      and searchable, so nobody needs a label or the names by heart.
     - Later: adjust stock.
   - **Outbound** (later): pick, pack, outbound staging, dispatch, return to supplier.
   - **Sync:** what's waiting to send, what needs attention, and what was sent. Work PartsLogic refuses
@@ -103,6 +106,9 @@ back office, so what the phone does and what the office sees agree.
 - **Fixes:** reach phones as over-the-air updates (EAS Update, channel `preview`). The phone checks when
   it opens and when it comes back to the front, and the board says "New version ready" with Restart.
 - **Blind counts:** expected quantities are never shown during a count.
+- **Keyboard and screen edges:** screens with something to type in move up with the keyboard on Android
+  as well as iPhone (Android draws edge to edge, so the window no longer shrinks for it), the field being
+  typed in is scrolled into view, and lists and buttons clear the phone's own buttons and home bar.
 - **Not yet built:**
   - a stock take that freezes a whole location (the phone's stock take is a run of bin counts)
   - labels

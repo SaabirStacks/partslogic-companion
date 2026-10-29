@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { countWorkflow, isRunWorkflow, type CountWorkflow, type RunWorkflow } from '@/features/count/count-store';
 import { RunOverview } from '@/features/count/run-overview';
@@ -35,6 +35,7 @@ import { SectionLabel } from '@/ui/section-label';
 import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { Tally } from '@/ui/tally';
+import { Scroll } from '@/ui/scroll';
 import { unlocatedStockSummary } from '@/vendor/partslogic/shared/floor';
 import { liveWorkflow } from '@/workflows/catalogue';
 
@@ -437,10 +438,10 @@ function Result({ counting }: { counting: Counting }) {
   const finished = counting.finished!;
   const summary = countSummary(counting.progressOf(finished.stocktakeId));
   return (
-    <ScrollView className="bg-ground" contentContainerClassName="flex-grow justify-center gap-4 px-4 py-8">
+    <Scroll className="bg-ground" contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-8">
       <CountReceipt binCode={finished.binCode} summary={summary} units={finished.units} />
       <Button label="Count next bin" icon="count" onPress={counting.dismissFinished} />
       <Button label="Board" variant="secondary" onPress={() => router.dismissTo('/')} />
-    </ScrollView>
+    </Scroll>
   );
 }

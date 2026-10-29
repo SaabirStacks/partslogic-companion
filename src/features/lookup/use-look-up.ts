@@ -94,6 +94,11 @@ export function useLookUp() {
     search: (query: string) => void search(query),
     retry: (code: string, typed: boolean) => void lookUp(code, typed),
     openPart,
+    // A bin chosen from the list, shown as if its label had been scanned.
+    showBin: (bin: { binId: number; code: string }) => {
+      scanFeedback.found();
+      setView({ kind: 'bin', code: bin.code, binId: bin.binId, bin: bin.code, location: location?.name ?? '' });
+    },
     clear: () => setView({ kind: 'idle' }),
   };
 }

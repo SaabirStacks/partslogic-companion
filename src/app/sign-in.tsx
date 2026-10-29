@@ -1,6 +1,6 @@
 import { useNetworkState } from 'expo-network';
 import { useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
+import { TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSession } from '@/session/session-provider';
@@ -9,6 +9,8 @@ import { Field } from '@/ui/field';
 import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { Wordmark } from '@/ui/wordmark';
+import { KeyboardScreen } from '@/ui/keyboard-screen';
+import { Scroll } from '@/ui/scroll';
 
 export default function SignIn() {
   const { checking, signIn } = useSession();
@@ -34,8 +36,8 @@ export default function SignIn() {
 
   return (
     <SafeAreaView className="flex-1 bg-ground">
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="flex-grow justify-between gap-8 px-5 py-6">
+      <KeyboardScreen>
+        <Scroll toEdge={false} contentContainerClassName="flex-grow justify-between gap-8 px-5 pt-6">
           <View className="gap-8">
             <Wordmark />
 
@@ -78,8 +80,8 @@ export default function SignIn() {
           </View>
 
           <Button label={busy ? 'Signing in' : 'Sign in'} onPress={submit} busy={busy} disabled={!ready} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </Scroll>
+      </KeyboardScreen>
     </SafeAreaView>
   );
 }

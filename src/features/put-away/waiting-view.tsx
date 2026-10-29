@@ -1,4 +1,4 @@
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { plural } from '@/lib/format';
 import { Button } from '@/ui/button';
@@ -7,6 +7,7 @@ import { StatusStrip } from '@/ui/status-strip';
 import { Card, PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
 import { useColour } from '@/ui/theme';
+import { Scroll } from '@/ui/scroll';
 
 import type { WaitingRow } from './waiting';
 
@@ -35,7 +36,7 @@ export function WaitingView({
   const colourOf = useColour();
   const units = rows.reduce((sum, row) => sum + row.qty, 0);
   return (
-    <ScrollView className="flex-1 bg-ground" contentContainerClassName="gap-3 px-4 pb-8 pt-4">
+    <Scroll className="flex-1 bg-ground" contentContainerClassName="gap-3 px-4 pt-4">
       <View className="gap-1" accessible accessibilityRole="header">
         <Txt variant="headline" numbers className="font-extrabold">
           {loading ? 'Waiting' : `${plural(units, 'unit', 'units')} waiting`}
@@ -87,6 +88,6 @@ export function WaitingView({
         ))}
       </View>
       {rows.length >= limit ? <Txt variant="caption" className="px-1">{`The ${limit} biggest; the rest are in the office’s Unlocated list`}</Txt> : null}
-    </ScrollView>
+    </Scroll>
   );
 }

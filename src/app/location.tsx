@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ActivityIndicator, ScrollView } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 
 import { useWorkingLocation } from '@/session/location-provider';
 import { Button } from '@/ui/button';
@@ -7,6 +7,7 @@ import { Choice } from '@/ui/choice';
 import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { useColour } from '@/ui/theme';
+import { Scroll } from '@/ui/scroll';
 
 // Sheet for picking the working location. This phone remembers the choice.
 export default function LocationSheet() {
@@ -14,7 +15,7 @@ export default function LocationSheet() {
   const colourOf = useColour();
 
   return (
-    <ScrollView className="bg-ground" contentContainerClassName="gap-3 px-4 pb-10 pt-6">
+    <Scroll className="bg-ground" contentContainerClassName="gap-3 px-4 pt-6">
       <Txt accessibilityRole="header" variant="headline">
         Location
       </Txt>
@@ -50,6 +51,6 @@ export default function LocationSheet() {
           />
         );
       })}
-    </ScrollView>
+    </Scroll>
   );
 }

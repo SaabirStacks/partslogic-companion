@@ -1,13 +1,16 @@
 import { useState, type ReactNode } from 'react';
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { useKeyboardShown } from '@/lib/use-keyboard';
 import { CameraScanner } from '@/scan/camera-scanner';
 import { ScanField } from '@/scan/scan-field';
 
 import { Icon } from './icon';
+import { KeyboardScreen } from './keyboard-screen';
 import { APPEAR } from './motion';
 import { OfflineBanner } from './offline-banner';
+import { Scroll } from './scroll';
 import { PressableCard } from './surface';
 
 // Every scanning job is laid out the same way, so a scan always lands in the same place:
@@ -15,6 +18,8 @@ import { PressableCard } from './surface';
 //   the result card rising over the camera's bottom edge;
 //   the job's tally and lines below, scrolling;
 //   the one main action pinned at the bottom (an ActionBar).
+// While the keyboard is up (a typed code, a quantity), the screen sits above it and the camera shrinks to
+// a strip, so the line being typed in stays in view.
 export function JobScreen({
   onScan,
   onType,
@@ -45,12 +50,13 @@ export function JobScreen({
 }) {
   const { height } = useWindowDimensions();
   const [typing, setTyping] = useState(typeFirst);
+  const keyboard = useKeyboardShown();
 
   return (
-    <View className="flex-1 bg-ground">
+    <KeyboardScreen>
       <OfflineBanner />
       {banner}
-      <View style={{ height: Math.max(200, Math.round(height * 0.34)) }}>
+      <View style={{ height: keyboard ? CAMERA_WHILE_TYPING : Math.max(200, Math.round(height * 0.34)) }}>
         <CameraScanner enabled={scanEnabled} onScan={onScan} onResume={onResume} />
         <View className="absolute inset-x-4 top-3 flex-row items-start justify-end gap-2">
           {typing ? (
@@ -67,10 +73,13 @@ export function JobScreen({
         </View>
       </View>
       {result ? <View className="z-10 -mt-8 px-4">{result}</View> : null}
-      <ScrollView keyboardShouldPersistTaps="handled" className="flex-1" contentContainerClassName="gap-3 px-4 pb-6 pt-3">
+      <Scroll toEdge={!action} className="flex-1" contentContainerClassName="gap-3 px-4 pt-3">
         {children}
-      </ScrollView>
+      </Scroll>
       {action}
-    </View>
+    </KeyboardScreen>
   );
 }
+
+// Tall enough for the typing box over the camera (12 + 48), with the result card rising 32 over its edge.
+const CAMERA_WHILE_TYPING = 96;

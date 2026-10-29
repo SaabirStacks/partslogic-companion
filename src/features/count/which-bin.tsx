@@ -1,10 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { clock, plural } from '@/lib/format';
 import { Button } from '@/ui/button';
 import { Field } from '@/ui/field';
 import { Icon } from '@/ui/icon';
+import { KeyboardScreen } from '@/ui/keyboard-screen';
+import { Scroll } from '@/ui/scroll';
 import { SearchInput } from '@/ui/search-input';
 import { StatusChip } from '@/ui/status-chip';
 import { StatusStrip } from '@/ui/status-strip';
@@ -52,8 +54,8 @@ export function WhichBinView({
   const typed = query.trim().toUpperCase();
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-ground" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-3 px-4 pb-8 pt-4">
+    <KeyboardScreen>
+      <Scroll contentContainerClassName="gap-3 px-4 pt-4">
         <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
           Which bin?
         </Txt>
@@ -147,7 +149,7 @@ export function WhichBinView({
         )}
 
         {footer}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </Scroll>
+    </KeyboardScreen>
   );
 }
