@@ -25,6 +25,8 @@ export type OutboxContextValue = {
   retry: (clientId: string) => Promise<void>;
   // Throws away a refused item and what waits behind it in its stream (discard.ts); returns what went.
   discard: (clientId: string) => Promise<OutboxItem[]>;
+  // Throws away unsent work that's no longer needed (a discarded count's, unsentOfCount).
+  forget: (unsent: OutboxItem[]) => Promise<void>;
   sendNow: () => void;
 };
 
@@ -138,6 +140,15 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
     [items, store, refresh, run],
   );
 
+  const forget = useCallback(
+    async (unsent: OutboxItem[]) => {
+      if (unsent.length === 0) return;
+      await store.remove(unsent.map((item) => item.clientId));
+      await refresh();
+    },
+    [store, refresh],
+  );
+
   const value = useMemo(() => {
     const waiting = items.filter((item) => item.status === 'pending' || item.status === 'sending').length;
     const needsAttention = items.filter((item) => item.status === 'attention').length;
@@ -150,9 +161,10 @@ export function OutboxProvider({ children }: { children: ReactNode }) {
       lastProblem,
       retry,
       discard,
+      forget,
       sendNow: () => void run(),
     };
-  }, [enqueue, items, lastSentAt, lastProblem, retry, discard, run]);
+  }, [enqueue, items, lastSentAt, lastProblem, retry, discard, forget, run]);
 
   return <OutboxContext value={value}>{children}</OutboxContext>;
 }

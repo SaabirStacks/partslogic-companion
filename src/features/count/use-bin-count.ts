@@ -6,6 +6,7 @@ import { deviceLabel } from '@/lib/device';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import { isConnectionProblem, within } from '@/lib/within';
+import { unsentOfCount } from '@/queue/discard';
 import { useOutbox } from '@/queue/outbox-provider';
 import { feedbackFor } from '@/scan/feedback';
 import { usePendingScan } from '@/scan/pending-scan';
@@ -256,8 +257,13 @@ export function useBinCount(workflow: CountWorkflow) {
 
     dismissFinished: () => setFinished(null),
 
+    // Throws the count away, in PartsLogic too: it may already have it (it opens as the count starts, with
+    // signal), and there it would show in progress and hold the bin. What wasn't sent yet no longer needs
+    // sending; the discard goes last in the count's stream, and does nothing if PartsLogic never got it.
     async discard() {
       if (!count) return;
+      await outbox.forget(unsentOfCount(outbox.items, count.stocktakeId));
+      await outbox.enqueue({ kind: 'discard_bin_count', clientId: Crypto.randomUUID(), stocktakeId: count.stocktakeId }, `Discard count of bin ${count.binCode}`);
       await store.discard(count.stocktakeId);
       setLastScan(null);
       held.clear();

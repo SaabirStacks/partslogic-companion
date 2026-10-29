@@ -67,6 +67,8 @@ back office, so what the phone does and what the office sees agree.
       else is counting isn't started ("Sam is counting that bin"). A count holds its bin until it's
       finished, or after 2 hours without a scan. Without signal the count starts and PartsLogic checks it
       when it's sent.
+    - **Discard this count** throws it away in PartsLogic too, so it doesn't stay "In progress" or keep
+      holding the bin. What was scanned stays there for the record; stock isn't touched.
     - Later: inbound staging areas, customer returns.
   - **Stock control:**
     - **Stock count:** the same blind bin count, to check a shelf.

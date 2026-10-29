@@ -1,3 +1,4 @@
+import { countStream } from './stream';
 import type { OutboxItem } from './types';
 
 // What discarding a problem throws away: the item PartsLogic refused, and everything unsent behind it in
@@ -13,5 +14,13 @@ export function discardPlan(items: OutboxItem[], clientId: string): OutboxItem[]
 
 // The bin count a stream belongs to, so the phone can forget it too once its work is discarded.
 export function countOfStream(streamKey: string): string | null {
-  return streamKey.startsWith('count:') ? streamKey.slice('count:'.length) : null;
+  const prefix = countStream('');
+  return streamKey.startsWith(prefix) ? streamKey.slice(prefix.length) : null;
+}
+
+// A count discarded on the phone: its work not sent yet (waiting, or refused), which no longer needs
+// sending. One being sent right now is left to finish; the discard queued after it follows it.
+export function unsentOfCount(items: OutboxItem[], stocktakeId: string): OutboxItem[] {
+  const stream = countStream(stocktakeId);
+  return items.filter((item) => item.streamKey === stream && (item.status === 'pending' || item.status === 'attention'));
 }

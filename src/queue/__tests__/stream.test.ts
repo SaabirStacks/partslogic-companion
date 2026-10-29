@@ -10,6 +10,8 @@ describe('streamKeyOf', () => {
     expect(streamKeyOf({ kind: 'commit_bin_count', clientId: 'c', stocktakeId: 'S1', confirmEmpty: false })).toBe(
       'count:S1',
     );
+    // A discard goes in the count's own stream, after its open.
+    expect(streamKeyOf({ kind: 'discard_bin_count', clientId: 'c', stocktakeId: 'S1' })).toBe('count:S1');
     expect(streamKeyOf({ kind: 'ensure_bin', clientId: 'c', locationId: 3, code: 'a-07' })).toBe('bin:3:A-07');
     expect(streamKeyOf({ kind: 'quick_add', clientId: 'q1', number: '123' })).toBe('quick-add:q1');
     expect(streamKeyOf({ kind: 'opening_stock_done', clientId: 'o1', locationId: 3 })).toBe('opening:3');

@@ -103,6 +103,9 @@ export type QueueItem =
       lines: { clientCountId: string; code: string; qty: number }[];
     }
   | { kind: 'commit_bin_count'; clientId: string; stocktakeId: string; confirmEmpty: boolean }
+  // The count was discarded on the phone: cancel it in PartsLogic too (see discardBinCount). Last in the
+  // count's stream, so it follows the open.
+  | { kind: 'discard_bin_count'; clientId: string; stocktakeId: string }
   | {
       kind: 'receipt_lines';
       clientId: string;
