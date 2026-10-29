@@ -59,9 +59,11 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "sync:partslogic": "node scripts/sync-partslogic.mjs",
+    "check:server": "node scripts/check-server-contract.mjs",
     "typecheck": "tsc --noEmit",
     "check:env": "node scripts/check-public-env.mjs",
     "test": "jest",
+    "test:scripts": "node --test scripts/__tests__/*.test.mjs",
     "eas-build-post-install": "npm run check:env"
   },
   "private": true,
