@@ -63,6 +63,10 @@ back office, so what the phone does and what the office sees agree.
       away on that shelf.
       Counting a bin pulls stock from Unbinned onto the shelf; anything not scanned goes back to
       Unbinned. PartsLogic records each count as a put away or a stock count.
+    - **One person per bin**, for every job: with signal, PartsLogic is asked first, and a bin someone
+      else is counting isn't started ("Sam is counting that bin"). A count holds its bin until it's
+      finished, or after 2 hours without a scan. Without signal the count starts and PartsLogic checks it
+      when it's sent.
     - Later: inbound staging areas, customer returns.
   - **Stock control:**
     - **Stock count:** the same blind bin count, to check a shelf.
@@ -70,6 +74,14 @@ back office, so what the phone does and what the office sees agree.
       counted), then count them one at a time, blind. Pause puts a Resume row on the board ("Stock take,
       1 of 4 bins"). It ends with a receipt. Each bin is its own count, and PartsLogic groups them as one
       run.
+    - **Counting it together:** with signal, a stock take is shared. Several people count it, each on
+      their own phone, one person per bin. A stock take already open in the location is offered first
+      ("Sam's stock take · 75 of 650 bins counted · Join Sam"), and starting one anyway joins it. The bin
+      list shows who counted each bin and who is counting one now, refreshed while it's on screen. A big
+      run has Tab view too, so people can split it by aisle; in an aisle, the next bin offered is the
+      next one there. Finishing early either finishes it for everyone (needs signal) or leaves it to the
+      others, who carry on; once someone finishes it, the others can only close it. Started without
+      signal, a stock take is that phone's alone.
     - **Opening stock:** the same run, for setting up a location (at go-live, or a new branch), so it has
       no tile of its own: Stock take's first step switches between Stock take and Opening stock. Stock
       found is booked as opening stock. Finishing it asks "Is MAIN fully set up?": Yes marks the

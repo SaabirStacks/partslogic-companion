@@ -10,6 +10,7 @@ import { Scroll } from '@/ui/scroll';
 import { BottomBar } from '@/ui/action-bar';
 
 import type { RunProgress } from './run-progress';
+import type { RunEnd } from './use-count-run';
 import type { CountRun } from './run-store';
 
 // The question after opening stock: is the location fully set up? Yes marks its opening stock done, so it
@@ -23,10 +24,13 @@ export type SetUpQuestion = {
 
 // Step 3 of a run: a receipt like a delivery's. How many bins and units, and anything for the office to
 // check (a count that needs review or didn't go through). After opening stock it asks setUp.
+// A shared run's totals are everyone's, with this phone's own bins as "You counted"; end says how it ended
+// (left to the others, it stays open for them).
 export function RunReceipt({
   title,
   run,
   progress,
+  end = 'alone',
   toCheck,
   setUp,
   onDone,
@@ -35,22 +39,29 @@ export function RunReceipt({
   title: string;
   run: CountRun;
   progress: RunProgress;
+  end?: RunEnd;
   toCheck: number;
   setUp?: SetUpQuestion | null;
   onDone: () => void;
 }) {
   const span = run.finishedAt ? `${clock(run.startedAt)}–${clock(run.finishedAt)}` : clock(run.startedAt);
+  const left = end === 'left';
   const rows: [string, string][] = [
     ['Bins counted', `${progress.counted} of ${progress.total}`],
+    ...(end === 'alone' ? [] : ([['You counted', plural(progress.mine, 'bin', 'bins')]] as [string, string][])),
     ['Units counted', String(progress.units)],
     ...(toCheck > 0 ? ([['For the office to check', String(toCheck)]] as [string, string][]) : []),
   ];
   return (
     <View className="flex-1 bg-ground">
       <Scroll toEdge={setUp?.answer === 'ask'} contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-6">
-        <Card accessible accessibilityLabel={`${title} finished. ${plural(progress.counted, 'bin', 'bins')}, ${plural(progress.units, 'unit', 'units')}`} className="gap-4 p-5">
+        <Card accessible accessibilityLabel={`${title} ${left ? 'left to the others' : 'finished'}. ${plural(progress.counted, 'bin', 'bins')}, ${plural(progress.units, 'unit', 'units')}`} className="gap-4 p-5">
           <View className="items-center gap-2">
-            <StatusChip tone={toCheck > 0 ? 'warn' : 'ok'} icon={toCheck > 0 ? 'warning' : 'sent'} label={toCheck > 0 ? 'Finished · to check' : 'Finished'} />
+            <StatusChip
+              tone={toCheck > 0 ? 'warn' : left ? 'neutral' : 'ok'}
+              icon={toCheck > 0 ? 'warning' : left ? 'account' : 'sent'}
+              label={[left ? 'Left to the others' : 'Finished', toCheck > 0 ? 'to check' : null].filter(Boolean).join(' · ')}
+            />
             <Txt accessibilityRole="header" variant="display" className="text-center">
               {plural(progress.counted, 'bin', 'bins')}
             </Txt>
@@ -71,6 +82,7 @@ export function RunReceipt({
             ))}
           </View>
         </Card>
+        {left ? <StatusStrip tone="neutral" icon="stockTake" text={`The ${title.toLowerCase()} stays open for the others to finish`} /> : null}
         {setUp?.answer === 'ask' ? (
           <Card className="gap-3 p-4">
             <View className="gap-1">

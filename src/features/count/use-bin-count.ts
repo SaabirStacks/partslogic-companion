@@ -1,10 +1,11 @@
 import * as Crypto from 'expo-crypto';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { db } from '@/db/database';
 import { deviceLabel } from '@/lib/device';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
+import { isConnectionProblem, within } from '@/lib/within';
 import { useOutbox } from '@/queue/outbox-provider';
 import { feedbackFor } from '@/scan/feedback';
 import { usePendingScan } from '@/scan/pending-scan';
@@ -20,10 +21,11 @@ import {
   type BinSessionAction,
   type QueueItem,
 } from '@/vendor/partslogic/shared/bin-session';
-import { ensureBin } from '@/vendor/partslogic/shared/floor';
+import { ensureBin, openBinCount } from '@/vendor/partslogic/shared/floor';
 
 import { countLineOutcomes, countProgress } from './count-results';
 import { COUNT_PURPOSE, CountStore, type BinCount, type CountWorkflow } from './count-store';
+import { refusalText } from './start-refusal';
 
 export type BinToCount = { binId: number; binCode: string; location: string | null };
 
@@ -32,6 +34,9 @@ export type StartState =
   | { kind: 'idle' }
   | { kind: 'checking'; code: string }
   | { kind: 'message'; title: string; body: string };
+
+// How long starting a bin waits on PartsLogic before it's queued, as it would be without signal.
+const OPEN_WAIT_MS = 5000;
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
@@ -50,6 +55,8 @@ export function useBinCount(workflow: CountWorkflow) {
   const [count, setCount] = useState<BinCount | null | undefined>(undefined);
   const [recent, setRecent] = useState<BinCount[]>([]);
   const [start, setStart] = useState<StartState>({ kind: 'idle' });
+  // A bin being opened with PartsLogic, so a second tap while it answers doesn't start another.
+  const opening = useRef(false);
   // The scan waiting on Count or Skip (the camera pauses on it), and the scan last counted. key is new for
   // every scan, so the result card rises even when the same part is scanned again.
   const check = useCallback(
@@ -97,54 +104,64 @@ export function useBinCount(workflow: CountWorkflow) {
   }
 
   // Starts a blind count of one bin; runId (and the run's own workflow) when it's one bin of a stock take or
-  // opening-stock run.
-  async function begin(bin: BinToCount, runId: string | null = null, as: CountWorkflow = workflow) {
-    if (!userId) return;
+  // opening-stock run. With signal PartsLogic opens it first, so a bin someone else is counting (or one a
+  // finished run can't take) is refused here, not later in Sync. Without signal, or if PartsLogic is slow,
+  // it's queued like any other work and checked when it's sent. The queued open is safe either way: one
+  // already open is recognised by its id. Says whether the count started.
+  async function begin(bin: BinToCount, runId: string | null = null, as: CountWorkflow = workflow): Promise<boolean> {
+    if (!userId || opening.current) return false;
     // PartsLogic refuses to count its system bins, and the refusal would block Sync, so never start one.
     if (isSystemBin(bin.binCode)) {
       setStart({ kind: 'message', title: `${bin.binCode.trim().toUpperCase()} is a system bin`, body: 'PartsLogic doesn’t count UNBINNED or UNASSIGNED. Pick a shelf bin instead.' });
-      return;
+      return false;
     }
-    const stocktakeId = Crypto.randomUUID();
-    const startedAt = new Date().toISOString();
-    const session = reduceBinSession(emptyBinSession(stocktakeId, startedAt), {
-      type: 'lock_bin',
-      binId: bin.binId,
-      binCode: bin.binCode,
-      locationId: location?.id ?? 0,
-    });
-    const created: BinCount = {
-      stocktakeId,
-      userId,
-      binId: bin.binId,
-      binCode: bin.binCode,
-      location: bin.location,
-      startedAt,
-      session,
-      labels: {},
-      finishedAt: null,
-      workflow: as,
-      runId,
-    };
-    await store.create(created);
-    await outbox.enqueue(
-      {
-        kind: 'open_bin_count',
-        clientId: Crypto.randomUUID(),
-        stocktakeId,
+    opening.current = true;
+    try {
+      const stocktakeId = Crypto.randomUUID();
+      const startedAt = new Date().toISOString();
+      const open = { stocktakeId, binId: bin.binId, startedAt, device: deviceLabel(), purpose: COUNT_PURPOSE[as], ...(runId ? { runId } : {}) };
+      if (online) {
+        setStart({ kind: 'checking', code: bin.binCode });
+        try {
+          await within(openBinCount(supabase, open), OPEN_WAIT_MS);
+        } catch (error) {
+          if (!isConnectionProblem(error)) {
+            const refusal = refusalText(error instanceof Error ? error.message : String(error));
+            setStart({ kind: 'message', title: refusal.title, body: refusal.body });
+            return false;
+          }
+        }
+      }
+      const session = reduceBinSession(emptyBinSession(stocktakeId, startedAt), {
+        type: 'lock_bin',
         binId: bin.binId,
+        binCode: bin.binCode,
+        locationId: location?.id ?? 0,
+      });
+      const created: BinCount = {
+        stocktakeId,
+        userId,
+        binId: bin.binId,
+        binCode: bin.binCode,
+        location: bin.location,
         startedAt,
-        device: deviceLabel(),
-        purpose: COUNT_PURPOSE[as],
-        ...(runId ? { runId } : {}),
-      },
-      label(created),
-    );
-    setStart({ kind: 'idle' });
-    held.clear();
-    setLastScan(null);
-    setFinished(null);
-    setCount(created);
+        session,
+        labels: {},
+        finishedAt: null,
+        workflow: as,
+        runId,
+      };
+      await store.create(created);
+      await outbox.enqueue({ kind: 'open_bin_count', clientId: Crypto.randomUUID(), ...open }, label(created));
+      setStart({ kind: 'idle' });
+      held.clear();
+      setLastScan(null);
+      setFinished(null);
+      setCount(created);
+      return true;
+    } finally {
+      opening.current = false;
+    }
   }
 
   const stocktakeId = count?.stocktakeId ?? null;

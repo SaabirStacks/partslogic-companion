@@ -4053,6 +4053,7 @@ export type Database = {
         Returns: undefined
       }
       apply_resolved_count: { Args: { p_count: number }; Returns: Json }
+      bin_count_is_active: { Args: { p_stocktake: string }; Returns: boolean }
       brand_options: {
         Args: { p_limit?: number; p_query?: string }
         Returns: {
@@ -4448,6 +4449,7 @@ export type Database = {
         Args: { p_id: string; p_kind: string }
         Returns: undefined
       }
+      mark_opening_stock_done: { Args: { p_location: number }; Returns: Json }
       member_labels: {
         Args: never
         Returns: {
@@ -4456,7 +4458,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      mark_opening_stock_done: { Args: { p_location: number }; Returns: Json }
       next_stock_document_number: { Args: { p_type: string }; Returns: string }
       normalise_name_key: { Args: { value: string }; Returns: string }
       normalise_part_number: { Args: { value: string }; Returns: string }
@@ -4475,8 +4476,8 @@ export type Database = {
       opening_stock_status: {
         Args: { p_location?: number }
         Returns: {
-          done_at: string | null
-          done_by: string | null
+          done_at: string
+          done_by: string
           location_id: number
         }[]
       }
@@ -4613,6 +4614,7 @@ export type Database = {
           units: number
         }[]
       }
+      person_label: { Args: { p_user: string }; Returns: string }
       post_stocktake: { Args: { p_stocktake: string }; Returns: Json }
       put_away: {
         Args: {
@@ -4866,6 +4868,15 @@ export type Database = {
       }
       sku_available: { Args: { p_part?: number; p_sku: string }; Returns: Json }
       spec_keys: { Args: never; Returns: Json }
+      start_count_run: {
+        Args: {
+          p_bins: number[]
+          p_location: number
+          p_purpose: string
+          p_run: string
+        }
+        Returns: Json
+      }
       start_ingestion: {
         Args: {
           p_file_name: string
@@ -4875,15 +4886,6 @@ export type Database = {
           p_source: number
         }
         Returns: string
-      }
-      start_count_run: {
-        Args: {
-          p_bins: number[]
-          p_location: number
-          p_purpose: string
-          p_run: string
-        }
-        Returns: Json
       }
       start_stocktake: { Args: { p_stocktake: string }; Returns: number }
       stock_valuation: {

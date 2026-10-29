@@ -27,7 +27,8 @@ const ASK: Record<StepAsk, { prompt: string; tile: string }> = {
 // change it. A tile says how many bins are under it, or for the last part what's known about that bin.
 //  - held: green "Has 4" where the part already is, so it can be followed to its bin.
 //  - chosen: for choosing several bins (a stock take), a tick and outline on what's chosen, and
-//    "4 of 10" on a tile part chosen.
+//    "4 of 10" on a tile part chosen. marks says what the tick means: chosen (tiles are checkboxes), or
+//    counted (a stock take's bins as it goes, which are tapped to count).
 export function BinTiles({
   bins,
   path,
@@ -35,6 +36,7 @@ export function BinTiles({
   onBin,
   held,
   chosen,
+  marks = 'chosen',
   detail,
   action,
 }: {
@@ -45,6 +47,7 @@ export function BinTiles({
   onBin: (bin: BinChoice) => void;
   held?: ReadonlyMap<number, number>;
   chosen?: ReadonlySet<number>;
+  marks?: 'chosen' | 'counted';
   // What a bin's own tile says under its number ("3 Oct").
   detail?: (bin: BinChoice) => string | null;
   // Goes between the name and the tiles ("Choose all 10 in 02-B").
@@ -106,6 +109,7 @@ export function BinTiles({
             size={size}
             held={held}
             chosen={chosen}
+            marks={marks}
             detail={detail}
             onPress={() => (tile.bin ? onBin(tile.bin) : onPath(tile.path))}
           />
@@ -135,6 +139,7 @@ function Tile({
   size,
   held,
   chosen,
+  marks,
   detail,
   onPress,
 }: {
@@ -143,6 +148,7 @@ function Tile({
   size: number;
   held?: ReadonlyMap<number, number>;
   chosen?: ReadonlySet<number>;
+  marks: 'chosen' | 'counted';
   detail?: (bin: BinChoice) => string | null;
   onPress: () => void;
 }) {
@@ -166,11 +172,11 @@ function Tile({
         `${word} ${tile.label}`.trim(),
         plural(total, 'bin', 'bins'),
         has > 0 ? `has ${formatQty(has)} of the part` : null,
-        picked > 0 ? `${picked} chosen` : null,
+        picked > 0 ? `${picked} ${marks}` : null,
       ]
         .filter(Boolean)
         .join(', ');
-  const choosing = chosen != null && tile.bin != null;
+  const choosing = chosen != null && tile.bin != null && marks === 'chosen';
 
   return (
     <View style={{ width: size, minHeight: size }}>

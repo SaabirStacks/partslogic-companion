@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { binsUnder } from '@/features/bins/bin-steps';
@@ -15,9 +15,11 @@ import { StatusStrip } from '@/ui/status-strip';
 import { Txt } from '@/ui/text';
 import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
+import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 
 import { countedShort, countedText, type BinChoice } from './bin-choices';
 import type { RunWorkflow } from './count-store';
+import { JoinRunCard } from './join-run-card';
 import { planBins, type RunPlan } from './run-progress';
 import type { RunBinPlan } from './run-store';
 
@@ -33,17 +35,28 @@ type BinList = { choices: BinChoice[]; loading: boolean; failed: boolean; savedA
 // whether it's a stock take or opening stock. Opening stock is setting a location up, done once, so it's
 // asked here rather than having a tile, and only until the location's opening stock is done
 // (openingOffered). initial is the one asked for.
+// Runs already open in the location (joinable, which needs signal) come first, to join and count with whoever
+// started them; starting one of the same kind anyway joins it too. busy while PartsLogic starts the run.
 export function RunPlanView({
   initial,
   openingOffered = true,
   locationName,
   list,
+  joinable = [],
+  busy = false,
+  notice,
+  onJoin,
   onStart,
 }: {
   initial: RunWorkflow;
   openingOffered?: boolean;
   locationName: string;
   list: BinList;
+  joinable?: SharedRun[];
+  busy?: boolean;
+  // Why a run didn't start (PartsLogic refused it), above the plan.
+  notice?: ReactNode;
+  onJoin?: (run: SharedRun) => void;
   onStart: (bins: RunBinPlan[], as: RunWorkflow) => void;
 }) {
   const colourOf = useColour();
@@ -82,6 +95,16 @@ export function RunPlanView({
   return (
     <View className="flex-1 bg-ground">
       <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-4">
+        {joinable.length > 0 ? (
+          <>
+            <SectionLabel>{`Open in ${locationName} now`}</SectionLabel>
+            {joinable.map((run) => (
+              <JoinRunCard key={run.runId} run={run} busy={busy} onJoin={() => onJoin?.(run)} />
+            ))}
+            <SectionLabel>Or start one</SectionLabel>
+          </>
+        ) : null}
+        {notice}
         {openingOffered ? <Segmented options={KINDS} value={kind} onChange={setKind} /> : null}
         {kind === 'opening-stock' ? (
           <StatusStrip tone="warn" icon="opening" text={`Setting up ${locationName}: what’s found becomes its opening stock`} />
@@ -167,7 +190,8 @@ export function RunPlanView({
               : 'No bins to count'
         }
         icon={bins.length > 0 ? 'count' : undefined}
-        disabled={bins.length === 0}
+        busy={busy}
+        disabled={bins.length === 0 || busy}
         onPress={() => onStart(bins, kind)}
       />
     </View>

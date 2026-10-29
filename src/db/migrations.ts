@@ -90,4 +90,14 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE bin_counts ADD COLUMN run_id TEXT;
   CREATE INDEX bin_counts_run ON bin_counts (run_id);
   `,
+  // 7: a run PartsLogic also has (count_runs there), which several people count together: who started it
+  // when it was someone else (joined), and the last word from PartsLogic on every bin (a SharedRun as JSON,
+  // and when it came), so the board and a phone without signal still show what the others counted. Runs
+  // from before this, or started without signal, are this phone's alone.
+  `
+  ALTER TABLE count_runs ADD COLUMN shared INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE count_runs ADD COLUMN started_by TEXT;
+  ALTER TABLE count_runs ADD COLUMN status TEXT;
+  ALTER TABLE count_runs ADD COLUMN status_at TEXT;
+  `,
 ];

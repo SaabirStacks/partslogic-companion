@@ -7,13 +7,14 @@ import { RunOverview } from '@/features/count/run-overview';
 import { RunPlanView } from '@/features/count/run-plan';
 import { runCountText } from '@/features/count/run-progress';
 import { RunReceipt, type SetUpQuestion } from '@/features/count/run-receipt';
-import { useCountRun } from '@/features/count/use-count-run';
+import { useCountRun, useJoinableRuns, type RunNotice } from '@/features/count/use-count-run';
 import { useOpeningStock } from '@/features/count/use-opening-stock';
 import { CountReceipt } from '@/features/count/count-receipt';
 import { countResultText, countSummary } from '@/features/count/result-text';
 import { useBinCount } from '@/features/count/use-bin-count';
 import { useBinChoices } from '@/features/count/use-bin-choices';
 import { WhichBinView } from '@/features/count/which-bin';
+import { useBinBrowse } from '@/features/bins/use-bin-browse';
 import { NeedsLocation } from '@/features/location/needs-location';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
 import { plural, when } from '@/lib/format';
@@ -172,10 +173,19 @@ function StartAnswer({ counting, locationName }: { counting: Counting; locationN
 // count as below, carrying the run's id), pause and resume from the board, and finish with a receipt.
 function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Counting }) {
   const { location } = useWorkingLocation();
-  // Read again whenever one of the run's counts starts, moves on or finishes.
-  const runFlow = useCountRun(workflow, `${counting.count?.stocktakeId ?? ''}:${counting.units}:${counting.recent.length}`);
-  const bins = useBinChoices(!runFlow.loaded || runFlow.run ? null : (location?.id ?? null));
   const [overview, setOverview] = useState(false);
+  // Tab view or List view of the run's bins, and the aisle, kept while bins are counted one after another.
+  const browse = useBinBrowse();
+  // Read again whenever one of the run's counts starts, moves on or finishes, or a bin was refused (someone
+  // else has it). The others' bins are asked for while the bin list is on screen.
+  const runFlow = useCountRun(
+    workflow,
+    `${counting.count?.stocktakeId ?? ''}:${counting.units}:${counting.recent.length}:${counting.start.kind}`,
+    overview || !counting.count,
+  );
+  const planning = runFlow.loaded && !runFlow.run;
+  const bins = useBinChoices(planning ? (location?.id ?? null) : null);
+  const joinable = useJoinableRuns(planning && !runFlow.finished ? (location?.id ?? null) : null, runFlow.online);
   const opening = useOpeningStock(location?.id ?? null);
   // The answer to "Is the location fully set up?" after opening stock.
   const [setUp, setSetUp] = useState<SetUpQuestion['answer']>('ask');
@@ -194,12 +204,15 @@ function RunFlow({ workflow, counting }: { workflow: RunWorkflow; counting: Coun
         label={label}
         noun={noun}
         bins={bins}
+        joinable={joinable}
+        browse={browse}
         overview={overview}
         setOverview={setOverview}
         openingOffered={!opening.done}
         setUp={
-          // Asked only where PartsLogic records it and the location isn't done already.
-          runFlow.finished?.run.workflow === 'opening-stock' && opening.known && (!opening.done || setUp === 'yes') && location
+          // Asked only where PartsLogic records it and the location isn't done already, and not of someone
+          // leaving the rest to the others.
+          runFlow.finished?.run.workflow === 'opening-stock' && runFlow.finished.end !== 'left' && opening.known && (!opening.done || setUp === 'yes') && location
             ? {
                 location: location.name,
                 answer: setUp,
@@ -223,6 +236,8 @@ function RunStep({
   label,
   noun,
   bins,
+  joinable,
+  browse,
   overview,
   setOverview,
   openingOffered,
@@ -234,6 +249,8 @@ function RunStep({
   label: string;
   noun: string;
   bins: ReturnType<typeof useBinChoices>;
+  joinable: ReturnType<typeof useJoinableRuns>;
+  browse: ReturnType<typeof useBinBrowse>;
   overview: boolean;
   setOverview: (shown: boolean) => void;
   openingOffered: boolean;
@@ -243,7 +260,7 @@ function RunStep({
   if (!runFlow.loaded) return <View className="flex-1 bg-ground" />;
 
   if (runFlow.finished) {
-    const { run, progress } = runFlow.finished;
+    const { run, progress, end } = runFlow.finished;
     const toCheck = progress.bins.filter((bin) => {
       if (!bin.stocktakeId) return false;
       const sent = counting.progressOf(bin.stocktakeId);
@@ -254,6 +271,7 @@ function RunStep({
         title={label}
         run={run}
         progress={progress}
+        end={end}
         toCheck={toCheck}
         setUp={setUp}
         onDone={() => {
@@ -273,6 +291,10 @@ function RunStep({
         openingOffered={openingOffered}
         locationName={location.name}
         list={bins}
+        joinable={joinable}
+        busy={runFlow.busy}
+        notice={<RunNoticeStrip notice={runFlow.notice} />}
+        onJoin={(shared) => void runFlow.join(shared)}
         onStart={(planned, as) => void runFlow.start(planned, as)}
       />
     );
@@ -287,17 +309,35 @@ function RunStep({
       noun={noun}
       run={run}
       progress={progress}
+      browse={browse}
+      online={runFlow.online}
+      busy={runFlow.busy || counting.start.kind === 'checking'}
+      notice={
+        <>
+          <RunNoticeStrip notice={runFlow.notice} />
+          {location ? <StartAnswer counting={counting} locationName={location.name} /> : null}
+        </>
+      }
       onBin={(bin) => {
         if (bin.state === 'counting') {
           setOverview(false);
           return;
         }
-        void counting.begin({ binId: bin.binId, binCode: bin.code, location: location?.code ?? null }, run.runId, run.workflow).then(() => setOverview(false));
+        void counting.begin({ binId: bin.binId, binCode: bin.code, location: location?.code ?? null }, run.runId, run.workflow).then((started) => {
+          if (started) setOverview(false);
+        });
       }}
       onPause={() => router.back()}
-      onFinish={() => void runFlow.finish()}
+      onFinish={(how) => void runFlow.finish(how)}
     />
   );
+}
+
+// What happened when a run started, joined or tried to finish.
+function RunNoticeStrip({ notice }: { notice: RunNotice | null }) {
+  if (!notice) return null;
+  const icon = notice.text.startsWith('No signal') ? 'offline' : notice.tone === 'ok' ? 'sent' : notice.tone === 'warn' ? 'warning' : 'stop';
+  return <StatusStrip tone={notice.tone} icon={icon} text={notice.text} />;
 }
 
 function CountingBin({ counting, run }: { counting: Counting; run?: { text: string; onOverview: () => void } }) {
