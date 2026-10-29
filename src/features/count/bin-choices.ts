@@ -47,11 +47,23 @@ export function exactBin(choices: BinChoice[], query: string): BinChoice | null 
 
 const squash = (text: string) => text.toUpperCase().replace(/[\s-]+/g, '');
 
+// The day a bin was last counted: "today", "3 Oct", or "3 Oct 2025" in another year; null if never.
+function countedDay(lastCounted: string | null, now: Date): string | null {
+  if (!lastCounted) return null;
+  const at = new Date(lastCounted);
+  if (at.toDateString() === now.toDateString()) return 'today';
+  const sameYear = at.getFullYear() === now.getFullYear();
+  return at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) });
+}
+
 // "Counted today", "Counted 3 Oct", "Counted 3 Oct 2025" (another year), or "Never counted".
 export function countedText(lastCounted: string | null, now = new Date()): string {
-  if (!lastCounted) return 'Never counted';
-  const at = new Date(lastCounted);
-  if (at.toDateString() === now.toDateString()) return 'Counted today';
-  const sameYear = at.getFullYear() === now.getFullYear();
-  return `Counted ${at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(sameYear ? {} : { year: 'numeric' }) })}`;
+  const day = countedDay(lastCounted, now);
+  return day == null ? 'Never counted' : `Counted ${day}`;
+}
+
+// The same in a few letters, for a bin's tile: "Today", "3 Oct", "Never".
+export function countedShort(lastCounted: string | null, now = new Date()): string {
+  const day = countedDay(lastCounted, now);
+  return day == null ? 'Never' : day === 'today' ? 'Today' : day;
 }

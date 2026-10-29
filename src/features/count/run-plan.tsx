@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
+import { binsUnder } from '@/features/bins/bin-steps';
+import { BinTiles } from '@/features/bins/bin-tiles';
+import { BIN_VIEWS, useBinBrowse } from '@/features/bins/use-bin-browse';
+import { useStepBack } from '@/features/bins/use-step-back';
 import { clock, plural } from '@/lib/format';
 import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
@@ -12,7 +16,7 @@ import { Txt } from '@/ui/text';
 import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
 
-import { countedText, type BinChoice } from './bin-choices';
+import { countedShort, countedText, type BinChoice } from './bin-choices';
 import type { RunWorkflow } from './count-store';
 import { planBins, type RunPlan } from './run-progress';
 import type { RunBinPlan } from './run-store';
@@ -25,9 +29,10 @@ const KINDS: readonly { value: RunWorkflow; label: string }[] = [
 type BinList = { choices: BinChoice[]; loading: boolean; failed: boolean; savedAt: string | null; reload: () => void };
 
 // Step 1 of a stock take: which bins (the whole location, a hand-picked set such as an aisle or a few
-// shelves, or only bins never counted), and whether it's a stock take or opening stock. Opening stock is
-// setting a location up, done once, so it's asked here rather than having a tile, and only until the
-// location's opening stock is done (openingOffered). initial is the one asked for.
+// shelves, which Tab view can choose a whole aisle or shelf at a time, or only bins never counted), and
+// whether it's a stock take or opening stock. Opening stock is setting a location up, done once, so it's
+// asked here rather than having a tile, and only until the location's opening stock is done
+// (openingOffered). initial is the one asked for.
 export function RunPlanView({
   initial,
   openingOffered = true,
@@ -50,6 +55,9 @@ export function RunPlanView({
   const bins = planBins(plan, list.choices, chosen);
   const never = planBins('never', list.choices, chosen).length;
 
+  const browse = useBinBrowse();
+  useStepBack(plan === 'choose' && browse.inStep ? browse.back : null);
+
   const toggle = (binId: number) =>
     setChosen((current) => {
       const next = new Set(current);
@@ -57,6 +65,19 @@ export function RunPlanView({
       else next.add(binId);
       return next;
     });
+  // Chooses (or clears) every bin in an aisle or shelf at once.
+  const setAll = (binIds: number[], on: boolean) =>
+    setChosen((current) => {
+      const next = new Set(current);
+      for (const binId of binIds) {
+        if (on) next.add(binId);
+        else next.delete(binId);
+      }
+      return next;
+    });
+  const under = binsUnder(list.choices, browse.path).map((bin) => bin.binId);
+  const allUnder = under.length > 0 && under.every((binId) => chosen.has(binId));
+  const place = browse.path.join('-');
 
   return (
     <View className="flex-1 bg-ground">
@@ -82,30 +103,69 @@ export function RunPlanView({
         ) : null}
 
         <View className="gap-2" accessibilityRole="radiogroup">
-          <Choice title={`Every bin in ${locationName}`} detail={plural(list.choices.length, 'bin', 'bins')} selected={plan === 'every'} onPress={() => setPlan('every')} />
+          <Choice
+            title={`Every bin in ${locationName}`}
+            detail={plural(list.choices.length, 'bin', 'bins')}
+            selected={plan === 'every'}
+            onPress={() => setPlan('every')}
+          />
           <Choice title="Choose bins" detail="An aisle or a few shelves" selected={plan === 'choose'} onPress={() => setPlan('choose')} />
-          <Choice title="Never counted" detail={plural(never, 'bin', 'bins')} selected={plan === 'never'} onPress={() => setPlan('never')} />
+          <Choice
+            title="Never counted"
+            detail={plural(never, 'bin', 'bins')}
+            selected={plan === 'never'}
+            onPress={() => setPlan('never')}
+          />
         </View>
 
         {plan === 'choose' ? (
           <>
             <SectionLabel>{`${chosen.size} chosen`}</SectionLabel>
-            <View className="gap-2">
-              {list.choices.map((bin) => (
-                <Choice
-                  key={bin.binId}
-                  title={bin.code}
-                  detail={countedText(bin.lastCounted)}
-                  selected={chosen.has(bin.binId)}
-                  onPress={() => toggle(bin.binId)}
-                />
-              ))}
-            </View>
+            <Segmented options={BIN_VIEWS} value={browse.view} onChange={browse.setView} />
+            {browse.view === 'tabs' && list.choices.length > 0 ? (
+              <BinTiles
+                bins={list.choices}
+                path={browse.path}
+                onPath={browse.setPath}
+                onBin={(bin) => toggle(bin.binId)}
+                chosen={chosen}
+                detail={(bin) => countedShort(bin.lastCounted)}
+                action={
+                  browse.path.length > 0 && under.length > 1 ? (
+                    <Button
+                      label={allUnder ? `Clear the ${under.length} in ${place}` : `Choose all ${under.length} in ${place}`}
+                      icon={allUnder ? 'close' : 'check'}
+                      variant="secondary"
+                      compact
+                      onPress={() => setAll(under, !allUnder)}
+                    />
+                  ) : null
+                }
+              />
+            ) : (
+              <View className="gap-2">
+                {list.choices.map((bin) => (
+                  <Choice
+                    key={bin.binId}
+                    title={bin.code}
+                    detail={countedText(bin.lastCounted)}
+                    selected={chosen.has(bin.binId)}
+                    onPress={() => toggle(bin.binId)}
+                  />
+                ))}
+              </View>
+            )}
           </>
         ) : null}
       </Scroll>
       <ActionBar
-        label={bins.length > 0 ? `Start ${noun} · ${plural(bins.length, 'bin', 'bins')}` : plan === 'choose' ? 'Choose the bins' : 'No bins to count'}
+        label={
+          bins.length > 0
+            ? `Start ${noun} · ${plural(bins.length, 'bin', 'bins')}`
+            : plan === 'choose'
+              ? 'Choose the bins'
+              : 'No bins to count'
+        }
         icon={bins.length > 0 ? 'count' : undefined}
         disabled={bins.length === 0}
         onPress={() => onStart(bins, kind)}

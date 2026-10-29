@@ -31,3 +31,7 @@ export const recentPartsPref = pref<RecentPart[]>('recent-parts');
 export const installIdPref = pref<string>('install-id');
 export type ScanIndexState = { version: string; syncedAt: string; codes: number };
 export const scanIndexPref = pref<ScanIndexState>('scan-index');
+
+// How bins are browsed when choosing one: a part of the name at a time (Tab view) or one long list.
+export type BinView = 'tabs' | 'list';
+export const binViewPref = pref<BinView>('bin-view');
