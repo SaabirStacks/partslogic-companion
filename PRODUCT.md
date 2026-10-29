@@ -77,9 +77,18 @@ back office, so what the phone does and what the office sees agree.
       run (a big location goes aisle by aisle). The office can reopen it from the location's page in
       PartsLogic.
     - **Transfer stock:** move stock between bins. Needs signal. The bin it goes to is scanned, tapped
-      from the bins already holding the part, or chosen from every bin in the location, grouped by aisle
-      and searchable, so nobody needs a label or the names by heart.
+      from the bins already holding the part, or chosen from every bin in the location, so nobody needs a
+      label or the names by heart.
     - Later: adjust stock.
+  - **Choosing a bin** (Transfer, Put away, Stock count, and a stock take's own choice of bins) has two
+    views, and the phone remembers the one last used:
+    - **Tab view:** big square tiles, a part of the name at a time: the aisle (00 to 24), then the letter
+      (A to E), then the number (01 to 10), showing only what the location has. The name so far sits on
+      top ("02-B-?"); tap a part of it, Back, or the phone's back button to change it. Tiles show how many
+      bins are under them, green "Has 4" where the part already is, and for the last part when that bin
+      was last counted. A stock take can choose a whole aisle or shelf in one tap.
+    - **List view:** the bins as one long list.
+    - Typing a bin name searches in either view.
   - **Outbound** (later): pick, pack, outbound staging, dispatch, return to supplier.
   - **Sync:** what's waiting to send, what needs attention, and what was sent. Work PartsLogic refuses
     for good (a count of a bin since removed, say) can be discarded, together with what waits behind it.

@@ -236,6 +236,27 @@ const binList = (savedAt: string | null = null) => ({
   reload: noop,
 });
 
+// Bins as MAIN will have them: even aisles 00 to 24 (8 for 08), letters A to E, numbers 01 to 10. Aisle 02
+// was counted on 3 Oct, apart from its E shelf.
+const MAIN_AISLES = ['00', '02', '04', '06', '8', '10', '12', '14', '16', '18', '20', '22', '24'];
+const mainBins = () => ({
+  choices: MAIN_AISLES.flatMap((aisle, a) =>
+    ['A', 'B', 'C', 'D', 'E'].flatMap((letter, l) =>
+      Array.from({ length: 10 }, (_, n) => ({
+        binId: 1000 + a * 100 + l * 10 + n,
+        code: `${aisle}-${letter}-${String(n + 1).padStart(2, '0')}`,
+        description: null,
+        units: 0,
+        lastCounted: aisle === '02' && letter !== 'E' ? '2026-10-03T10:00:00Z' : null,
+      })),
+    ),
+  ),
+  loading: false,
+  failed: false,
+  savedAt: null,
+  reload: noop,
+});
+
 // A stock take of the four bins above, part way: one counted, one being counted, two to go.
 const RUN: CountRun = {
   runId: 'R1',
@@ -327,6 +348,12 @@ const SCREENS: Record<string, () => ReactNode> = {
       <WhichBinView list={binList()} waiting={{ units: 24, location: 'Main' }} online onChoose={noop} onCreate={noop} onWaiting={noop} />
     </View>
   ),
+  'count-start-main': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock count" />
+      <WhichBinView list={mainBins()} waiting={null} online onChoose={noop} onCreate={noop} />
+    </View>
+  ),
   waiting: () => (
     <View className="flex-1">
       <StackHeader title="To put away" />
@@ -376,6 +403,12 @@ const SCREENS: Record<string, () => ReactNode> = {
     <View className="flex-1">
       <StackHeader title="Stock take" />
       <RunPlanView initial="stock-take" locationName="Main" list={binList()} onStart={noop} />
+    </View>
+  ),
+  'run-plan-main': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunPlanView initial="stock-take" locationName="Main" list={mainBins()} onStart={noop} />
     </View>
   ),
   'run-plan-opening': () => (
@@ -515,19 +548,15 @@ const SCREENS: Record<string, () => ReactNode> = {
       visible
       title="Move to which bin?"
       location="MAIN"
-      list={{
-        choices: ['00', '02', '04'].flatMap((aisle, a) =>
-          ['A', 'B'].flatMap((letter, l) =>
-            [1, 2, 3].map((n) => ({ binId: a * 100 + l * 10 + n, code: `${aisle}-${letter}-0${n}`, description: null, units: 0, lastCounted: null })),
-          ),
-        ),
-        loading: false,
-        failed: false,
-        savedAt: null,
-        reload: noop,
-      }}
-      held={new Map([[13, 4]])}
-      skip={new Set([1])}
+      list={mainBins()}
+      // The part is in 02-B-03 (4) and 8-A-01 (2); it's leaving 00-A-01.
+      held={
+        new Map([
+          [1112, 4],
+          [1400, 2],
+        ])
+      }
+      skip={new Set([1000])}
       onPick={noop}
       onClose={noop}
     />

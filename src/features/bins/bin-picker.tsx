@@ -8,20 +8,32 @@ import { Button } from '@/ui/button';
 import { Icon } from '@/ui/icon';
 import { KeyboardScreen } from '@/ui/keyboard-screen';
 import { themeVars } from '@/ui/palette';
+import { Scroll } from '@/ui/scroll';
 import { SearchInput } from '@/ui/search-input';
 import { SectionLabel } from '@/ui/section-label';
+import { Segmented } from '@/ui/segmented';
 import { StatusStrip } from '@/ui/status-strip';
 import { PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
 import { useColour, useScheme } from '@/ui/theme';
 
 import { binSections } from './bin-sections';
+import { BinTiles } from './bin-tiles';
+import { BIN_VIEWS, useBinBrowse } from './use-bin-browse';
 
-type BinList = { choices: BinChoice[]; loading: boolean; failed: boolean; savedAt: string | null; reload: () => void };
+type BinList = {
+  choices: BinChoice[];
+  loading: boolean;
+  failed: boolean;
+  savedAt: string | null;
+  reload: () => void;
+};
 
 // Every shelf bin in the working location to choose from, for a job that needs a bin and has no label to
-// scan (or the name isn't known by heart): grouped by aisle while browsing, or search by name. Bins that
-// already hold the part say how many. Full screen over the job; Close or Back keeps the job as it was.
+// scan (or the name isn't known by heart). Tab view goes a part of the name at a time (aisle, letter,
+// number); List view has them all, grouped by aisle; typing a name searches in either. Bins that already
+// hold the part say how many. Full screen over the job: Back goes back a step, then closes; Close keeps
+// the job as it was.
 export function BinPicker({
   visible,
   title,
@@ -48,15 +60,41 @@ export function BinPicker({
   const scheme = useScheme();
   const colourOf = useColour();
   const [query, setQuery] = useState('');
-  const sections = binSections(list.choices, query, skip);
+  const browse = useBinBrowse();
   const typed = query.trim().toUpperCase();
-  const pick = (bin: BinChoice) => {
+  const tiles = browse.view === 'tabs' && typed === '';
+  const offered = skip ? list.choices.filter((bin) => !skip.has(bin.binId)) : list.choices;
+  const sections = tiles ? [] : binSections(list.choices, query, skip);
+  const done = () => {
     setQuery('');
+    browse.reset();
+  };
+  const pick = (bin: BinChoice) => {
+    done();
     onPick(bin);
   };
+  const close = () => {
+    done();
+    onClose();
+  };
+  // Android's back button: clears what's typed, then goes back a step, then closes.
+  const back = () => {
+    if (typed !== '') setQuery('');
+    else if (browse.inStep) browse.back();
+    else close();
+  };
+  const empty = list.loading ? (
+    <View className="py-6">
+      <ActivityIndicator color={colourOf('quiet-ink')} />
+    </View>
+  ) : typed ? (
+    <Txt variant="caption" className="px-1">{`No bin called ${typed} here`}</Txt>
+  ) : list.failed ? null : (
+    <Txt variant="caption" className="px-1">{`No bins in ${location} yet`}</Txt>
+  );
 
   return (
-    <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" statusBarTranslucent navigationBarTranslucent onRequestClose={back}>
       {/* A modal draws outside the root view, so it sets the palette again for itself. */}
       <View style={[themeVars(scheme), { paddingTop: insets.top + 8 }]} className="flex-1 bg-ground">
         <KeyboardScreen topOffset={0}>
@@ -68,7 +106,7 @@ export function BinPicker({
                 </Txt>
                 <Txt variant="caption">{`${plural(list.choices.length, 'bin', 'bins')} in ${location}`}</Txt>
               </View>
-              <PressableCard accessibilityLabel="Close" onPress={onClose} className="h-12 w-12 items-center justify-center rounded-[10px]">
+              <PressableCard accessibilityLabel="Close" onPress={close} className="h-12 w-12 items-center justify-center rounded-[10px]">
                 <Icon name="close" size={22} />
               </PressableCard>
             </View>
@@ -91,55 +129,58 @@ export function BinPicker({
                 <Button label="Try again" icon="retry" variant="secondary" onPress={list.reload} />
               </>
             ) : null}
+            {typed === '' ? <Segmented options={BIN_VIEWS} value={browse.view} onChange={browse.setView} /> : null}
           </View>
 
-          <SectionList
-            sections={sections}
-            keyExtractor={(bin) => String(bin.binId)}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            stickySectionHeadersEnabled
-            initialNumToRender={24}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24, gap: 8 }}
-            renderSectionHeader={({ section }) =>
-              section.title ? (
-                <View className="bg-ground pb-1 pt-2">
-                  <SectionLabel>{`${section.title} · ${plural(section.data.length, 'bin', 'bins')}`}</SectionLabel>
-                </View>
-              ) : null
-            }
-            renderItem={({ item: bin }) => {
-              const here = held?.get(bin.binId) ?? 0;
-              const detail = here > 0 ? `Has ${here} already` : bin.description;
-              return (
-                <PressableCard
-                  accessibilityLabel={`Bin ${bin.code}${detail ? `, ${detail}` : ''}`}
-                  onPress={() => pick(bin)}
-                  className="min-h-14 flex-row items-center gap-3 px-4 py-2">
-                  <View className="flex-1 gap-0.5">
-                    <Txt variant="title" numberOfLines={1} className="font-extrabold">
-                      {bin.code}
-                    </Txt>
-                    {detail ? (
-                      <Txt variant="caption" numberOfLines={1} ink={here > 0 ? 'text-ok-ink' : 'text-quiet-ink'}>
-                        {detail}
-                      </Txt>
-                    ) : null}
+          {tiles ? (
+            <Scroll contentContainerClassName="px-4 pt-1">
+              {offered.length > 0 ? <BinTiles bins={offered} path={browse.path} onPath={browse.setPath} onBin={pick} held={held} /> : empty}
+            </Scroll>
+          ) : (
+            <SectionList
+              sections={sections}
+              keyExtractor={(bin) => String(bin.binId)}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              stickySectionHeadersEnabled
+              initialNumToRender={24}
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingBottom: insets.bottom + 24,
+                gap: 8,
+              }}
+              renderSectionHeader={({ section }) =>
+                section.title ? (
+                  <View className="bg-ground pb-1 pt-2">
+                    <SectionLabel>{`${section.title} · ${plural(section.data.length, 'bin', 'bins')}`}</SectionLabel>
                   </View>
-                  <Icon name="forward" size={16} colour="quiet-ink" />
-                </PressableCard>
-              );
-            }}
-            ListEmptyComponent={
-              list.loading ? (
-                <View className="py-6">
-                  <ActivityIndicator color={colourOf('quiet-ink')} />
-                </View>
-              ) : typed ? (
-                <Txt variant="caption" className="px-1">{`No bin called ${typed} here`}</Txt>
-              ) : null
-            }
-          />
+                ) : null
+              }
+              renderItem={({ item: bin }) => {
+                const here = held?.get(bin.binId) ?? 0;
+                const detail = here > 0 ? `Has ${here} already` : bin.description;
+                return (
+                  <PressableCard
+                    accessibilityLabel={`Bin ${bin.code}${detail ? `, ${detail}` : ''}`}
+                    onPress={() => pick(bin)}
+                    className="min-h-14 flex-row items-center gap-3 px-4 py-2">
+                    <View className="flex-1 gap-0.5">
+                      <Txt variant="title" numberOfLines={1} className="font-extrabold">
+                        {bin.code}
+                      </Txt>
+                      {detail ? (
+                        <Txt variant="caption" numberOfLines={1} ink={here > 0 ? 'text-ok-ink' : 'text-quiet-ink'}>
+                          {detail}
+                        </Txt>
+                      ) : null}
+                    </View>
+                    <Icon name="forward" size={16} colour="quiet-ink" />
+                  </PressableCard>
+                );
+              }}
+              ListEmptyComponent={empty}
+            />
+          )}
         </KeyboardScreen>
       </View>
     </Modal>

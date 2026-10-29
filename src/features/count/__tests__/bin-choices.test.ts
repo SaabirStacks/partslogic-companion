@@ -1,6 +1,6 @@
 import type { BinSummary } from '@/vendor/partslogic/shared/settings';
 
-import { binChoices, countedText, exactBin, filterBins, lastCountedByBin } from '../bin-choices';
+import { binChoices, countedShort, countedText, exactBin, filterBins, lastCountedByBin } from '../bin-choices';
 
 const bin = (id: number, code: string, extra: Partial<BinSummary> = {}): BinSummary => ({
   id,
@@ -63,5 +63,16 @@ describe('countedText', () => {
     expect(countedText('2026-10-28T08:00:00', now)).toBe('Counted today');
     expect(countedText('2026-10-03T08:00:00', now)).toBe('Counted 3 Oct');
     expect(countedText('2025-10-03T08:00:00', now)).toBe('Counted 3 Oct 2025');
+  });
+});
+
+describe('countedShort', () => {
+  const now = new Date('2026-10-28T12:00:00');
+
+  it('says the same in a few letters, for a tile', () => {
+    expect(countedShort(null, now)).toBe('Never');
+    expect(countedShort('2026-10-28T08:00:00', now)).toBe('Today');
+    expect(countedShort('2026-10-03T08:00:00', now)).toBe('3 Oct');
+    expect(countedShort('2025-10-03T08:00:00', now)).toBe('3 Oct 2025');
   });
 });
