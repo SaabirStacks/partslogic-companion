@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Stops a build or update that lacks the app's two public settings, so it can't ship an app that closes
 // on launch. EAS runs it before every build (the eas-build-post-install script in package.json) and before
-// every update (.eas/workflows/update-preview.yml). Run it yourself with: npm run check:env
+// every update (.eas/workflows/update-phones.yml). Run it yourself with: npm run check:env
 //
 // It finds values the way Expo CLI does: the environment first, then .env.local, then .env.
 // The same rules as checkPublicConfig in src/lib/config.ts, which the app applies when it starts.
