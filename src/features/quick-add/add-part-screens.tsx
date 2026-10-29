@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useDebounced } from '@/lib/use-debounced';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +9,8 @@ import { scanFeedback } from '@/scan/feedback';
 import { resolveCode } from '@/scan/resolve';
 import { useWorkingLocation } from '@/session/location-provider';
 import { ActionBar } from '@/ui/action-bar';
+import { KeyboardScreen } from '@/ui/keyboard-screen';
+import { Scroll } from '@/ui/scroll';
 import { Button } from '@/ui/button';
 import { Field } from '@/ui/field';
 import { Icon } from '@/ui/icon';
@@ -94,7 +96,7 @@ export function AddForm({ code }: { code: string }) {
   if (outcome && (outcome.kind === 'added' || outcome.kind === 'queued' || outcome.kind === 'conflict')) {
     const holder = outcome.kind === 'added' ? outcome.partId : outcome.kind === 'conflict' ? outcome.holderId : null;
     return (
-      <ScrollView className="bg-ground" contentContainerClassName="flex-grow">
+      <Scroll className="bg-ground" contentContainerClassName="flex-grow">
         <Notice
           icon={outcome.kind === 'conflict' ? 'stop' : outcome.kind === 'queued' ? 'waiting' : 'sent'}
           tone={outcome.kind === 'conflict' ? 'stop' : outcome.kind === 'queued' ? 'warn' : 'ok'}
@@ -105,15 +107,15 @@ export function AddForm({ code }: { code: string }) {
           ) : null}
           <Button label="Done" variant="secondary" onPress={() => router.back()} />
         </Notice>
-      </ScrollView>
+      </Scroll>
     );
   }
 
   const chosenBrand = brand ?? (brandText.trim() ? { brandId: null, name: brandText.trim().toUpperCase() } : null);
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-ground" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-3 px-4 pb-6 pt-3">
+    <KeyboardScreen>
+      <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-3">
         <Card className="gap-0.5 px-3 py-2">
           <Txt variant="caption" ink="text-quiet-ink">
             Barcode
@@ -186,7 +188,7 @@ export function AddForm({ code }: { code: string }) {
           </View>
         ) : null}
         {outcome?.kind === 'error' ? <StatusStrip tone="stop" icon="stop" text={outcome.message} /> : null}
-      </ScrollView>
+      </Scroll>
       <ActionBar
         label={adding.online ? 'Add part' : 'Save to add later'}
         icon="add"
@@ -195,6 +197,6 @@ export function AddForm({ code }: { code: string }) {
         disabled={!chosenBrand || !number.trim()}
         onPress={() => chosenBrand && void adding.submit(chosenBrand, number)}
       />
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   );
 }

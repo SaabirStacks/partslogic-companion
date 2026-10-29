@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { clock, plural } from '@/lib/format';
 import { ActionBar } from '@/ui/action-bar';
@@ -10,6 +10,7 @@ import { Segmented } from '@/ui/segmented';
 import { StatusStrip } from '@/ui/status-strip';
 import { Txt } from '@/ui/text';
 import { useColour } from '@/ui/theme';
+import { Scroll } from '@/ui/scroll';
 
 import { countedText, type BinChoice } from './bin-choices';
 import type { RunWorkflow } from './count-store';
@@ -59,7 +60,7 @@ export function RunPlanView({
 
   return (
     <View className="flex-1 bg-ground">
-      <ScrollView contentContainerClassName="gap-3 px-4 pb-6 pt-4">
+      <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-4">
         {openingOffered ? <Segmented options={KINDS} value={kind} onChange={setKind} /> : null}
         {kind === 'opening-stock' ? (
           <StatusStrip tone="warn" icon="opening" text={`Setting up ${locationName}: what’s found becomes its opening stock`} />
@@ -102,7 +103,7 @@ export function RunPlanView({
             </View>
           </>
         ) : null}
-      </ScrollView>
+      </Scroll>
       <ActionBar
         label={bins.length > 0 ? `Start ${noun} · ${plural(bins.length, 'bin', 'bins')}` : plan === 'choose' ? 'Choose the bins' : 'No bins to count'}
         icon={bins.length > 0 ? 'count' : undefined}

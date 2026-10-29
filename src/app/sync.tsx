@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { db } from '@/db/database';
@@ -21,6 +21,7 @@ import { Card } from '@/ui/surface';
 import { SectionLabel } from '@/ui/section-label';
 import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
+import { Scroll } from '@/ui/scroll';
 
 const number = (value: number) => new Intl.NumberFormat('en-GB').format(value);
 
@@ -51,7 +52,7 @@ export default function Sync() {
   const sent = outbox.items.filter((item) => item.status === 'done');
 
   return (
-    <ScrollView className="bg-ground" contentContainerClassName="gap-3 px-4 pb-10 pt-3">
+    <Scroll className="bg-ground" contentContainerClassName="gap-3 px-4 pt-3">
       <Animated.View key={state.label} entering={APPEAR}>
         <Card accessible accessibilityRole="header" accessibilityLabel={state.label} className="gap-2 p-4">
           <StatusChip tone={state.tone} icon={state.icon} label={state.label} large />
@@ -148,6 +149,6 @@ export default function Sync() {
         cancelLabel="Keep it"
         onCancel={() => setDiscarding(null)}
       />
-    </ScrollView>
+    </Scroll>
   );
 }

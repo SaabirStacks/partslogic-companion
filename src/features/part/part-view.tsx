@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { partAnswer } from '@/features/lookup/answer';
 import { supabase } from '@/lib/supabase';
@@ -16,6 +16,7 @@ import { SectionLabel } from '@/ui/section-label';
 import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
 import { useColour } from '@/ui/theme';
+import { Scroll } from '@/ui/scroll';
 import { getPartAlternatives, type PartDetail } from '@/vendor/partslogic/shared/catalogue';
 import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 
@@ -50,7 +51,7 @@ export function PartView({ detail, savedAt }: { detail: PartDetail; savedAt: str
   ];
 
   return (
-    <ScrollView className="bg-ground" contentContainerClassName="gap-3 px-4 pb-10 pt-3">
+    <Scroll className="bg-ground" contentContainerClassName="gap-3 px-4 pt-3">
       {savedAt ? <StatusStrip tone="warn" icon="offline" text={`Saved copy · ${savedTime(savedAt)}`} /> : null}
 
       <Card className="flex-row gap-3 p-3">
@@ -139,7 +140,7 @@ export function PartView({ detail, savedAt }: { detail: PartDetail; savedAt: str
       ) : null}
 
       <Alternatives partId={part.id} currency={currency} />
-    </ScrollView>
+    </Scroll>
   );
 }
 

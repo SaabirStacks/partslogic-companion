@@ -21,6 +21,7 @@ import { RunReceipt } from '@/features/count/run-receipt';
 import type { CountRun } from '@/features/count/run-store';
 import { WhichBinView } from '@/features/count/which-bin';
 import { WaitingView } from '@/features/put-away/waiting-view';
+import { BinPicker } from '@/features/bins/bin-picker';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
 import { DeliveryReceipt } from '@/features/receive/delivery-receipt';
@@ -487,6 +488,49 @@ const SCREENS: Record<string, () => ReactNode> = {
         </Card>
       </JobScreen>
     </View>
+  ),
+  'move-to': () => (
+    <View className="flex-1">
+      <StackHeader title="Transfer stock" />
+      <JobScreen
+        placeholder="Part number, barcode or bin"
+        onScan={noop}
+        banner={<JobBanner title="Mann HU 816 x" detail="From EM12/00-A-01" />}>
+        <SectionLabel>From</SectionLabel>
+        <View className="flex-row flex-wrap gap-2">
+          <BinChip code="EM12/00-A-01" qty={8} selected onPress={noop} />
+          <BinChip code="EM12/02-A-03" qty={4} onPress={noop} />
+        </View>
+        <SectionLabel>To</SectionLabel>
+        <Txt variant="caption" className="px-1">Scan the bin label, or choose:</Txt>
+        <View className="flex-row flex-wrap gap-2">
+          <BinChip code="EM12/02-A-03" qty={4} onPress={noop} />
+        </View>
+        <Button label="Choose from all bins in MAIN" icon="bin" variant="secondary" onPress={noop} />
+      </JobScreen>
+    </View>
+  ),
+  'bin-picker': () => (
+    <BinPicker
+      visible
+      title="Move to which bin?"
+      location="MAIN"
+      list={{
+        choices: ['00', '02', '04'].flatMap((aisle, a) =>
+          ['A', 'B'].flatMap((letter, l) =>
+            [1, 2, 3].map((n) => ({ binId: a * 100 + l * 10 + n, code: `${aisle}-${letter}-0${n}`, description: null, units: 0, lastCounted: null })),
+          ),
+        ),
+        loading: false,
+        failed: false,
+        savedAt: null,
+        reload: noop,
+      }}
+      held={new Map([[13, 4]])}
+      skip={new Set([1])}
+      onPick={noop}
+      onClose={noop}
+    />
   ),
   add: () => (
     <Fixtures>

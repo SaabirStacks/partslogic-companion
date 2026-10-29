@@ -1,4 +1,4 @@
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { clock, plural } from '@/lib/format';
 import { Button } from '@/ui/button';
@@ -6,6 +6,8 @@ import { StatusChip } from '@/ui/status-chip';
 import { StatusStrip } from '@/ui/status-strip';
 import { Card } from '@/ui/surface';
 import { Txt } from '@/ui/text';
+import { Scroll } from '@/ui/scroll';
+import { BottomBar } from '@/ui/action-bar';
 
 import type { RunProgress } from './run-progress';
 import type { CountRun } from './run-store';
@@ -45,7 +47,7 @@ export function RunReceipt({
   ];
   return (
     <View className="flex-1 bg-ground">
-      <ScrollView contentContainerClassName="flex-grow justify-center gap-4 px-4 py-6">
+      <Scroll toEdge={setUp?.answer === 'ask'} contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-6">
         <Card accessible accessibilityLabel={`${title} finished. ${plural(progress.counted, 'bin', 'bins')}, ${plural(progress.units, 'unit', 'units')}`} className="gap-4 p-5">
           <View className="items-center gap-2">
             <StatusChip tone={toCheck > 0 ? 'warn' : 'ok'} icon={toCheck > 0 ? 'warning' : 'sent'} label={toCheck > 0 ? 'Finished · to check' : 'Finished'} />
@@ -83,12 +85,12 @@ export function RunReceipt({
         ) : setUp?.answer === 'not-yet' ? (
           <StatusStrip tone="neutral" icon="opening" text={`Opening stock stays open for ${setUp.location}`} />
         ) : null}
-      </ScrollView>
+      </Scroll>
       {/* While the set-up question waits, its answer is the way on (Not yet is the way out). */}
       {setUp?.answer === 'ask' ? null : (
-        <View className="px-4 pb-6">
+        <BottomBar>
           <Button label="Done" icon="check" onPress={onDone} />
-        </View>
+        </BottomBar>
       )}
     </View>
   );

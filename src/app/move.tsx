@@ -1,8 +1,12 @@
 import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { View } from 'react-native';
 
+import { BinPicker } from '@/features/bins/bin-picker';
+import { useBinChoices } from '@/features/count/use-bin-choices';
 import { useMove } from '@/features/move/use-move';
 import { formatQty } from '@/features/part/stock';
+import { useWorkingLocation } from '@/session/location-provider';
 import { ActionBar } from '@/ui/action-bar';
 import { BinChip } from '@/ui/bin-chip';
 import { Button } from '@/ui/button';
@@ -22,10 +26,17 @@ const idParam = (value: string | undefined) => {
 
 // Move: one part from one bin to another, in the order it's done on the floor. Opened from the board it
 // starts with a scan of the part; opened from a bin on the part screen, the part and bin are filled in.
+// The bin it goes to is scanned from its label, tapped from the bins already holding the part, or chosen
+// from every bin in the location (BinPicker), so nobody needs a label or the names by heart.
 export default function Move() {
   const params = useLocalSearchParams<{ partId?: string; fromBinId?: string }>();
   const moving = useMove({ partId: idParam(params.partId), fromBinId: idParam(params.fromBinId) });
   const { from, to, result } = moving;
+  const { location } = useWorkingLocation();
+  const [picking, setPicking] = useState(false);
+  // The location's bins load the first time the list is opened.
+  const [wanted, setWanted] = useState(false);
+  const bins = useBinChoices(wanted && location ? location.id : null);
 
   return (
     <JobScreen
@@ -87,6 +98,17 @@ export default function Move() {
                     <BinChip key={line.binId} code={line.place} qty={formatQty(line.qty)} onPress={() => moving.chooseTo({ binId: line.binId, label: line.place })} />
                   ))}
               </View>
+              {location ? (
+                <Button
+                  label={`Choose from all bins in ${location.name}`}
+                  icon="bin"
+                  variant="secondary"
+                  onPress={() => {
+                    setWanted(true);
+                    setPicking(true);
+                  }}
+                />
+              ) : null}
             </>
           )}
 
@@ -99,6 +121,22 @@ export default function Move() {
           </Card>
           {moving.problem && to ? <Txt variant="caption" ink="text-stop-ink" className="px-1">{moving.problem}</Txt> : null}
         </>
+      ) : null}
+
+      {location ? (
+        <BinPicker
+          visible={picking}
+          title="Move to which bin?"
+          location={location.name}
+          list={bins}
+          held={new Map(moving.stock.map((line) => [line.binId, line.qty]))}
+          skip={new Set(from ? [from.binId] : [])}
+          onPick={(bin) => {
+            moving.chooseTo({ binId: bin.binId, label: `${location.code}/${bin.code}` });
+            setPicking(false);
+          }}
+          onClose={() => setPicking(false)}
+        />
       ) : null}
     </JobScreen>
   );

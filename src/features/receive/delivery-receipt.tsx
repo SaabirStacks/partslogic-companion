@@ -1,4 +1,4 @@
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 
 import { plural } from '@/lib/format';
 import { Button } from '@/ui/button';
@@ -6,6 +6,8 @@ import type { ChipState } from '@/ui/status-chip';
 import { StatusChip } from '@/ui/status-chip';
 import { Card } from '@/ui/surface';
 import { Txt } from '@/ui/text';
+import { Scroll } from '@/ui/scroll';
+import { BottomBar } from '@/ui/action-bar';
 
 import type { Delivery } from './delivery-store';
 import { receiptLine, type ReceiptSummary } from './receipt';
@@ -41,7 +43,7 @@ export function DeliveryReceipt({
   ];
   return (
     <View className="flex-1 bg-ground">
-      <ScrollView contentContainerClassName="flex-grow justify-center gap-4 px-4 py-6">
+      <Scroll toEdge={false} contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-6">
         <Card
           accessible
           accessibilityLabel={`${CHIP[summary.state].label}. ${number ?? 'Not sent yet'}. ${receiptLine(delivery)}. ${plural(units, 'unit', 'units')}`}
@@ -68,11 +70,11 @@ export function DeliveryReceipt({
             ))}
           </View>
         </Card>
-      </ScrollView>
-      <View className="gap-2 px-4 pb-6">
+      </Scroll>
+      <BottomBar className="gap-2">
         <Button label="Put away now" icon="putAway" onPress={onPutAway} />
         <Button label="Next delivery" variant="secondary" onPress={onNext} />
-      </View>
+      </BottomBar>
     </View>
   );
 }

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { clock } from '@/lib/format';
 import { ActionBar } from '@/ui/action-bar';
+import { KeyboardScreen } from '@/ui/keyboard-screen';
+import { Scroll } from '@/ui/scroll';
 import { Button } from '@/ui/button';
 import { Choice } from '@/ui/choice';
 import { Field } from '@/ui/field';
@@ -78,8 +80,8 @@ export function WhoIsItFromView({
   const noun = kind === 'supplier' ? 'suppliers' : 'manufacturers';
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-ground" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-3 px-4 pb-6 pt-4">
+    <KeyboardScreen>
+      <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-4">
         <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
           Who’s it from?
         </Txt>
@@ -120,13 +122,13 @@ export function WhoIsItFromView({
           placeholder="DN number on the paperwork"
           returnKeyType="done"
         />
-      </ScrollView>
+      </Scroll>
       <ActionBar
         label={chosen ? `Start delivery · ${chosen.name}` : 'Choose who it’s from'}
         icon={chosen ? 'receive' : undefined}
         disabled={!chosen}
         onPress={onStart}
       />
-    </KeyboardAvoidingView>
+    </KeyboardScreen>
   );
 }

@@ -1,4 +1,9 @@
 import { router } from 'expo-router';
+import { useState } from 'react';
+import { View } from 'react-native';
+
+import { filterBins } from '@/features/count/bin-choices';
+import { useBinChoices } from '@/features/count/use-bin-choices';
 import { partAnswer } from '@/features/lookup/answer';
 import { PartAnswerCard } from '@/features/lookup/part-answer-card';
 import { useLookUp, type LookUpView } from '@/features/lookup/use-look-up';
@@ -7,12 +12,16 @@ import { PartRow } from '@/features/part/part-row';
 import type { RecentPart } from '@/lib/prefs';
 import { useRemote } from '@/lib/use-remote';
 import { isSystemBin } from '@/scan/system-bins';
+import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import { ActionBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
+import { Icon } from '@/ui/icon';
 import { JobScreen } from '@/ui/job-screen';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { SectionLabel } from '@/ui/section-label';
+import { PressableCard } from '@/ui/surface';
+import { Txt } from '@/ui/text';
 import { barcodeProblem } from '@/vendor/partslogic/shared/gtin';
 import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 
@@ -26,6 +35,13 @@ export default function LookUp() {
   const member = state.status === 'member' ? state.member : null;
   const canCount = member !== null && roleAtLeast(member.role, 'counter');
   const { view, recent } = lookUp;
+  const { location } = useWorkingLocation();
+  // A typed search also looks through the location's bins (loaded the first time one is searched), so a
+  // bin can be found without its label or its exact name.
+  const [binsWanted, setBinsWanted] = useState(false);
+  if (view.kind === 'results' && !binsWanted) setBinsWanted(true);
+  const bins = useBinChoices(binsWanted && location ? location.id : null);
+  const binMatches = view.kind === 'results' ? filterBins(bins.choices, view.query).slice(0, 6) : [];
 
   return (
     <JobScreen
@@ -34,8 +50,28 @@ export default function LookUp() {
       onResume={lookUp.view.kind === 'working' ? undefined : lookUp.clear}
       onScan={lookUp.scan}
       onType={lookUp.type}
-      result={<Answer view={view} lookUp={lookUp} currency={member?.currency ?? 'GBP'} />}
+      result={<Answer view={view} lookUp={lookUp} currency={member?.currency ?? 'GBP'} binMatches={binMatches.length} />}
       action={<Action view={view} lookUp={lookUp} canCount={canCount} />}>
+      {binMatches.length > 0 && location ? (
+        <>
+          <SectionLabel>{`Bins in ${location.name}`}</SectionLabel>
+          {binMatches.map((bin) => (
+            <PressableCard
+              key={bin.binId}
+              accessibilityLabel={`Bin ${bin.code}`}
+              onPress={() => lookUp.showBin({ binId: bin.binId, code: bin.code })}
+              className="min-h-14 flex-row items-center gap-3 px-4 py-2">
+              <Icon name="bin" size={20} colour="quiet-ink" />
+              <View className="flex-1">
+                <Txt variant="title" numberOfLines={1} className="font-extrabold">
+                  {bin.code}
+                </Txt>
+              </View>
+              <Icon name="forward" size={16} colour="quiet-ink" />
+            </PressableCard>
+          ))}
+        </>
+      ) : null}
       {view.kind === 'results' && view.results.length > 0 ? (
         <>
           <SectionLabel>{`${view.results.length === 30 ? 'First 30' : view.results.length} ${view.results.length === 1 ? 'match' : 'matches'}`}</SectionLabel>
@@ -62,7 +98,7 @@ export default function LookUp() {
   );
 }
 
-function Answer({ view, lookUp, currency }: { view: LookUpView; lookUp: LookUpApi; currency: string }) {
+function Answer({ view, lookUp, currency, binMatches }: { view: LookUpView; lookUp: LookUpApi; currency: string; binMatches: number }) {
   switch (view.kind) {
     case 'working':
       return <ScanResultCard tone="neutral" status={{ icon: 'waiting', label: 'Looking up' }} title={view.code} />;
@@ -93,7 +129,7 @@ function Answer({ view, lookUp, currency }: { view: LookUpView; lookUp: LookUpAp
         </ScanResultCard>
       );
     case 'results':
-      return view.results.length === 0 ? (
+      return view.results.length === 0 && binMatches === 0 ? (
         <ScanResultCard tone="warn" status={{ icon: 'lookup', label: 'No match' }} title={view.query} detail="Check the number, or scan the box" />
       ) : null;
     default:
