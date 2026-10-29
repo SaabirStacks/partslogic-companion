@@ -1,8 +1,8 @@
 import { db } from '@/db/database';
 import type { WorkingLocation } from '@/lib/prefs';
 import { supabase } from '@/lib/supabase';
+import { isConnectionProblem, within } from '@/lib/within';
 import { savedPart } from '@/features/part/part-cache';
-import { classifyQueueError } from '@/vendor/partslogic/shared/errors';
 import { resolveScan, type ScanHit } from '@/vendor/partslogic/shared/floor';
 
 import { findOffline } from './scan-index';
@@ -11,31 +11,13 @@ import { findOffline } from './scan-index';
 // phone (the server checks again when work is sent). "offline" means it couldn't be checked at all.
 export type Resolved = (ScanHit & { offline: boolean }) | { type: 'offline'; code: string };
 
-const isConnectionProblem = (error: unknown) => classifyQueueError(error as { code?: string; message?: string }) === 'retry';
-
 // How long a scan waits on PartsLogic before the phone's own list answers instead. A bad signal shouldn't
 // hold the person at the shelf.
 const SERVER_WAIT_MS = 3000;
 
-function within<T>(work: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('The lookup timed out')), ms);
-    work.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
-
 export async function resolveCode(code: string, location: WorkingLocation | null): Promise<Resolved> {
   try {
-    return { ...(await within(resolveScan(supabase, code, location?.id ?? null), SERVER_WAIT_MS)), offline: false };
+    return { ...(await within(resolveScan(supabase, code, location?.id ?? null), SERVER_WAIT_MS, 'The lookup timed out')), offline: false };
   } catch (error) {
     if (!isConnectionProblem(error)) throw error;
   }

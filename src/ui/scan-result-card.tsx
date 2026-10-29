@@ -51,7 +51,7 @@ export function ScanResultCard({
             {title}
           </Txt>
           {detail ? (
-            <Txt variant="caption" numberOfLines={1} numbers>
+            <Txt variant="caption" numberOfLines={2} numbers>
               {detail}
             </Txt>
           ) : null}

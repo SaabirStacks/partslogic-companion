@@ -16,7 +16,7 @@ import { AddForm } from '@/features/quick-add/add-part-screens';
 import { CountReceipt } from '@/features/count/count-receipt';
 import { RunOverview } from '@/features/count/run-overview';
 import { RunPlanView } from '@/features/count/run-plan';
-import type { RunBin, RunProgress } from '@/features/count/run-progress';
+import { runProgress, type RunBin, type RunProgress } from '@/features/count/run-progress';
 import { RunReceipt } from '@/features/count/run-receipt';
 import type { CountRun } from '@/features/count/run-store';
 import { WhichBinView } from '@/features/count/which-bin';
@@ -43,6 +43,7 @@ import { Quantity } from '@/ui/quantity';
 import { themeVars, type Tone } from '@/ui/palette';
 import { Card, PressableCard, TEXT_ON } from '@/ui/surface';
 import { ScanResultCard } from '@/ui/scan-result-card';
+import { StatusStrip } from '@/ui/status-strip';
 import { SectionLabel } from '@/ui/section-label';
 import { Txt } from '@/ui/text';
 import { Tally } from '@/ui/tally';
@@ -50,6 +51,8 @@ import { useScheme } from '@/ui/theme';
 import type { PendingScan } from '@/scan/pending-scan';
 import type { ScanCheck } from '@/scan/resolve';
 import { boardFor } from '@/workflows/catalogue';
+import { useBinBrowse } from '@/features/bins/use-bin-browse';
+import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 
 import { Fixtures, OIL_FILTER, OUTBOX_ITEMS, RECENT } from './fixtures';
 
@@ -267,19 +270,94 @@ const RUN: CountRun = {
   bins: binList().choices.map((bin) => ({ binId: bin.binId, code: bin.code })),
   startedAt,
   finishedAt: null,
+  shared: false,
+  startedBy: null,
+  status: null,
+  statusAt: null,
 };
 function runProgressOf(states: RunBin['state'][], units: number[]): RunProgress {
-  const bins: RunBin[] = RUN.bins.map((bin, index) => ({ ...bin, state: states[index], units: units[index], stocktakeId: `S${bin.binId}` }));
+  const bins: RunBin[] = RUN.bins.map((bin, index) => ({ ...bin, state: states[index], units: units[index], stocktakeId: `S${bin.binId}`, by: null }));
   const counted = bins.filter((bin) => bin.state === 'counted').length;
   return {
     bins,
     counted,
+    mine: counted,
     total: bins.length,
     units: bins.reduce((sum, bin) => sum + (bin.state === 'counted' ? bin.units : 0), 0),
     next: bins.find((bin) => bin.state === 'counting') ?? bins.find((bin) => bin.state === 'not-started') ?? null,
     done: counted === bins.length,
+    others: [],
+    closed: null,
   };
 }
+
+// A stock take Sam started, which this phone joined: PartsLogic's word on every bin. people says, per bin
+// index, who counted it ('Sam') or is counting it ('Ali…'); the rest aren't started.
+function sharedOf(choices: { binId: number; code: string }[], people: Record<number, string>, extra: Partial<SharedRun> = {}): SharedRun {
+  return {
+    runId: 'R2',
+    locationId: 1,
+    purpose: 'stock_take',
+    status: 'open',
+    startedAt,
+    startedBy: 'Sam',
+    finishedAt: null,
+    finishedBy: null,
+    bins: choices.map((bin, index) => {
+      const who = people[index];
+      const counting = who?.endsWith('…');
+      return {
+        binId: bin.binId,
+        code: bin.code,
+        state: who ? (counting ? 'counting' : 'counted') : 'not_started',
+        active: Boolean(counting),
+        by: who ? who.replace('…', '') : null,
+        mine: false,
+        stocktakeId: who ? `X${bin.binId}` : null,
+        units: who ? 6 + (index % 7) : 0,
+      };
+    }),
+    ...extra,
+  };
+}
+// Tab view at the top, as a run's bin list opens.
+const browseStub = (path: string[] = []): ReturnType<typeof useBinBrowse> => ({
+  view: 'tabs',
+  setView: noop,
+  path,
+  setPath: noop,
+  inStep: path.length > 0,
+  back: noop,
+  reset: noop,
+});
+// MAIN's shared stock take, with Tab view that can be tapped through.
+function MainRunOverview() {
+  const browse = useBinBrowse();
+  const run = sharedRun(mainShared());
+  return (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunOverview browse={browse} noun="stock take" run={run} online progress={runProgress(run, [])} onBin={noop} onPause={noop} onFinish={noop} />
+    </View>
+  );
+}
+const sharedRun = (status: SharedRun): CountRun => ({
+  ...RUN,
+  runId: status.runId,
+  bins: status.bins.map((bin) => ({ binId: bin.binId, code: bin.code })),
+  shared: true,
+  startedBy: status.startedBy,
+  status,
+  statusAt: startedAt,
+});
+// MAIN's 650 bins, part way: Sam counted the first aisle and a half, Ali is counting 02-C-01.
+const mainShared = () => {
+  const people: Record<number, string> = {};
+  for (let index = 0; index < 75; index += 1) people[index] = index < 50 ? 'Sam' : 'Ali';
+  people[75] = 'Ali…';
+  people[76] = 'Jo…';
+  return sharedOf(mainBins().choices, people);
+};
 
 const SCREENS: Record<string, () => ReactNode> = {
   board: () => (
@@ -420,15 +498,114 @@ const SCREENS: Record<string, () => ReactNode> = {
   'run-overview': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />
-      <RunOverview noun="stock take" run={RUN} progress={runProgressOf(['counted', 'counting', 'not-started', 'not-started'], [18, 4, 0, 0])} onBin={noop} onPause={noop} onFinish={noop} />
+      <RunOverview browse={browseStub()} noun="stock take" run={RUN} online progress={runProgressOf(['counted', 'counting', 'not-started', 'not-started'], [18, 4, 0, 0])} onBin={noop} onPause={noop} onFinish={noop} />
     </View>
   ),
   'run-overview-next': () => (
     <View className="flex-1">
       <StackHeader title="Opening stock" />
-      <RunOverview noun="opening stock" run={{ ...RUN, workflow: 'opening-stock' }} progress={runProgressOf(['counted', 'counted', 'not-started', 'not-started'], [18, 0, 0, 0])} onBin={noop} onPause={noop} onFinish={noop} />
+      <RunOverview browse={browseStub()} noun="opening stock" run={{ ...RUN, workflow: 'opening-stock' }} online progress={runProgressOf(['counted', 'counted', 'not-started', 'not-started'], [18, 0, 0, 0])} onBin={noop} onPause={noop} onFinish={noop} />
     </View>
   ),
+  'run-plan-join': () => (
+    <View className="flex-1">
+      <StackHeader title="Stock take" />
+      <RunPlanView initial="stock-take" locationName="Main" list={mainBins()} joinable={[mainShared()]} onJoin={noop} onStart={noop} />
+    </View>
+  ),
+  'run-overview-shared': () => {
+    const status = sharedOf(binList().choices, { 0: 'Sam', 1: 'Ali…' });
+    const run = sharedRun(status);
+    return (
+      <View className="flex-1">
+        <StackHeader title="Stock take" />
+        <RunOverview
+          browse={browseStub()}
+          noun="stock take"
+          run={run}
+          online
+          progress={runProgress(run, [])}
+          notice={<StatusStrip tone="warn" icon="warning" text="Sam had already started a stock take here, so you’ve joined it" />}
+          onBin={noop}
+          onPause={noop}
+          onFinish={noop}
+        />
+      </View>
+    );
+  },
+  'run-overview-refused': () => {
+    const run = sharedRun(sharedOf(binList().choices, { 0: 'Sam', 1: 'Ali…' }));
+    return (
+      <View className="flex-1">
+        <StackHeader title="Stock take" />
+        <RunOverview
+          browse={browseStub()}
+          noun="stock take"
+          run={run}
+          online
+          progress={runProgress(run, [])}
+          notice={
+            <ScanResultCard
+              tone="warn"
+              status={{ icon: 'warning', label: 'Not started' }}
+              title="Jo is counting that bin"
+              detail="Choose another bin. It frees up once they finish, or after 2 hours without a scan.">
+              <Button label="OK" variant="secondary" compact onPress={noop} />
+            </ScanResultCard>
+          }
+          onBin={noop}
+          onPause={noop}
+          onFinish={noop}
+        />
+      </View>
+    );
+  },
+  'run-overview-main': () => <MainRunOverview />,
+  'run-overview-offline': () => {
+    const run = sharedRun(sharedOf(binList().choices, { 0: 'Sam', 1: 'Ali…' }));
+    return (
+      <View className="flex-1">
+        <StackHeader title="Stock take" />
+        <RunOverview browse={browseStub()} noun="stock take" run={run} online={false} progress={runProgress(run, [])} onBin={noop} onPause={noop} onFinish={noop} />
+      </View>
+    );
+  },
+  'run-overview-closed': () => {
+    const status = sharedOf(binList().choices, { 0: 'Sam', 1: 'Ali', 2: 'Ali' }, { status: 'finished', finishedBy: 'Ali', finishedAt: startedAt });
+    const run = sharedRun(status);
+    return (
+      <View className="flex-1">
+        <StackHeader title="Stock take" />
+        <RunOverview browse={browseStub()} noun="stock take" run={run} online progress={runProgress(run, [])} onBin={noop} onPause={noop} onFinish={noop} />
+      </View>
+    );
+  },
+  'run-overview-rest-taken': () => {
+    const run = sharedRun(sharedOf(binList().choices, { 0: 'Sam', 1: 'Sam', 2: 'Ali…', 3: 'Jo…' }));
+    return (
+      <View className="flex-1">
+        <StackHeader title="Stock take" />
+        <RunOverview browse={browseStub()} noun="stock take" run={run} online progress={runProgress(run, [])} onBin={noop} onPause={noop} onFinish={noop} />
+      </View>
+    );
+  },
+  'run-receipt-left': () => {
+    const run = sharedRun(sharedOf(mainBins().choices, Object.fromEntries(Array.from({ length: 120 }, (_, index) => [index, index % 3 ? 'Sam' : 'Ali']))));
+    const progress = runProgress(run, []);
+    return (
+      <View className="flex-1">
+        <StackHeader title="Stock take" />
+        <RunReceipt
+          title="Stock take"
+          run={{ ...run, finishedAt: new Date(new Date(startedAt).getTime() + 95 * 60000).toISOString() }}
+          progress={{ ...progress, mine: 34 }}
+          end="left"
+          toCheck={0}
+          onDone={noop}
+        />
+      </View>
+    );
+  },
   'run-plan-set-up': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />

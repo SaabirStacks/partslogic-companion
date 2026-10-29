@@ -53,6 +53,10 @@ describe('runWork', () => {
     ],
     startedAt,
     finishedAt: null,
+    shared: false,
+    startedBy: null,
+    status: null,
+    statusAt: null,
   };
   const count = (binId: number, finished: boolean): BinCount => ({
     stocktakeId: `s${binId}`,
