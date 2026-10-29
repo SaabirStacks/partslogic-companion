@@ -63,3 +63,19 @@ npm run sync:partslogic -- --from ../PartsLogic --ref main
 ```
 
 `src/vendor/partslogic/SOURCE.json` records the commit the copy came from.
+
+## Keeping PartsLogic changes from breaking the app
+
+Phones keep running the build and update they have, and replay work queued offline, so PartsLogic must
+keep serving every function, argument, table and column the app uses.
+[`docs/SERVER_CONTRACT.md`](docs/SERVER_CONTRACT.md) lists them, generated from the app's code. Before a
+PartsLogic change that touches the database merges (after its types and schema snapshot are regenerated),
+check it:
+
+```bash
+npm run check:server -- --from ../PartsLogic --ref <branch>
+```
+
+It fails on anything the app uses that's gone, renamed or now needs an argument the app doesn't send,
+and warns about output fields a function stops returning. After changing what the app calls, regenerate
+the list with `npm run check:server -- --write`; `npm run test:scripts` fails until you do.
