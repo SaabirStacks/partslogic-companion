@@ -1,0 +1,28 @@
+# Sends the app's current JavaScript to every phone: the Android APKs (preview channel) and the iPhones on
+# TestFlight (production channel). Run it from expo.dev, with
+# `npx eas-cli@latest workflow:run .eas/workflows/update-phones.yml`, or through the Expo connector.
+# Changes that need a new build are listed in docs/DEPLOY.md.
+name: Update phones
+
+jobs:
+  update_android:
+    name: Publish update to the Android APKs
+    type: update
+    environment: preview
+    params:
+      channel: preview
+      platform: android
+    hooks:
+      # Refuses to publish an update without the app's public settings (it would close on launch).
+      before_update:
+        - run: npm run check:env
+  update_ios:
+    name: Publish update to the iPhones
+    type: update
+    environment: production
+    params:
+      channel: production
+      platform: ios
+    hooks:
+      before_update:
+        - run: npm run check:env

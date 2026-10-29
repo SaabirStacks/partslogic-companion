@@ -34,7 +34,7 @@ way, and the app then closed as soon as it opened.
 
 | Check | When it runs | What happens |
 |---|---|---|
-| `npm run check:env` (`scripts/check-public-env.mjs`) | On EAS before every build (the `eas-build-post-install` script), and before every update (`.eas/workflows/update-preview.yml`) | The build or update fails with a message naming the missing value |
+| `npm run check:env` (`scripts/check-public-env.mjs`) | On EAS before every build (the `eas-build-post-install` script), and before every update (`.eas/workflows/update-phones.yml`) | The build or update fails with a message naming the missing value |
 | `checkPublicConfig` (`src/lib/config.ts`) | When the app starts | The app shows "PartsLogic isn't set up on this phone" instead of closing |
 
 **Never add a secret key, a service-role key or any third-party API key to `.env`, to an `EXPO_PUBLIC_`
@@ -101,19 +101,75 @@ anything waiting in the Outbox, because the signing key stays the same.
 
 You need an [Apple Developer Program](https://developer.apple.com/programs/) membership first.
 
+### First build (once, from a computer)
+
+The first iPhone build has to run from a computer, because it signs in to your Apple account to make the
+app's signing certificate. You can use a Mac, Windows or Linux computer, with Node.js 20 or later and Git.
+After this build, iPhone builds start from expo.dev or the Expo connector, and nobody needs a computer.
+
 ```bash
-npx eas-cli@latest build --platform ios --profile production
-npx eas-cli@latest submit --platform ios --latest
+git clone https://github.com/SaabirStacks/partslogic-companion.git
+cd partslogic-companion
+npm ci
+npx eas-cli@latest login
+npx eas-cli@latest build --platform ios --profile production --auto-submit
 ```
 
-1. The build asks you to sign in to your Apple account, then creates the certificate and provisioning
-   profile for you.
-2. `submit` creates the app in App Store Connect if it doesn't exist yet and uploads the build. Apple
-   then processes it, which usually takes 5 to 15 minutes.
-3. In App Store Connect, open the app, go to **TestFlight** and add staff as internal testers (people on
-   your App Store Connect team) or create an external group (anyone with an email address; the first
-   external build needs a short Beta App Review).
-4. Testers install the **TestFlight** app from the App Store and accept the invite.
+It asks a few questions on the way. The wording varies between versions:
+
+| When it asks about | Answer |
+|---|---|
+| Logging in to your Apple account | Yes. Use the Apple ID of the developer account, then enter the code Apple sends to your devices |
+| A distribution certificate | Make a new one, or reuse one you already have |
+| A provisioning profile | Make a new one |
+| Push notifications | No. The app doesn't send any |
+| An App Store Connect API key | Yes, make one. Later builds use it to reach TestFlight without your Apple login |
+| The app's name, only if "PartsLogic" is taken in the App Store | Something like "PartsLogic Eclipse". Only you and your testers see it |
+
+The build itself runs on Expo's servers and takes about 20 minutes. EAS then uploads it to App Store
+Connect, and Apple processes it, which usually takes 5 to 15 minutes. You can close the terminal once the
+build has started: the build and the upload carry on without it, and the build page on expo.dev shows how
+they're doing.
+
+Then copy the app's **Apple ID** into `eas.json`, so later builds can reach TestFlight on their own. It's
+a number such as `6741234567`, under **App Information** in App Store Connect, and it isn't a secret:
+
+```json
+"submit": {
+  "production": {
+    "ios": { "ascAppId": "6741234567" }
+  }
+}
+```
+
+### Add staff
+
+TestFlight testers must be users on your App Store Connect team.
+
+1. In App Store Connect, open **Users and Access** and add each person. Give them the **Marketing** role,
+   which can't change builds or users, with access to PartsLogic only.
+2. Open the app, go to **TestFlight**, then click **+** next to **Internal Testing**. Make a group called
+   "Eclipse staff" and leave **Enable automatic distribution** ticked, so every new build reaches the
+   group without anyone adding it.
+3. Add the staff to the group with **Invite Testers**.
+4. Each person installs the **TestFlight** app from the App Store and opens the invite email on their
+   iPhone. They tap **View in TestFlight**, then **Install**. Turning on **Automatic Updates** in
+   TestFlight installs new builds as they arrive.
+
+Up to 100 people can be internal testers. For more than that, use an external group (anyone with an email
+address or a public link). The first build for an external group needs Apple's Beta App Review, which
+asks for a sign-in the reviewer can use.
+
+### Later builds
+
+The workflow `.eas/workflows/testflight.yml` builds the iPhone app and sends it to TestFlight in one go.
+Start it from the project's **Workflows** page on expo.dev, with
+`npx eas-cli@latest workflow:run .eas/workflows/testflight.yml`, or through the Expo connector. It needs
+the `ascAppId` above.
+
+**TestFlight builds stop opening 90 days after they're uploaded.** Over-the-air updates keep the code
+current but don't reset that clock; only a new build does. Run the workflow at least every 80 days, or
+whenever a change needs a new build (see below).
 
 `app.json` sets `ios.config.usesNonExemptEncryption: false`. The app only uses standard HTTPS and
 on-device encryption, so App Store Connect won't ask the export-compliance question for each build.
@@ -138,7 +194,9 @@ Then, on a phone with the new build, check the following:
 ## Shipping fixes without a new build
 
 The app includes EAS Update, so most changes reach phones without anyone reinstalling. Each build
-profile listens on its own channel:
+profile listens on its own channel: the Android APKs on `preview`, the iPhones on `production`. The workflow
+`.eas/workflows/update-phones.yml` publishes to both at once (see
+[From GitHub or the Expo connector](#from-github-or-the-expo-connector)). By hand:
 
 ```bash
 npx eas-cli@latest update --channel preview --environment preview --message "Fix the count total"         # Android APK builds
@@ -158,7 +216,8 @@ instead:**
 - upgrading the Expo SDK
 - changing `app.json` (icon, name, permissions, plugins)
 
-For those, raise `version` in `app.json` (for example `1.0.0` to `1.1.0`), then build and share again.
+For those, raise `version` in `app.json` (for example `1.0.0` to `1.1.0`), then build again for both: an
+APK to share, and the TestFlight workflow for the iPhones.
 `runtimeVersion` follows `version`, so an update published for `1.1.0` never reaches a `1.0.0` build it
 might break.
 
@@ -171,10 +230,12 @@ Because the repo is linked to the Expo project, nobody needs to run commands on 
 | To | Do |
 |---|---|
 | Build an APK | On expo.dev, open the project's **Builds** page, choose **Build from GitHub**, then pick `main`, Android and `preview`. Claude can start the same build through the Expo connector. |
-| Send a fix to the APKs | Run the workflow `.eas/workflows/update-preview.yml` on `main`: from the project's **Workflows** page, with `npx eas-cli@latest workflow:run .eas/workflows/update-preview.yml`, or through the Expo connector. |
+| Send a fix to every phone | Run the workflow `.eas/workflows/update-phones.yml` on `main`: from the project's **Workflows** page, with `npx eas-cli@latest workflow:run .eas/workflows/update-phones.yml`, or through the Expo connector. It sends the Android APKs and the iPhones the same code. |
+| Build for iPhone | Run the workflow `.eas/workflows/testflight.yml` on `main` the same way. It builds and sends the build to TestFlight. |
 
 Builds from GitHub need `"image": "latest"` in each profile, which `eas.json` sets. They also make the
-Android signing key themselves the first time.
+Android signing key themselves the first time. iPhone builds can't make their signing certificate this way,
+which is why the first one runs from a computer.
 
 ## Versions
 
