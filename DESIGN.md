@@ -99,12 +99,13 @@ Every scanning job is laid out the same way (`JobScreen`), so a scan always land
 4. The tally (big totals) and the lines, scrolling.
 5. The one main action, pinned at the bottom.
 
-A part's stock (`StockCard`) is what's on hand, split into three boxes that always add up to it:
-**Available** (green, can be sold), **Reserved** (yellow, promised to an order) and **Unavailable** (red,
-held or locked). Each is an outlined square with the cards' 12 pt corners; a box with nothing in it stays grey, so colour only shows where there is stock to act
-on. Under a box, its statuses (a pause mark for held, a lock for locked); under each bin, what in it is
-set aside. The nine stock statuses and their groups live in `src/stock/statuses.ts`. PartsLogic doesn't tag
-stock yet, so today everything on hand is Available.
+A part's stock (`StockCard`) opens like a scan's result card: where stock stands as a chip on the left (In
+stock, Reorder, Out of stock), the total on hand on the right. Under it, three compact tiles that always add
+up to on hand: **Available** (green, can be sold), **Reserved** (yellow, promised to an order) and
+**Unavailable** (red, held or locked). Each is an outlined tile with the cards' 12 pt corners, the count over
+its name; a tile with nothing in it stays grey. Inside a tile, its statuses (a pause mark for held, a lock
+for locked); under each bin, what in it is set aside. The nine stock statuses and their groups live in
+`src/stock/statuses.ts`. PartsLogic doesn't tag stock yet, so today everything on hand is Available.
 
 A job ends with a receipt (`ReceiptCard`): where it stands (a chip that fills in as PartsLogic answers), the
 reference large, when, then the numbers as rows. Lists that can be fetched again pull to refresh. Loading

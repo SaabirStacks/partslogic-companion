@@ -7,6 +7,7 @@ import { familyColours } from '@/ui/family';
 import { Icon } from '@/ui/icon';
 import type { IconName } from '@/ui/icons';
 import type { Tone } from '@/ui/palette';
+import { StatusChip } from '@/ui/status-chip';
 import { Card, PressableCard, SOFT, TONE_INK, TONE_TEXT } from '@/ui/surface';
 import { Txt } from '@/ui/text';
 import { Ticking } from '@/ui/ticking';
@@ -32,10 +33,10 @@ const markOf = (entry: StatusQty): IconName =>
 // "QA hold" keeps its capitals; "Reserved" reads "2 reserved".
 const inLine = (name: string) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
 
-// A part's stock: how much is on hand, split into three boxes (available to sell, reserved for an order,
-// unavailable), then each bin holding it with Move beside it. The boxes always add up to on hand. A box
-// with nothing in it stays grey, so colour only appears where there's stock to act on. Until PartsLogic
-// tags stock with a status, everything on hand is available.
+// A part's stock: where it stands and how much is on hand, split into three tiles (available to sell,
+// reserved for an order, unavailable), then each bin holding it with Move beside it. The tiles always add
+// up to on hand. A tile with nothing in it stays grey, so colour only appears where there's stock to act
+// on. Until PartsLogic tags stock with a status, everything on hand is available.
 export function StockCard({
   answer,
   onHand,
@@ -55,9 +56,6 @@ export function StockCard({
   const rows = lines ? stockByBin(lines) : [];
   const moves = canMove && rows.some((row) => row.qty > 0);
   const bin = familyColours('stock');
-  // The stock level only speaks up when it needs attention (Reorder, Out of stock): a green Available
-  // box already says it's in stock.
-  const level = answer.tone === 'ok' ? null : answer.status;
 
   if (onHand === null || !lines) {
     return (
@@ -74,27 +72,20 @@ export function StockCard({
 
   return (
     <Card className="overflow-hidden">
-      <View
-        accessible
-        accessibilityLabel={[`${formatQty(onHand)} on hand`, level?.label].filter(Boolean).join(', ')}
-        className="flex-row items-center gap-3 px-4 pt-4">
-        <View className="flex-1 flex-row items-baseline gap-2">
-          <Ticking value={formatQty(onHand)} variant="headline" className="font-extrabold" />
-          <Txt variant="label" ink="text-quiet-ink">
-            on hand
+      {/* As on a scan's result card: where stock stands on the left, the total on the right. */}
+      <View accessible accessibilityLabel={`${answer.status.label}, ${formatQty(onHand)} on hand`} className="flex-row items-start gap-3 px-4 pt-4">
+        <View className="flex-1 pt-0.5">
+          <StatusChip tone={answer.tone} icon={answer.status.icon} label={answer.status.label} />
+        </View>
+        <View className="items-end">
+          <Ticking value={formatQty(onHand)} origin="right bottom" variant="headline" className="font-extrabold" />
+          <Txt variant="caption" numberOfLines={1}>
+            On hand
           </Txt>
         </View>
-        {level ? (
-          <View className="flex-row items-center gap-1.5">
-            <Icon name={level.icon} size={16} colour={TONE_INK[answer.tone]} />
-            <Txt variant="caption" ink={TONE_TEXT[answer.tone]} className="font-bold">
-              {level.label}
-            </Txt>
-          </View>
-        ) : null}
       </View>
 
-      <View className="flex-row px-2 pb-4 pt-3">
+      <View className="flex-row gap-1.5 px-4 pb-4 pt-3">
         {GROUPS.map(({ group, label, tone }) => {
           const qty = split[group];
           const kinds = split.setAside.filter((entry) => entry.status.group === group);
@@ -151,31 +142,32 @@ export function StockCard({
   );
 }
 
-// One box: the count inside, outlined in its colour when there's stock in it (the cards' 12 pt corners),
-// its name under it, and the statuses that make it up under that.
+// One group as a compact tile: the count over its name, inside an outline in its colour when there's
+// stock in it (the cards' 12 pt corners), and the statuses that make it up under the name.
 function StockBox({ label, tone, qty, detail }: { label: string; tone: Tone; qty: number; detail: StatusQty[] }) {
   const active = tone !== 'neutral';
   const spoken = [`${formatQty(qty)} ${label.toLowerCase()}`, ...detail.map((entry) => `${formatQty(entry.qty)} ${inLine(entry.status.name)}`)].join(', ');
   return (
-    <View accessible accessibilityLabel={spoken} className="flex-1 items-center gap-1.5 px-1">
-      <View className={cx('h-[76px] w-[76px] items-center justify-center rounded-card border-2 px-1.5', active ? cx(SOFT[tone], OUTLINE[tone]) : 'border-edge bg-ground')}>
-        <Ticking
-          value={formatQty(qty)}
-          origin="center"
-          variant="headline"
-          adjustsFontSizeToFit
-          minimumFontScale={0.5}
-          ink={active ? TONE_TEXT[tone] : 'text-quiet-ink'}
-          className="font-extrabold"
-        />
-      </View>
-      <Txt variant="caption" ink={active ? 'text-ink' : 'text-quiet-ink'} numberOfLines={1} className="font-semibold">
+    <View
+      accessible
+      accessibilityLabel={spoken}
+      className={cx('flex-1 items-center justify-center rounded-card border-2 px-0.5 py-2', active ? cx(SOFT[tone], OUTLINE[tone]) : 'border-edge bg-ground')}>
+      <Ticking
+        value={formatQty(qty)}
+        origin="center"
+        variant="title"
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+        ink={active ? TONE_TEXT[tone] : 'text-quiet-ink'}
+        className="font-extrabold"
+      />
+      <Txt variant="caption" ink={active ? 'text-ink' : 'text-quiet-ink'} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} className="text-[13px] font-semibold leading-[17px]">
         {label}
       </Txt>
       {detail.map((entry) => (
-        <View key={entry.status.code} className="max-w-full flex-row items-center gap-1">
-          <Icon name={markOf(entry)} size={12} colour={TONE_INK[tone]} />
-          <Txt variant="caption" numberOfLines={1} className="shrink text-[13px] leading-[17px]">
+        <View key={entry.status.code} className="mt-0.5 max-w-full flex-row items-center gap-1">
+          <Icon name={markOf(entry)} size={11} colour={TONE_INK[tone]} />
+          <Txt variant="caption" numberOfLines={1} className="shrink text-[12px] leading-[16px]">
             {`${entry.status.name} ${formatQty(entry.qty)}`}
           </Txt>
         </View>
