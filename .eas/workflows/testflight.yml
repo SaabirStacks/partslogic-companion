@@ -11,10 +11,12 @@ jobs:
     params:
       platform: ios
       profile: production
-  testflight:
+  # A submit job, not a testflight job: on Expo's free plan a testflight job can't take an EAS build_id.
+  # This is the same EAS Submit upload to App Store Connect that brought build 4 to TestFlight.
+  submit_ios:
     name: Send to TestFlight
     needs: [build_ios]
-    type: testflight
+    type: submit
     params:
       build_id: ${{ needs.build_ios.outputs.build_id }}
       profile: production
