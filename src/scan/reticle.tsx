@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
-import { View, type LayoutChangeEvent } from 'react-native';
+import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { cx } from '@/ui/cx';
+import { APPEAR, FADE } from '@/ui/motion';
 import { Icon } from '@/ui/icon';
 import { PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
@@ -22,24 +24,29 @@ const CORNER = 'absolute h-7 w-7';
 
 // White corner marks across the middle of the camera: where to hold the barcode. While the job waits on
 // the scan just made, the camera dims, the marks fade and say Paused, or offer Scan next when the job
-// resumes from the camera (Look up). The camera is always dark, so these are white in light and dark mode.
+// resumes from the camera (Look up). The dim fades in and lifts, so the pause reads as a state, not a
+// glitch. The camera is always dark, so these are white in light and dark mode.
 export function Reticle({ frame, paused = false, onResume }: { frame: Box | null; paused?: boolean; onResume?: () => void }) {
   if (!frame) return null;
   const edge = paused ? 'border-white/60' : 'border-white';
   return (
     <>
-      {paused ? <View pointerEvents="none" className="absolute inset-0 bg-black/55" /> : null}
+      {paused ? (
+        <Animated.View entering={APPEAR} exiting={FADE} pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <View className="flex-1 bg-black/55" />
+        </Animated.View>
+      ) : null}
       <View pointerEvents="none" style={{ position: 'absolute', left: frame.x, top: frame.y, width: frame.width, height: frame.height }}>
         <View className={cx(CORNER, edge, 'left-0 top-0 rounded-tl-[10px] border-l-4 border-t-4')} />
         <View className={cx(CORNER, edge, 'right-0 top-0 rounded-tr-[10px] border-r-4 border-t-4')} />
         <View className={cx(CORNER, edge, 'bottom-0 left-0 rounded-bl-[10px] border-b-4 border-l-4')} />
         <View className={cx(CORNER, edge, 'bottom-0 right-0 rounded-br-[10px] border-b-4 border-r-4')} />
         {paused && !onResume ? (
-          <View className="flex-1 flex-row items-center justify-center gap-2">
+          <Animated.View entering={APPEAR} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
             <Txt variant="section" ink="text-white" className="tracking-[1.5px]">
               Paused
             </Txt>
-          </View>
+          </Animated.View>
         ) : null}
       </View>
       {paused && onResume ? (

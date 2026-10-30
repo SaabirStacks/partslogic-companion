@@ -42,12 +42,13 @@ export function LineRow({
               </Txt>
             ) : null}
             {status ? (
-              <View className="flex-row items-center gap-1.5">
+              // A new status (Waiting to send, then Booked) fades in over the old one.
+              <Animated.View key={status.text} entering={APPEAR} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Icon name={status.icon} size={14} colour={neutral ? 'quiet-ink' : TONE_INK[status.tone]} />
                 <Txt variant="caption" ink={neutral ? 'text-quiet-ink' : TONE_TEXT[status.tone]} numberOfLines={2} className="flex-1 font-semibold">
                   {status.text}
                 </Txt>
-              </View>
+              </Animated.View>
             ) : null}
           </View>
           {quantity}

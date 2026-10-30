@@ -1,7 +1,9 @@
 import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { cx } from './cx';
 import { Icon } from './icon';
+import { TICK_IN } from './motion';
 import { PressableCard } from './surface';
 import { Txt } from './text';
 
@@ -40,9 +42,11 @@ export function Choice({
         ) : null}
       </View>
       {selected ? (
-        <View className="h-6 w-6 items-center justify-center rounded-full bg-ink">
-          <Icon name="check" size={13} colour="surface" />
-        </View>
+        <Animated.View entering={TICK_IN}>
+          <View className="h-6 w-6 items-center justify-center rounded-full bg-ink">
+            <Icon name="check" size={13} colour="surface" />
+          </View>
+        </Animated.View>
       ) : null}
     </PressableCard>
   );

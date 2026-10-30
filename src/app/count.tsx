@@ -1,6 +1,7 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { countWorkflow, isRunWorkflow, type CountWorkflow, type RunWorkflow } from '@/features/count/count-store';
 import { RunOverview } from '@/features/count/run-overview';
@@ -29,6 +30,7 @@ import { Icon } from '@/ui/icon';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
 import { LineRow } from '@/ui/line-row';
+import { APPEAR } from '@/ui/motion';
 import { Card, PressableCard } from '@/ui/surface';
 import { Quantity } from '@/ui/quantity';
 import { ScanResultCard } from '@/ui/scan-result-card';
@@ -344,7 +346,12 @@ function RunNoticeStrip({ notice }: { notice: RunNotice | null }) {
         : notice.tone === 'warn'
           ? 'warning'
           : 'stop';
-  return <StatusStrip tone={notice.tone} icon={icon} text={notice.text} />;
+  // News about the run (someone joined, it was finished) fades in when it arrives.
+  return (
+    <Animated.View key={notice.text} entering={APPEAR}>
+      <StatusStrip tone={notice.tone} icon={icon} text={notice.text} />
+    </Animated.View>
+  );
 }
 
 function CountingBin({ counting, run }: { counting: Counting; run?: { text: string; onOverview: () => void } }) {

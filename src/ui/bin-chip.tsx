@@ -1,7 +1,9 @@
 import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { cx } from './cx';
 import { Icon } from './icon';
+import { TICK_IN } from './motion';
 import { Card, PressableCard } from './surface';
 import { Txt } from './text';
 
@@ -22,9 +24,11 @@ export function BinChip({
   const face = (
     <View className="flex-row items-center gap-1.5">
       {selected ? (
-        <View className="h-5 w-5 items-center justify-center rounded-full bg-ink">
-          <Icon name="check" size={11} colour="surface" />
-        </View>
+        <Animated.View entering={TICK_IN}>
+          <View className="h-5 w-5 items-center justify-center rounded-full bg-ink">
+            <Icon name="check" size={11} colour="surface" />
+          </View>
+        </Animated.View>
       ) : null}
       <Txt variant="label" className="font-bold">
         {code}

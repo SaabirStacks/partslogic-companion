@@ -8,7 +8,7 @@ import { ScanField } from '@/scan/scan-field';
 
 import { Icon } from './icon';
 import { KeyboardScreen } from './keyboard-screen';
-import { APPEAR } from './motion';
+import { APPEAR, DROP } from './motion';
 import { OfflineBanner } from './offline-banner';
 import { Scroll } from './scroll';
 import { PressableCard } from './surface';
@@ -72,7 +72,12 @@ export function JobScreen({
           </PressableCard>
         </View>
       </View>
-      {result ? <View className="z-10 -mt-8 px-4">{result}</View> : null}
+      {/* The result card rises in (its own RISE) and drops away once its scan is dealt with. */}
+      {result ? (
+        <Animated.View exiting={DROP} style={{ zIndex: 10, marginTop: -32, paddingHorizontal: 16 }}>
+          {result}
+        </Animated.View>
+      ) : null}
       <Scroll toEdge={!action} className="flex-1" contentContainerClassName="gap-3 px-4 pt-3">
         {children}
       </Scroll>
