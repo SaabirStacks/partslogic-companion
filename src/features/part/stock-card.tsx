@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 
 import type { PartAnswer } from '@/features/lookup/answer';
-import { stockBreakdown, stockByBin, type StatusQty, type StockCircle } from '@/stock/statuses';
+import { stockBreakdown, stockByBin, type StatusQty, type StockGroup } from '@/stock/statuses';
 import { cx } from '@/ui/cx';
 import { familyColours } from '@/ui/family';
 import { Icon } from '@/ui/icon';
@@ -17,14 +17,14 @@ import { formatQty } from './stock';
 // a bin may then come once per status.
 export type StockLine = { binId: number; place: string; qty: number; status?: string | null };
 
-const CIRCLES: { circle: StockCircle; label: string; tone: Tone }[] = [
-  { circle: 'available', label: 'Available', tone: 'ok' },
-  { circle: 'reserved', label: 'Reserved', tone: 'warn' },
-  { circle: 'unavailable', label: 'Unavailable', tone: 'stop' },
+const GROUPS: { group: StockGroup; label: string; tone: Tone }[] = [
+  { group: 'available', label: 'Available', tone: 'ok' },
+  { group: 'reserved', label: 'Reserved', tone: 'warn' },
+  { group: 'unavailable', label: 'Unavailable', tone: 'stop' },
 ];
 
-// The ring round a circle that has stock in it, in its state's strong colour.
-const RING: Record<Tone, string> = { ok: 'border-ok', warn: 'border-warn', stop: 'border-stop', action: 'border-action', neutral: 'border-edge' };
+// The outline of a box that has stock in it, in its state's strong colour.
+const OUTLINE: Record<Tone, string> = { ok: 'border-ok', warn: 'border-warn', stop: 'border-stop', action: 'border-action', neutral: 'border-edge' };
 
 const markOf = (entry: StatusQty): IconName =>
   entry.status.hold === 'locked' ? 'locked' : entry.status.hold === 'held' ? 'held' : 'reserved';
@@ -32,10 +32,10 @@ const markOf = (entry: StatusQty): IconName =>
 // "QA hold" keeps its capitals; "Reserved" reads "2 reserved".
 const inLine = (name: string) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
 
-// A part's stock: how much is on hand, split into three circles (available to sell, reserved for an order,
-// unavailable), then each bin holding it with Move beside it. The circles always add up to on hand. A
-// circle with nothing in it stays grey, so colour only appears where there's stock to act on. Until
-// PartsLogic tags stock with a status, everything on hand is available.
+// A part's stock: how much is on hand, split into three boxes (available to sell, reserved for an order,
+// unavailable), then each bin holding it with Move beside it. The boxes always add up to on hand. A box
+// with nothing in it stays grey, so colour only appears where there's stock to act on. Until PartsLogic
+// tags stock with a status, everything on hand is available.
 export function StockCard({
   answer,
   onHand,
@@ -56,7 +56,7 @@ export function StockCard({
   const moves = canMove && rows.some((row) => row.qty > 0);
   const bin = familyColours('stock');
   // The stock level only speaks up when it needs attention (Reorder, Out of stock): a green Available
-  // circle already says it's in stock.
+  // box already says it's in stock.
   const level = answer.tone === 'ok' ? null : answer.status;
 
   if (onHand === null || !lines) {
@@ -95,12 +95,12 @@ export function StockCard({
       </View>
 
       <View className="flex-row px-2 pb-4 pt-3">
-        {CIRCLES.map(({ circle, label, tone }) => {
-          const qty = split[circle];
-          const kinds = split.setAside.filter((entry) => entry.status.circle === circle);
-          // Under a circle, the statuses in it, unless the only one is the circle's own name.
+        {GROUPS.map(({ group, label, tone }) => {
+          const qty = split[group];
+          const kinds = split.setAside.filter((entry) => entry.status.group === group);
+          // Under a box, the statuses in it, unless the only one is the box's own name.
           const detail = kinds.length === 1 && kinds[0].status.name === label ? [] : kinds;
-          return <Circle key={circle} label={label} tone={qty === 0 ? 'neutral' : tone} qty={qty} detail={detail} />;
+          return <StockBox key={group} label={label} tone={qty === 0 ? 'neutral' : tone} qty={qty} detail={detail} />;
         })}
       </View>
 
@@ -151,14 +151,14 @@ export function StockCard({
   );
 }
 
-// One circle: the count inside, ringed in its colour when there's stock in it, its name under it, and the
-// statuses that make it up under that.
-function Circle({ label, tone, qty, detail }: { label: string; tone: Tone; qty: number; detail: StatusQty[] }) {
+// One box: the count inside, outlined in its colour when there's stock in it (the cards' 12 pt corners),
+// its name under it, and the statuses that make it up under that.
+function StockBox({ label, tone, qty, detail }: { label: string; tone: Tone; qty: number; detail: StatusQty[] }) {
   const active = tone !== 'neutral';
   const spoken = [`${formatQty(qty)} ${label.toLowerCase()}`, ...detail.map((entry) => `${formatQty(entry.qty)} ${inLine(entry.status.name)}`)].join(', ');
   return (
     <View accessible accessibilityLabel={spoken} className="flex-1 items-center gap-1.5 px-1">
-      <View className={cx('h-[76px] w-[76px] items-center justify-center rounded-full border-[3px] px-1.5', active ? cx(SOFT[tone], RING[tone]) : 'border-rule bg-ground')}>
+      <View className={cx('h-[76px] w-[76px] items-center justify-center rounded-card border-2 px-1.5', active ? cx(SOFT[tone], OUTLINE[tone]) : 'border-edge bg-ground')}>
         <Ticking
           value={formatQty(qty)}
           origin="center"

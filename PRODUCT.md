@@ -108,7 +108,7 @@ back office, so what the phone does and what the office sees agree.
     for good (a count of a bin since removed, say) can be discarded, together with what waits behind it.
 - **Stock statuses (foundation):** stock on hand will carry a status from PartsLogic (Available, Reserved,
   Cross-dock, QA hold, Core return, Return to supplier, Recall, Damaged, Scrap; `src/stock/statuses.ts`).
-  The part card shows them as three circles: available, reserved and unavailable. PartsLogic doesn't tag
+  The part card shows them as three boxes: available, reserved and unavailable. PartsLogic doesn't tag
   stock yet, so everything counts as available until it does. Who may change a status is PartsLogic's rule.
 - **Working location:** each phone works in one location at a time, chosen once and remembered. It
   shows once, on the board; job screens never repeat it ("Unbinned", "A-01"). A bin in another location

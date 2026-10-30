@@ -1,18 +1,18 @@
 import { STOCK_STATUSES, statusOf, stockBreakdown, stockByBin } from '../statuses';
 
-test('every status sits in one of the three circles, and only unavailable stock is held or locked', () => {
+test('every status sits in one of the three groups, and only unavailable stock is held or locked', () => {
   for (const status of Object.values(STOCK_STATUSES)) {
-    expect(['available', 'reserved', 'unavailable']).toContain(status.circle);
-    expect(status.hold === null).toBe(status.circle !== 'unavailable');
+    expect(['available', 'reserved', 'unavailable']).toContain(status.group);
+    expect(status.hold === null).toBe(status.group !== 'unavailable');
   }
-  expect(Object.values(STOCK_STATUSES).filter((s) => s.circle === 'reserved').map((s) => s.code)).toEqual(['RESV', 'XDOCK']);
+  expect(Object.values(STOCK_STATUSES).filter((s) => s.group === 'reserved').map((s) => s.code)).toEqual(['RESV', 'XDOCK']);
 });
 
 test('stock without a status is available, as all of it is today', () => {
   expect(stockBreakdown(12, [{ qty: 8 }, { qty: 4 }])).toEqual({ onHand: 12, available: 12, reserved: 0, unavailable: 0, setAside: [] });
 });
 
-test('the three circles always add up to on hand', () => {
+test('the three groups always add up to on hand', () => {
   const b = stockBreakdown(12, [
     { qty: 7, status: 'AVAIL' },
     { qty: 2, status: 'RESV' },
@@ -31,7 +31,7 @@ test('the three circles always add up to on hand', () => {
 });
 
 test('a status this phone does not know is locked, never sellable', () => {
-  expect(statusOf('QUARANTINE')).toMatchObject({ circle: 'unavailable', hold: 'locked', name: 'QUARANTINE' });
+  expect(statusOf('QUARANTINE')).toMatchObject({ group: 'unavailable', hold: 'locked', name: 'QUARANTINE' });
   expect(stockBreakdown(3, [{ qty: 3, status: 'QUARANTINE' }]).available).toBe(0);
 });
 

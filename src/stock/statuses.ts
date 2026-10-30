@@ -1,28 +1,28 @@
 // Stock statuses: what each unit on a shelf may be used for. PartsLogic doesn't tag stock with a status
 // yet; until it does, every unit on hand counts as Available. This is the phone's whole list, ready for
 // that day, kept in one place like the workflow catalogue. When PartsLogic sends a status on each stock
-// line, the part card's circles and its bins fill in from it with no other change.
+// line, the part card's stock boxes and its bins fill in from it with no other change.
 //
-// Each status falls in one of the part card's three circles:
+// Each status falls in one of the part card's three stock boxes:
 //   available    can be sold and picked
 //   reserved     promised to an order: picked for it, not sold to anyone else
 //   unavailable  can't be used: held until someone signs it off, or locked until it's dealt with
 
-export type StockCircle = 'available' | 'reserved' | 'unavailable';
+export type StockGroup = 'available' | 'reserved' | 'unavailable';
 export type StockStatusCode = 'AVAIL' | 'RESV' | 'XDOCK' | 'QAHOLD' | 'CORE' | 'RTV' | 'RECALL' | 'DAMG' | 'SCRAP';
 
 export type StockStatus = {
   code: string;
   // What staff call it, in sentence case.
   name: string;
-  circle: StockCircle;
+  group: StockGroup;
   // For unavailable stock: held (frozen until someone acts) or locked (kept apart until it's disposed of).
   hold: 'held' | 'locked' | null;
   // What PartsLogic does with stock in this status.
   meaning: string;
 };
 
-const status = (code: StockStatusCode, name: string, circle: StockCircle, hold: StockStatus['hold'], meaning: string) => ({ code, name, circle, hold, meaning });
+const status = (code: StockStatusCode, name: string, group: StockGroup, hold: StockStatus['hold'], meaning: string) => ({ code, name, group, hold, meaning });
 
 // In the order they're listed wherever more than one shows.
 export const STOCK_STATUSES: Record<StockStatusCode, StockStatus> = {
@@ -44,7 +44,7 @@ const ORDER = Object.keys(STOCK_STATUSES);
 export function statusOf(code: string | null | undefined): StockStatus {
   if (!code) return STOCK_STATUSES.AVAIL;
   const known = STOCK_STATUSES[code.trim().toUpperCase() as StockStatusCode];
-  return known ?? { code, name: code, circle: 'unavailable', hold: 'locked', meaning: 'Not known to this phone' };
+  return known ?? { code, name: code, group: 'unavailable', hold: 'locked', meaning: 'Not known to this phone' };
 }
 
 export type StatusLine = { qty: number; status?: string | null };
@@ -59,11 +59,11 @@ export type StockBreakdown = {
   setAside: StatusQty[];
 };
 
-// Splits what's on hand into the three circles. On hand is PartsLogic's own total; reserved and
+// Splits what's on hand into the three groups. On hand is PartsLogic's own total; reserved and
 // unavailable are what the lines say, and Available is the rest, so the three always add up to on hand.
 export function stockBreakdown(onHand: number, lines: readonly StatusLine[]): StockBreakdown {
   const setAside = setAsideOf(lines);
-  const sum = (circle: StockCircle) => setAside.filter((entry) => entry.status.circle === circle).reduce((total, entry) => total + entry.qty, 0);
+  const sum = (group: StockGroup) => setAside.filter((entry) => entry.status.group === group).reduce((total, entry) => total + entry.qty, 0);
   const reserved = sum('reserved');
   const unavailable = sum('unavailable');
   return { onHand, available: onHand - reserved - unavailable, reserved, unavailable, setAside };
@@ -87,7 +87,7 @@ function setAsideOf(lines: readonly StatusLine[]): StatusQty[] {
   const totals = new Map<string, StatusQty>();
   for (const line of lines) {
     const found = statusOf(line.status);
-    if (found.circle === 'available' || line.qty === 0) continue;
+    if (found.group === 'available' || line.qty === 0) continue;
     const entry = totals.get(found.code) ?? { status: found, qty: 0 };
     totals.set(found.code, { ...entry, qty: entry.qty + line.qty });
   }
