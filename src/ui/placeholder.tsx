@@ -18,7 +18,9 @@ export function PlaceholderRows({ count = 4, label = 'Loading' }: { count?: numb
   return (
     <View accessible accessibilityLabel={label} accessibilityRole="progressbar" className="gap-2">
       {Array.from({ length: count }, (_, index) => (
-        <Animated.View key={index} style={style} className="h-14 rounded-card bg-rule" />
+        <Animated.View key={index} style={style}>
+          <View className="h-14 rounded-card bg-rule" />
+        </Animated.View>
       ))}
     </View>
   );

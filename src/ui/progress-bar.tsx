@@ -22,7 +22,10 @@ export function ProgressBar({ share, family }: { share: number; family: Workflow
 
   return (
     <View className="h-2 overflow-hidden rounded-full bg-rule" importantForAccessibility="no">
-      <Animated.View style={style} className={`h-2 rounded-full ${familyColours(family).dot}`} />
+      {/* Classes go on a plain View: NativeWind doesn't style Reanimated's views. */}
+      <Animated.View style={style}>
+        <View className={`h-2 rounded-full ${familyColours(family).dot}`} />
+      </Animated.View>
     </View>
   );
 }

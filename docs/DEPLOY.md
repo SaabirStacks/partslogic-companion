@@ -251,8 +251,13 @@ which is why the first one runs from a computer.
 ## Versions
 
 `eas.json` uses `appVersionSource: remote`, so EAS keeps the build numbers (Android `versionCode`, iOS
-`buildNumber`), and `production` raises them on every build. The version people see, `1.0.0`, comes from
-`version` in `app.json`. It also decides which builds an update can reach (see above).
+`buildNumber`), and `production` raises them on every build. The version people see comes from `version`
+in `app.json`. It also decides which builds an update can reach (see above).
+
+| Version | What needed the new build | Phones on the version before |
+|---|---|---|
+| `1.0.0` | The first builds (Expo SDK 57) | — |
+| `1.1.0` | Expo SDK 58, and sounds (`expo-audio`) | Keep working, but get no more updates. Install the `1.1.0` build: a new APK on Android, the new TestFlight build on iPhone |
 
 ## Later: the stores
 

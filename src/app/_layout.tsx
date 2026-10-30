@@ -23,8 +23,10 @@ import { liveWorkflow } from '@/workflows/catalogue';
  * Direction: the trade counter (the till look approved with the task screens mock-up).
  *
  * THESIS      Calm by default, like a good till: white cards on a light grey counter, near-black words, and
- *             colour with exactly two jobs. Blue marks the button you're meant to press; green, yellow and
- *             red are states (done or sent, check it, stopped), shown as a word and a symbol on a soft chip.
+ *             colour with three jobs. Blue marks the button you're meant to press; green, yellow and red
+ *             are states (done or sent, check it, stopped), shown as a word and a symbol on a soft chip;
+ *             teal, violet and plum say which family a job is (goods in, stock, parts). Short sounds and
+ *             haptics mark the moments that matter without looking (src/feel). DESIGN.md has the system.
  * OWN-WORLD   Light grey ground, white surfaces with 12 px corners and a hairline edge (graphite at night).
  *             The phone's own typeface in sentence case; quantities, codes and bins in tabular figures.
  *             Pictograms are SF Symbols / Material symbols, bold. Tokens in palette.ts, parts in surface.tsx,

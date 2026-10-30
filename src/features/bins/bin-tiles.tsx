@@ -110,20 +110,22 @@ export function BinTiles({
 
       {action}
 
-      <Animated.View key={path.join('/')} entering={back ? STEP_BACK : STEP_IN} className="flex-row flex-wrap" style={{ gap: GAP }}>
-        {step.tiles.map((tile) => (
-          <Tile
-            key={tile.key}
-            tile={tile}
-            word={ASK[step.ask].tile}
-            size={size}
-            held={held}
-            chosen={chosen}
-            marks={marks}
-            detail={detail}
-            onPress={() => (tile.bin ? onBin(tile.bin) : onPath(tile.path))}
-          />
-        ))}
+      <Animated.View key={path.join('/')} entering={back ? STEP_BACK : STEP_IN}>
+        <View className="flex-row flex-wrap" style={{ gap: GAP }}>
+          {step.tiles.map((tile) => (
+            <Tile
+              key={tile.key}
+              tile={tile}
+              word={ASK[step.ask].tile}
+              size={size}
+              held={held}
+              chosen={chosen}
+              marks={marks}
+              detail={detail}
+              onPress={() => (tile.bin ? onBin(tile.bin) : onPath(tile.path))}
+            />
+          ))}
+        </View>
       </Animated.View>
       {step.tiles.length === 0 ? (
         <Txt variant="caption" className="px-1">
