@@ -102,6 +102,21 @@ export const OIL_FILTER_OUT = {
   item: { ...OIL_FILTER.item, onHand: 0, belowReorder: true, stock: [] },
 } as typeof OIL_FILTER;
 
+// What the card will look like once PartsLogic tags stock with a status: 2 reserved for an order in A-01,
+// 1 on QA hold in C-03 (src/stock/statuses.ts). PartsLogic doesn't send statuses yet.
+export const OIL_FILTER_STATUSES = {
+  ...OIL_FILTER,
+  item: {
+    ...OIL_FILTER.item,
+    stock: [
+      { binId: 1, place: 'A-01', qty: 6 },
+      { binId: 1, place: 'A-01', qty: 2, status: 'RESV' },
+      { binId: 2, place: 'C-03', qty: 3 },
+      { binId: 2, place: 'C-03', qty: 1, status: 'QAHOLD' },
+    ],
+  },
+} as typeof OIL_FILTER;
+
 export const RECENT = [
   { partId: 7, brand: 'Mann', number: 'HU 816 x', description: 'Oil filter' },
   { partId: 8, brand: 'Bosch', number: '0 986 494 119', description: 'Brake pad set, front axle' },
