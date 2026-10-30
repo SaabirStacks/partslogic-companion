@@ -66,7 +66,7 @@ export function RunReceipt({
               {plural(progress.counted, 'bin', 'bins')}
             </Txt>
             <Txt variant="caption" numbers className="text-center">
-              {[run.locationName, span].filter(Boolean).join(' · ')}
+              {span}
             </Txt>
           </View>
           <View className="border-t border-rule pt-1">
@@ -86,16 +86,16 @@ export function RunReceipt({
         {setUp?.answer === 'ask' ? (
           <Card className="gap-3 p-4">
             <View className="gap-1">
-              <Txt variant="title" className="font-extrabold">{`Is ${setUp.location} fully set up?`}</Txt>
+              <Txt variant="title" className="font-extrabold">Is this location fully set up?</Txt>
               <Txt variant="caption">Yes, and opening stock won’t be offered here again. Not yet, and you can set up the rest another time.</Txt>
             </View>
             <Button label="Yes, it’s set up" icon="check" onPress={setUp.onYes} />
             <Button label="Not yet" variant="secondary" onPress={setUp.onNotYet} />
           </Card>
         ) : setUp?.answer === 'yes' ? (
-          <StatusStrip tone="ok" icon="sent" text={`${setUp.location} is set up · opening stock is done`} />
+          <StatusStrip tone="ok" icon="sent" text="Set up · opening stock is done" />
         ) : setUp?.answer === 'not-yet' ? (
-          <StatusStrip tone="neutral" icon="opening" text={`Opening stock stays open for ${setUp.location}`} />
+          <StatusStrip tone="neutral" icon="opening" text="Opening stock stays open for another run" />
         ) : null}
       </Scroll>
       {/* While the set-up question waits, its answer is the way on (Not yet is the way out). */}

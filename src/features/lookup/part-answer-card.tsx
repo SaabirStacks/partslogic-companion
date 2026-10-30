@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 
+import { useBinName } from '@/features/bins/use-bin-name';
 import { BinChip } from '@/ui/bin-chip';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { Txt } from '@/ui/text';
@@ -19,6 +20,7 @@ export function PartAnswerCard({
   savedAt: string | null;
   onOpen: () => void;
 }) {
+  const nameOf = useBinName();
   return (
     <ScanResultCard
       tone={answer.tone}
@@ -30,7 +32,7 @@ export function PartAnswerCard({
       {answer.bins.length > 0 || answer.price ? (
         <View className="flex-row flex-wrap items-center gap-2">
           {answer.bins.map((bin) => (
-            <BinChip key={bin.binId} code={bin.place} qty={bin.qty} />
+            <BinChip key={bin.binId} code={nameOf(bin.place)} qty={bin.qty} />
           ))}
           {answer.moreBins > 0 ? (
             <Txt variant="label" numbers ink="text-quiet-ink">

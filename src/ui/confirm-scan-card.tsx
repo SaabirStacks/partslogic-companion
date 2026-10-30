@@ -54,7 +54,7 @@ export function ConfirmScanCard({
 
   if (hit.type === 'bin') {
     return (
-      <ScanResultCard key={pending.key} tone="warn" status={{ icon: 'bin', label: 'That’s a bin' }} title={hit.bin} detail={hit.location}>
+      <ScanResultCard key={pending.key} tone="warn" status={{ icon: 'bin', label: 'That’s a bin' }} title={hit.bin}>
         <Button label="OK" variant="secondary" compact onPress={onSkip} />
       </ScanResultCard>
     );

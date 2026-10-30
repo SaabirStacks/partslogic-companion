@@ -30,7 +30,6 @@ export default function Waiting() {
   if (!location) return <NeedsLocation />;
   return (
     <WaitingView
-      location={location.name}
       rows={waiting.rows}
       loading={online && waiting.loading}
       failed={waiting.failed}

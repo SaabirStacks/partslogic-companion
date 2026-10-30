@@ -29,7 +29,7 @@ const POLL_MS = 20_000;
 // How a run ended on this phone: alone (only this phone had it), for everyone, left to the others (it stays
 // open for them), or closed after someone else finished it.
 export type RunEnd = 'alone' | 'everyone' | 'left' | 'closed';
-export type RunNotice = { tone: 'ok' | 'warn' | 'stop'; text: string };
+export type RunNotice = { tone: 'ok' | 'warn' | 'stop' | 'neutral'; text: string };
 
 const RUN_PURPOSE: Record<RunWorkflow, SharedRunPurpose> = { 'stock-take': 'stock_take', 'opening-stock': 'opening' };
 const workflowOf = (run: SharedRun): RunWorkflow => (run.purpose === 'opening' ? 'opening-stock' : 'stock-take');
@@ -151,7 +151,7 @@ export function useCountRun(workflow: RunWorkflow, refresh: unknown, watching: b
           await keep(sharedCopy(shared, userId, location.name, shared.created ? null : shared.startedBy));
           if (!shared.created) {
             setNotice({
-              tone: 'warn',
+              tone: 'neutral',
               text: `${shared.startedBy} had already started ${aNounOf(workflowOf(shared))} here, so you’ve joined it`,
             });
           }

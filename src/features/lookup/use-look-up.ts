@@ -97,7 +97,7 @@ export function useLookUp() {
     // A bin chosen from the list, shown as if its label had been scanned.
     showBin: (bin: { binId: number; code: string }) => {
       scanFeedback.found();
-      setView({ kind: 'bin', code: bin.code, binId: bin.binId, bin: bin.code, location: location?.name ?? '' });
+      setView({ kind: 'bin', code: bin.code, binId: bin.binId, bin: bin.code, location: location?.code ?? '' });
     },
     clear: () => setView({ kind: 'idle' }),
   };

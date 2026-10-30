@@ -85,7 +85,7 @@ export function useBinCount(workflow: CountWorkflow) {
     void Promise.resolve().then(load);
   }, [load]);
 
-  const label = (current: BinCount) => `Count of bin ${current.binCode} started ${time(current.startedAt)}`;
+  const label = (current: BinCount) => `Count of bin ${current.binCode} started\u00a0${time(current.startedAt)}`;
 
   // Saves the new totals and queues them, replacing totals not yet sent (PartsLogic takes the latest).
   async function apply(current: BinCount, action: BinSessionAction | BinSessionAction[], labels = current.labels) {

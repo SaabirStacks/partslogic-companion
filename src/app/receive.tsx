@@ -176,8 +176,7 @@ function GroupRow({ group, receiving }: { group: LineGroup; receiving: Receiving
 // The strip's second line: the receipt number once PartsLogic gives one, the delivery note, and where the
 // stock goes.
 function bannerDetail(delivery: Delivery, number: string | null): string {
-  const place = delivery.locationName ? `into ${delivery.locationName} Unbinned` : 'into Unbinned';
-  return [number ?? 'Not sent yet', delivery.reference, place].filter(Boolean).join(' · ');
+  return [number ?? 'Not sent yet', delivery.reference, 'into Unbinned'].filter(Boolean).join(' · ');
 }
 
 // After Finish: the receipt, and the next job.

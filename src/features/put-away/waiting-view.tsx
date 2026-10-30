@@ -15,7 +15,6 @@ import type { WaitingRow } from './waiting';
 // shelf says which, and tapping it starts putting away into that shelf; one with no shelf yet opens the
 // part. Needs signal.
 export function WaitingView({
-  location,
   rows,
   loading,
   failed,
@@ -24,7 +23,6 @@ export function WaitingView({
   onRow,
   onRetry,
 }: {
-  location: string;
   rows: WaitingRow[];
   loading: boolean;
   failed: boolean;
@@ -41,7 +39,7 @@ export function WaitingView({
         <Txt variant="headline" numbers className="font-extrabold">
           {loading ? 'Waiting' : `${plural(units, 'unit', 'units')} waiting`}
         </Txt>
-        <Txt variant="caption">{loading ? `In ${location} Unbinned` : `In ${location} Unbinned · ${plural(rows.length, 'part', 'parts')}`}</Txt>
+        <Txt variant="caption">{loading ? 'In Unbinned' : `In Unbinned · ${plural(rows.length, 'part', 'parts')}`}</Txt>
       </View>
 
       {!online ? <StatusStrip tone="warn" icon="offline" text="What’s waiting shows when you’re back online" /> : null}

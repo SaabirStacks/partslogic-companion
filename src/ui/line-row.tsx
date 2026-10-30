@@ -33,7 +33,7 @@ export function LineRow({
       <Card className="gap-2 px-4 py-2.5">
         <View className="min-h-12 flex-row items-center gap-3">
           <View className="flex-1 gap-0.5">
-            <Txt variant="label" numberOfLines={1} className="font-bold">
+            <Txt variant="label" numberOfLines={2} className="font-bold">
               {name}
             </Txt>
             {code ? (

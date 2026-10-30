@@ -8,7 +8,7 @@ import { useColour } from './theme';
 
 function Step({ label, icon, onPress, disabled }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {
   return (
-    <PressableCard accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-12 w-12 items-center justify-center">
+    <PressableCard accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-14 w-14 items-center justify-center">
       <Icon name={icon} size={22} />
     </PressableCard>
   );
@@ -49,7 +49,7 @@ export function Quantity({
           if (text.trim() !== '' && Number.isFinite(target)) onSet(target);
         }}
         onBlur={() => setEditing(false)}
-        className={surfaceClass({ className: 'h-12 w-24 border-[1.5px] border-focus text-center font-extrabold text-[26px] text-ink' })}
+        className={surfaceClass({ className: 'h-14 w-24 border-[1.5px] border-focus text-center font-extrabold text-[26px] text-ink' })}
       />
     );
   }
@@ -64,7 +64,7 @@ export function Quantity({
           setText(String(total));
           setEditing(true);
         }}
-        className="h-12 min-w-12 items-center justify-center px-1">
+        className="h-14 min-w-12 items-center justify-center px-1">
         <Txt variant="headline" numbers className="font-extrabold">
           {total}
         </Txt>

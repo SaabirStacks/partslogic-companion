@@ -107,7 +107,7 @@ export function RunOverview({
     if (canTap(bin, counting, closed)) onBin(bin);
   };
 
-  const started = [run.locationName, `started ${when(run.startedAt)}`, run.startedBy ? `by ${run.startedBy}` : null].filter(Boolean).join(' · ');
+  const started = [`Started ${when(run.startedAt)}`, run.startedBy ? `by ${run.startedBy}` : null].filter(Boolean).join(' · ');
   const left = progress.total - progress.counted;
 
   const header = (
@@ -124,7 +124,7 @@ export function RunOverview({
       </View>
       {progress.closed ? (
         <StatusStrip
-          tone="warn"
+          tone="neutral"
           icon="stockTake"
           text={[`${progress.closed.by ?? 'Someone'} finished this ${noun}`, progress.closed.at ? clock(progress.closed.at) : null].filter(Boolean).join(' · ')}
         />

@@ -35,9 +35,8 @@ export function DeliveryReceipt({
   onPutAway: () => void;
   onNext: () => void;
 }) {
-  const place = delivery.locationName ? `${delivery.locationName} Unbinned` : 'Unbinned';
   const rows: [string, number][] = [
-    [`Units into ${place}`, units],
+    ['Units into Unbinned', units],
     ['Codes', summary.codes],
     ...(summary.unknown > 0 ? ([['Unknown, kept for the office', summary.unknown]] as [string, number][]) : []),
   ];

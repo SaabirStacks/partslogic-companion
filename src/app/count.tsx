@@ -109,7 +109,7 @@ function Start({ counting, purpose }: { counting: Counting; purpose: CountWorkfl
       onChoose={(bin) => void counting.begin({ binId: bin.binId, binCode: bin.code, location: location.code })}
       onCreate={(code) => void counting.createBin(code)}
       onWaiting={purpose === 'put-away' ? () => router.push('/waiting') : undefined}
-      notice={<StartAnswer counting={counting} locationName={location.name} />}
+      notice={<StartAnswer counting={counting} />}
       footer={<CountedHere counting={counting} />}
     />
   );
@@ -153,7 +153,7 @@ function CountedHere({ counting }: { counting: Counting }) {
   );
 }
 
-function StartAnswer({ counting, locationName }: { counting: Counting; locationName: string }) {
+function StartAnswer({ counting }: { counting: Counting }) {
   const { start } = counting;
   switch (start.kind) {
     case 'checking':
@@ -289,7 +289,6 @@ function RunStep({
       <RunPlanView
         initial={workflow}
         openingOffered={openingOffered}
-        locationName={location.name}
         list={bins}
         joinable={joinable}
         busy={runFlow.busy}
@@ -315,7 +314,7 @@ function RunStep({
       notice={
         <>
           <RunNoticeStrip notice={runFlow.notice} />
-          {location ? <StartAnswer counting={counting} locationName={location.name} /> : null}
+          {location ? <StartAnswer counting={counting} /> : null}
         </>
       }
       onBin={(bin) => {
@@ -336,7 +335,15 @@ function RunStep({
 // What happened when a run started, joined or tried to finish.
 function RunNoticeStrip({ notice }: { notice: RunNotice | null }) {
   if (!notice) return null;
-  const icon = notice.text.startsWith('No signal') ? 'offline' : notice.tone === 'ok' ? 'sent' : notice.tone === 'warn' ? 'warning' : 'stop';
+  const icon = notice.text.startsWith('No signal')
+    ? 'offline'
+    : notice.tone === 'ok'
+      ? 'sent'
+      : notice.tone === 'neutral'
+        ? 'stockTake'
+        : notice.tone === 'warn'
+          ? 'warning'
+          : 'stop';
   return <StatusStrip tone={notice.tone} icon={icon} text={notice.text} />;
 }
 
@@ -352,7 +359,7 @@ function CountingBin({ counting, run }: { counting: Counting; run?: { text: stri
         placeholder="Barcode or part number"
         scanEnabled={!counting.held.pending}
         onScan={counting.scan}
-        banner={<JobBanner size="headline" title={`Bin ${count.binCode}`} detail={[run?.text ?? count.location, 'Blind count'].filter(Boolean).join(' · ')} />}
+        banner={<JobBanner size="headline" title={`Bin ${count.binCode}`} detail={[run?.text, 'Blind count'].filter(Boolean).join(' · ')} />}
         result={<LastScan counting={counting} />}
         action={
           // While a scan waits on Count or Skip, it's the only decision on screen.

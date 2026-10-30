@@ -40,7 +40,6 @@ type BinList = { choices: BinChoice[]; loading: boolean; failed: boolean; savedA
 export function RunPlanView({
   initial,
   openingOffered = true,
-  locationName,
   list,
   joinable = [],
   busy = false,
@@ -50,7 +49,6 @@ export function RunPlanView({
 }: {
   initial: RunWorkflow;
   openingOffered?: boolean;
-  locationName: string;
   list: BinList;
   joinable?: SharedRun[];
   busy?: boolean;
@@ -97,7 +95,7 @@ export function RunPlanView({
       <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-4">
         {joinable.length > 0 ? (
           <>
-            <SectionLabel>{`Open in ${locationName} now`}</SectionLabel>
+            <SectionLabel>Open now</SectionLabel>
             {joinable.map((run) => (
               <JoinRunCard key={run.runId} run={run} busy={busy} onJoin={() => onJoin?.(run)} />
             ))}
@@ -107,7 +105,7 @@ export function RunPlanView({
         {notice}
         {openingOffered ? <Segmented options={KINDS} value={kind} onChange={setKind} /> : null}
         {kind === 'opening-stock' ? (
-          <StatusStrip tone="warn" icon="opening" text={`Setting up ${locationName}: what’s found becomes its opening stock`} />
+          <StatusStrip tone="neutral" icon="opening" text="Setting up: what’s found becomes opening stock" />
         ) : null}
         <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
           Which bins?
@@ -127,7 +125,7 @@ export function RunPlanView({
 
         <View className="gap-2" accessibilityRole="radiogroup">
           <Choice
-            title={`Every bin in ${locationName}`}
+            title="Every bin"
             detail={plural(list.choices.length, 'bin', 'bins')}
             selected={plan === 'every'}
             onPress={() => setPlan('every')}

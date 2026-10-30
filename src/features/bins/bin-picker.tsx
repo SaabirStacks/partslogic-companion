@@ -37,7 +37,6 @@ type BinList = {
 export function BinPicker({
   visible,
   title,
-  location,
   list,
   held,
   skip,
@@ -47,7 +46,6 @@ export function BinPicker({
   visible: boolean;
   // "Move to which bin?"
   title: string;
-  location: string;
   list: BinList;
   // How much of the part each bin already holds.
   held?: ReadonlyMap<number, number>;
@@ -90,7 +88,7 @@ export function BinPicker({
   ) : typed ? (
     <Txt variant="caption" className="px-1">{`No bin called ${typed} here`}</Txt>
   ) : list.failed ? null : (
-    <Txt variant="caption" className="px-1">{`No bins in ${location} yet`}</Txt>
+    <Txt variant="caption" className="px-1">No bins yet</Txt>
   );
 
   return (
@@ -104,7 +102,7 @@ export function BinPicker({
                 <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
                   {title}
                 </Txt>
-                <Txt variant="caption">{`${plural(list.choices.length, 'bin', 'bins')} in ${location}`}</Txt>
+                <Txt variant="caption">{plural(list.choices.length, 'bin', 'bins')}</Txt>
               </View>
               <PressableCard accessibilityLabel="Close" onPress={close} className="h-12 w-12 items-center justify-center rounded-[10px]">
                 <Icon name="close" size={22} />

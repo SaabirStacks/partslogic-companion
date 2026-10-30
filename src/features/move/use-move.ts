@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useBinName } from '@/features/bins/use-bin-name';
 import { formatQty } from '@/features/part/stock';
 import { deviceLabel } from '@/lib/device';
 import { useOnline } from '@/lib/network';
@@ -22,6 +23,7 @@ export type MoveResult = { kind: 'moved' | 'unknown' | 'refused'; message: strin
 export function useMove(start: { partId: number | null; fromBinId: number | null }) {
   const online = useOnline();
   const { location } = useWorkingLocation();
+  const nameOf = useBinName();
   const [partId, setPartId] = useState<number | null>(start.partId);
   const [fromBinId, setFromBinId] = useState<number | null>(start.fromBinId);
   const [to, setTo] = useState<MoveBin | null>(null);
@@ -89,7 +91,7 @@ export function useMove(start: { partId: number | null; fromBinId: number | null
     try {
       await transferStock(supabase, { fromBinId, toBinId: to.binId, partId, qty, reference: `Moved on ${deviceLabel()}` });
       scanFeedback.found();
-      setResult({ kind: 'moved', message: `${formatQty(qty)} · ${from?.place} → ${to.label}` });
+      setResult({ kind: 'moved', message: `${formatQty(qty)} · ${nameOf(from?.place ?? '')} → ${nameOf(to.label)}` });
     } catch (error) {
       scanFeedback.failed();
       setResult(
