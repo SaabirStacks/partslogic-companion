@@ -3,9 +3,7 @@ import { View } from 'react-native';
 import { plural } from '@/lib/format';
 import { Button } from '@/ui/button';
 import type { ChipState } from '@/ui/status-chip';
-import { StatusChip } from '@/ui/status-chip';
-import { Card } from '@/ui/surface';
-import { Txt } from '@/ui/text';
+import { ReceiptCard } from '@/ui/receipt';
 import { Scroll } from '@/ui/scroll';
 import { BottomBar } from '@/ui/action-bar';
 
@@ -43,36 +41,17 @@ export function DeliveryReceipt({
   return (
     <View className="flex-1 bg-ground">
       <Scroll toEdge={false} contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-6">
-        <Card
-          accessible
+        <ReceiptCard
+          chip={CHIP[summary.state]}
+          reference={number ?? 'Not sent yet'}
+          line={receiptLine(delivery)}
+          rows={rows.map(([label, value]) => ({ label, value, tone: label.startsWith('Unknown') ? 'warn' : undefined }))}
           accessibilityLabel={`${CHIP[summary.state].label}. ${number ?? 'Not sent yet'}. ${receiptLine(delivery)}. ${plural(units, 'unit', 'units')}`}
-          className="gap-4 p-5">
-          <View className="items-center gap-2">
-            <StatusChip {...CHIP[summary.state]} />
-            <Txt accessibilityRole="header" variant="display" className="text-center">
-              {number ?? 'Not sent yet'}
-            </Txt>
-            <Txt variant="caption" numbers className="text-center">
-              {receiptLine(delivery)}
-            </Txt>
-          </View>
-          <View className="border-t border-rule pt-1">
-            {rows.map(([label, value]) => (
-              <View key={label} className="min-h-11 flex-row items-center justify-between gap-3">
-                <Txt variant="body" numberOfLines={1} className="flex-1">
-                  {label}
-                </Txt>
-                <Txt variant="label" numbers className="font-extrabold">
-                  {value}
-                </Txt>
-              </View>
-            ))}
-          </View>
-        </Card>
+        />
       </Scroll>
       <BottomBar className="gap-2">
         <Button label="Put away now" icon="putAway" onPress={onPutAway} />
-        <Button label="Next delivery" variant="secondary" onPress={onNext} />
+        <Button label="Next delivery" variant="tinted" onPress={onNext} />
       </BottomBar>
     </View>
   );

@@ -15,8 +15,8 @@ export function NotSetUp({ problems }: { problems: string[] }) {
   return (
     <SafeAreaView className="flex-1 bg-ground">
       <Notice icon="stop" tone="stop" title="Not set up" line="Ask for the latest version of the app.">
-        <Txt variant="caption" selectable className="text-center">
-          {problems.join('\n')}
+        <Txt variant="caption" selectable className="text-center text-[13px] leading-[18px]">
+          {`For whoever sets up the app: ${problems.join('; ')}`}
         </Txt>
       </Notice>
     </SafeAreaView>

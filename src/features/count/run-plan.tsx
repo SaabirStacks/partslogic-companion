@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { binsUnder } from '@/features/bins/bin-steps';
 import { BinTiles } from '@/features/bins/bin-tiles';
@@ -13,8 +13,8 @@ import { SectionLabel } from '@/ui/section-label';
 import { Segmented } from '@/ui/segmented';
 import { StatusStrip } from '@/ui/status-strip';
 import { Txt } from '@/ui/text';
-import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
+import { PlaceholderRows } from '@/ui/placeholder';
 import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 
 import { countedShort, countedText, type BinChoice } from './bin-choices';
@@ -57,7 +57,6 @@ export function RunPlanView({
   onJoin?: (run: SharedRun) => void;
   onStart: (bins: RunBinPlan[], as: RunWorkflow) => void;
 }) {
-  const colourOf = useColour();
   const [asked, setKind] = useState<RunWorkflow>(initial);
   const kind: RunWorkflow = openingOffered ? asked : 'stock-take';
   const noun = kind === 'opening-stock' ? 'opening stock' : 'stock take';
@@ -114,14 +113,10 @@ export function RunPlanView({
         {list.failed && list.choices.length === 0 ? (
           <>
             <StatusStrip tone="stop" icon="offline" text="Bins didn’t load" />
-            <Button label="Try again" icon="retry" variant="secondary" onPress={list.reload} />
+            <Button label="Try again" icon="retry" variant="tinted" onPress={list.reload} />
           </>
         ) : null}
-        {list.loading ? (
-          <View className="py-4">
-            <ActivityIndicator color={colourOf('quiet-ink')} />
-          </View>
-        ) : null}
+        {list.loading && list.choices.length === 0 ? <PlaceholderRows count={3} label="Loading bins" /> : null}
 
         <View className="gap-2" accessibilityRole="radiogroup">
           <Choice
@@ -156,7 +151,7 @@ export function RunPlanView({
                     <Button
                       label={allUnder ? `Clear the ${under.length} in ${place}` : `Choose all ${under.length} in ${place}`}
                       icon={allUnder ? 'close' : 'check'}
-                      variant="secondary"
+                      variant="tinted"
                       compact
                       onPress={() => setAll(under, !allUnder)}
                     />

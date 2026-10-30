@@ -9,10 +9,13 @@ const NAMES = [
   'rule',
   'ink',
   'quiet-ink',
+  'label',
   'focus',
   'action',
   'on-action',
   'action-ink',
+  'action-soft',
+  ...['inbound', 'control', 'parts'].flatMap((family) => [family, `${family}-soft`]),
   ...['ok', 'warn', 'stop'].flatMap((state) => [state, `on-${state}`, `${state}-soft`, `${state}-ink`]),
 ];
 

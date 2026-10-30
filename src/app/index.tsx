@@ -1,11 +1,12 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { BoardView } from '@/features/board/board-view';
 import { resumeText } from '@/features/board/open-work';
 import { syncState } from '@/features/board/sync-state';
 import { useOpenWork } from '@/features/board/use-open-work';
 import { useOnline } from '@/lib/network';
+import { recentPartsPref } from '@/lib/prefs';
 import { useAppUpdate } from '@/lib/use-app-update';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
@@ -32,9 +33,12 @@ export default function Board() {
     unlocatedStockSummary(supabase, locationId),
   );
   const { reload } = unbinned;
+  // A viewer's board lists the parts looked up lately (Look up keeps them); read again on each return.
+  const [recent, setRecent] = useState(() => recentPartsPref.get() ?? []);
   const firstFocus = useRef(true);
   useFocusEffect(
     useCallback(() => {
+      setRecent(recentPartsPref.get() ?? []);
       if (firstFocus.current) {
         firstFocus.current = false;
         return;
@@ -56,6 +60,10 @@ export default function Board() {
       onLocation={() => router.push('/location')}
       onSync={() => router.push('/sync')}
       onAccount={() => router.push('/account')}
+      recent={recent.slice(0, 6)}
+      onPart={(part) => router.push({ pathname: '/part/[id]', params: { id: String(part.partId) } })}
+      onRefresh={online ? reload : undefined}
+      refreshing={unbinned.loading && !!unbinned.data}
     />
   );
 }

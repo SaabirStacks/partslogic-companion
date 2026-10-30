@@ -28,7 +28,7 @@ export function Fact({
   const frame = cx('min-h-14 flex-row items-center gap-3 px-4 py-2', !last && 'border-b border-rule');
   const face = (
     <>
-      <Txt variant="caption" className="w-28">
+      <Txt variant="caption" ink="text-label" className="w-28">
         {label}
       </Txt>
       <Txt variant="label" selectable={selectable} numbers numberOfLines={2} className="flex-1 text-right">

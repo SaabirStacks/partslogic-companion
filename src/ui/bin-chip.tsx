@@ -1,11 +1,12 @@
 import { View } from 'react-native';
 
 import { cx } from './cx';
+import { Icon } from './icon';
 import { Card, PressableCard } from './surface';
 import { Txt } from './text';
 
 // A bin as a small label: its code and, when it holds stock, how many (A-01 ×4). A chosen bin gets a dark
-// outline, the same mark as any choice in a list.
+// outline and a tick, the same mark as any choice in a list.
 export function BinChip({
   code,
   qty,
@@ -19,7 +20,12 @@ export function BinChip({
 }) {
   const label = qty === undefined ? code : `${code}, ${qty}`;
   const face = (
-    <View className="flex-row items-baseline gap-1.5">
+    <View className="flex-row items-center gap-1.5">
+      {selected ? (
+        <View className="h-5 w-5 items-center justify-center rounded-full bg-ink">
+          <Icon name="check" size={11} colour="surface" />
+        </View>
+      ) : null}
       <Txt variant="label" className="font-bold">
         {code}
       </Txt>

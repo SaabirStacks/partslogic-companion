@@ -198,11 +198,11 @@ export function RunOverview({
         {closed ? null : (
           <View className="flex-row gap-2">
             <View className="flex-1">
-              <Button label="Pause" icon="waiting" variant="secondary" compact onPress={onPause} />
+              <Button label="Pause" icon="waiting" variant="tinted" compact onPress={onPause} />
             </View>
             {progress.counted > 0 && left > 0 && next?.state !== 'counting' ? (
               <View className="flex-1">
-                <Button label="Finish now" variant="secondary" compact onPress={() => setFinishingEarly(true)} />
+                <Button label="Finish now" variant="tinted" compact onPress={() => setFinishingEarly(true)} />
               </View>
             ) : run.shared && progress.done && online ? (
               // In case finishing it for everyone can't get through: whoever has signal can finish it.

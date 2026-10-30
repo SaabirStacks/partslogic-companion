@@ -10,7 +10,7 @@ export function Field({ label, ref, ...props }: TextInputProps & { label: string
   const colourOf = useColour();
   return (
     <View className="gap-1.5">
-      <Txt variant="caption" className="px-0.5 font-semibold">
+      <Txt variant="caption" ink="text-label" className="px-0.5 font-semibold">
         {label}
       </Txt>
       <TextInput

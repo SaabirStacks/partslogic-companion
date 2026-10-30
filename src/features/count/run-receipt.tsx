@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import { clock, plural } from '@/lib/format';
 import { Button } from '@/ui/button';
-import { StatusChip } from '@/ui/status-chip';
+import { ReceiptCard } from '@/ui/receipt';
 import { StatusStrip } from '@/ui/status-strip';
 import { Card } from '@/ui/surface';
 import { Txt } from '@/ui/text';
@@ -55,33 +55,17 @@ export function RunReceipt({
   return (
     <View className="flex-1 bg-ground">
       <Scroll toEdge={setUp?.answer === 'ask'} contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-6">
-        <Card accessible accessibilityLabel={`${title} ${left ? 'left to the others' : 'finished'}. ${plural(progress.counted, 'bin', 'bins')}, ${plural(progress.units, 'unit', 'units')}`} className="gap-4 p-5">
-          <View className="items-center gap-2">
-            <StatusChip
-              tone={toCheck > 0 ? 'warn' : left ? 'neutral' : 'ok'}
-              icon={toCheck > 0 ? 'warning' : left ? 'account' : 'sent'}
-              label={[left ? 'Left to the others' : 'Finished', toCheck > 0 ? 'to check' : null].filter(Boolean).join(' · ')}
-            />
-            <Txt accessibilityRole="header" variant="display" className="text-center">
-              {plural(progress.counted, 'bin', 'bins')}
-            </Txt>
-            <Txt variant="caption" numbers className="text-center">
-              {span}
-            </Txt>
-          </View>
-          <View className="border-t border-rule pt-1">
-            {rows.map(([label, value]) => (
-              <View key={label} className="min-h-11 flex-row items-center justify-between gap-3">
-                <Txt variant="body" numberOfLines={1} className="flex-1">
-                  {label}
-                </Txt>
-                <Txt variant="label" numbers className="font-extrabold">
-                  {value}
-                </Txt>
-              </View>
-            ))}
-          </View>
-        </Card>
+        <ReceiptCard
+          chip={{
+            tone: toCheck > 0 ? 'warn' : left ? 'neutral' : 'ok',
+            icon: toCheck > 0 ? 'warning' : left ? 'account' : 'sent',
+            label: [left ? 'Left to the others' : 'Finished', toCheck > 0 ? 'to check' : null].filter(Boolean).join(' · '),
+          }}
+          reference={plural(progress.counted, 'bin', 'bins')}
+          line={span}
+          rows={rows.map(([label, value]) => ({ label, value, tone: label.startsWith('For the office') ? 'warn' : undefined }))}
+          accessibilityLabel={`${title} ${left ? 'left to the others' : 'finished'}. ${plural(progress.counted, 'bin', 'bins')}, ${plural(progress.units, 'unit', 'units')}`}
+        />
         {left ? <StatusStrip tone="neutral" icon="stockTake" text={`The ${title.toLowerCase()} stays open for the others to finish`} /> : null}
         {setUp?.answer === 'ask' ? (
           <Card className="gap-3 p-4">

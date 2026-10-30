@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Keyboard, ScrollView, TextInput, View, type ScrollViewProps } from 'react-native';
+import { Keyboard, RefreshControl, ScrollView, TextInput, View, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useColour } from './theme';
 
 // How much room is left below the last thing in a list.
 const END_GAP = 24;
@@ -11,13 +13,17 @@ const END_GAP = 24;
 //    phone's own buttons and home bar.
 //  - When the keyboard comes up, the field being typed in is scrolled into view if it ended up under it
 //    (React Native leaves that to the app on Android).
+//  - onRefresh: pull down to fetch it again from PartsLogic, with the phone's own spinner.
 export function Scroll({
   toEdge = true,
   children,
   contentContainerStyle,
+  onRefresh,
+  refreshing = false,
   ...props
-}: Omit<ScrollViewProps, 'children'> & { toEdge?: boolean; children?: ReactNode }) {
+}: Omit<ScrollViewProps, 'children' | 'refreshControl'> & { toEdge?: boolean; children?: ReactNode; onRefresh?: () => void; refreshing?: boolean }) {
   const insets = useSafeAreaInsets();
+  const colourOf = useColour();
   const scroll = useRef<ScrollView>(null);
   const inner = useRef<View>(null);
   const offset = useRef(0);
@@ -57,6 +63,9 @@ export function Scroll({
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       scrollEventThrottle={32}
+      refreshControl={
+        onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colourOf('quiet-ink')} colors={[colourOf('action')]} /> : undefined
+      }
       {...props}
       onScroll={(event) => {
         offset.current = event.nativeEvent.contentOffset.y;

@@ -27,7 +27,7 @@ export function PartAnswerCard({
       status={savedAt ? { icon: 'offline', label: `${answer.status.label} · saved copy` } : answer.status}
       title={title}
       detail={answer.name}
-      quantity={answer.onHand !== null ? { value: answer.onHand, label: 'On hand' } : undefined}
+      quantity={answer.onHand !== null ? { value: answer.onHand, label: 'On hand', tone: answer.tone } : undefined}
       onPress={onOpen}>
       {answer.bins.length > 0 || answer.price ? (
         <View className="flex-row flex-wrap items-center gap-2">

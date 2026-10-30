@@ -1,7 +1,9 @@
-import { ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PartRow } from '@/features/part/part-row';
+import type { RecentPart } from '@/lib/prefs';
 import { Button } from '@/ui/button';
 import { Icon } from '@/ui/icon';
 import { JobTile } from '@/ui/job-tile';
@@ -11,6 +13,7 @@ import { StatusChip } from '@/ui/status-chip';
 import { LocationPill, SyncPill } from '@/ui/status-pills';
 import { Card, PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
+import { useColour } from '@/ui/theme';
 import type { BoardSection, LiveWorkflow } from '@/workflows/catalogue';
 
 import { boardLayout } from './board-layout';
@@ -32,6 +35,12 @@ type BoardProps = {
   onLocation: () => void;
   onSync: () => void;
   onAccount: () => void;
+  // Parts looked up lately, shown on a board with no job tiles (a viewer's), one tap from the answer.
+  recent?: RecentPart[];
+  onPart?: (part: RecentPart) => void;
+  // Pull down to fetch again what the board shows from PartsLogic.
+  onRefresh?: () => void;
+  refreshing?: boolean;
 };
 
 // Two to a row; a tile left on its own keeps its width.
@@ -41,15 +50,33 @@ const pairs = <T,>(items: readonly T[]): T[][] =>
 // Home. The app's name with the account button, where this phone works and whether its work is sent, the
 // search field (Look up), open work to carry on with, then every job as a tile under its family, each with
 // a corner badge for its open work or what's waiting (tile-badge.ts). Every job is one tap away.
-export function BoardView({ sections, openWork, unbinned = null, update, location, sync, onJob, onResume, onLocation, onSync, onAccount }: BoardProps) {
+export function BoardView({
+  sections,
+  openWork,
+  unbinned = null,
+  update,
+  location,
+  sync,
+  onJob,
+  onResume,
+  onLocation,
+  onSync,
+  onAccount,
+  recent = [],
+  onPart,
+  onRefresh,
+  refreshing = false,
+}: BoardProps) {
   const insets = useSafeAreaInsets();
+  const colourOf = useColour();
   const layout = boardLayout(sections);
 
   return (
     <ScrollView
       className="flex-1 bg-ground"
       contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }}
-      contentContainerClassName="gap-3 px-4">
+      contentContainerClassName="gap-3 px-4"
+      refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colourOf('quiet-ink')} colors={[colourOf('action')]} /> : undefined}>
       <View className="flex-row items-center gap-3">
         <Txt accessibilityRole="header" variant="title" className="flex-1 font-extrabold tracking-[0.3px]">
           PartsLogic
@@ -84,7 +111,8 @@ export function BoardView({ sections, openWork, unbinned = null, update, locatio
       {layout.search ? <SearchField onPress={() => onJob(layout.search!)} /> : null}
 
       {openWork.length > 0 ? (
-        <Animated.View entering={APPEAR} layout={SETTLE}>
+        <Animated.View entering={APPEAR} layout={SETTLE} style={{ gap: 8 }}>
+          <SectionLabel>Resume</SectionLabel>
           <Card className="overflow-hidden">
             {openWork.map((work, index) => {
               const text = resumeText(work);
@@ -93,11 +121,12 @@ export function BoardView({ sections, openWork, unbinned = null, update, locatio
                   key={openWorkKey(work)}
                   accessibilityLabel={`Resume ${text.title}, ${text.detail}`}
                   onPress={() => onResume(work)}
+                  depth="flat"
                   className={index > 0 ? 'rounded-none border-0 border-t border-rule' : 'rounded-none border-0'}>
                   <View className="min-h-16 flex-row items-center gap-3 px-4 py-3">
                     <View className="flex-1 gap-0.5">
                       <Txt variant="label" numberOfLines={2} className="font-bold">
-                        {`Resume · ${text.title}`}
+                        {text.title}
                       </Txt>
                       <Txt variant="caption" numbers numberOfLines={1}>
                         {text.detail}
@@ -113,11 +142,20 @@ export function BoardView({ sections, openWork, unbinned = null, update, locatio
         </Animated.View>
       ) : null}
 
+      {layout.sections.length === 0 && recent.length > 0 && onPart ? (
+        <View className="gap-2">
+          <SectionLabel>Recent</SectionLabel>
+          {recent.map((part) => (
+            <PartRow key={part.partId} brand={part.brand} number={part.number} description={part.description} onPress={() => onPart(part)} />
+          ))}
+        </View>
+      ) : null}
+
       {/* The jobs slide down to make room when open work appears. */}
       <Animated.View layout={SETTLE} style={{ gap: 12 }}>
         {layout.sections.map((section) => (
           <View key={section.family} className="gap-2">
-            <SectionLabel>{section.label}</SectionLabel>
+            <SectionLabel family={section.family}>{section.label}</SectionLabel>
             {pairs(section.workflows).map((row) => (
               <View key={row.map((workflow) => workflow.id).join()} className="flex-row gap-2">
                 {row.map((workflow) => (
@@ -125,6 +163,7 @@ export function BoardView({ sections, openWork, unbinned = null, update, locatio
                     <JobTile
                       label={workflow.label}
                       icon={workflow.icon}
+                      family={workflow.family}
                       badge={tileBadge(workflow.id, openWork, unbinned)}
                       onPress={() => onJob(workflow)}
                     />

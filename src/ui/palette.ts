@@ -1,9 +1,11 @@
 import { vars } from 'nativewind';
 
-// The trade-counter palette, the one place colours are defined. Calm by default: white surfaces on the
-// counter's light grey, near-black text. Colour has exactly two jobs:
-//   action (PartsLogic blue)  the button you're meant to press, and nothing else
+// The trade-counter palette, the one place colours are defined: white surfaces on the counter's light grey,
+// near-black text. Colour has three jobs:
+//   action (PartsLogic blue)  the button you're meant to press; action-soft is a second button's tint
 //   ok / warn / stop          a state: done or sent, check it or waiting, stopped or refused
+//   inbound / control / parts which family a job belongs to (teal, violet, plum), on its tile and header
+// label is the darker grey for headings and field labels, so they read at arm's length.
 // Each state has a soft fill for chips, an ink for its words on white or on the soft fill, and a strong
 // fill (with on-*) for the rare moment that must be seen across the room, such as a done screen.
 // Values are "r g b". NativeWind classes (bg-surface, text-ok-ink...) read them through the CSS variables
@@ -15,10 +17,18 @@ const light = {
   rule: '232 235 238',
   ink: '18 20 23',
   'quiet-ink': '86 93 101',
+  label: '52 58 66',
   focus: '21 72 137',
   action: '21 72 137', // #154889, the app icon's blue
   'on-action': '255 255 255',
   'action-ink': '21 72 137',
+  'action-soft': '223 231 242',
+  inbound: '12 110 120',
+  'inbound-soft': '218 239 241',
+  control: '96 68 168',
+  'control-soft': '236 231 248',
+  parts: '142 47 111',
+  'parts-soft': '246 228 240',
   ok: '35 127 82',
   'on-ok': '255 255 255',
   'ok-soft': '227 242 232',
@@ -44,10 +54,18 @@ const dark: Record<ColourName, string> = {
   rule: '38 42 47',
   ink: '238 240 242',
   'quiet-ink': '170 177 184',
+  label: '205 210 215',
   focus: '141 180 240',
   action: '47 109 196',
   'on-action': '255 255 255',
   'action-ink': '141 180 240',
+  'action-soft': '27 42 63',
+  inbound: '102 206 214',
+  'inbound-soft': '16 46 50',
+  control: '184 164 242',
+  'control-soft': '38 30 62',
+  parts: '232 160 207',
+  'parts-soft': '56 24 46',
   ok: '35 127 82',
   'on-ok': '255 255 255',
   'ok-soft': '20 52 35',

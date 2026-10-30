@@ -45,7 +45,7 @@ export default function Move() {
       placeholder="Part number, barcode or bin"
       scanEnabled={moving.online && !moving.busy && !result}
       onScan={moving.scan}
-      banner={<JobBanner title={moving.name ?? 'Scan the part'} detail={from ? `From ${nameOf(from.place)}` : null} />}
+      banner={<JobBanner family="stock" title={moving.name ?? 'Scan the part'} detail={from ? `From ${nameOf(from.place)}` : null} />}
       result={<Answer moving={moving} />}
       action={
         result ? (
@@ -104,7 +104,7 @@ export default function Move() {
                 <Button
                   label="Choose from all bins"
                   icon="bin"
-                  variant="secondary"
+                  variant="tinted"
                   onPress={() => {
                     setWanted(true);
                     setPicking(true);
@@ -118,7 +118,7 @@ export default function Move() {
           <Card className="flex-row items-center justify-between gap-3 px-3 py-2">
             <Quantity total={moving.qty} name={moving.name ?? 'the part'} onStep={(change) => moving.setQty(moving.qty + change)} onSet={moving.setQty} />
             {moving.available > 1 && moving.qty !== moving.available ? (
-              <Button label={`All ${formatQty(moving.available)}`} variant="secondary" compact onPress={() => moving.setQty(moving.available)} />
+              <Button label={`All ${formatQty(moving.available)}`} variant="tinted" compact onPress={() => moving.setQty(moving.available)} />
             ) : null}
           </Card>
           {moving.problem && to ? <Txt variant="caption" ink="text-stop-ink" className="px-1">{moving.problem}</Txt> : null}

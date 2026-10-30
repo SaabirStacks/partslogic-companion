@@ -3,17 +3,23 @@ import type { ReactNode } from 'react';
 import { Pressable, View, type GestureResponderEvent, type PressableProps, type ViewProps } from 'react-native';
 
 import { cx } from './cx';
+import { depthStyle, type Depth } from './depth';
 import type { ColourName, Tone } from './palette';
+import { useScheme } from './theme';
 
-// The till's one material: a white surface with 12 px corners and a hairline edge on the counter grey.
-// Filled tones are for buttons and the rare state that must be seen across the room; everything else
-// is neutral, and a state shows as a chip on it (status-chip.tsx).
-const FILL: Record<Tone, string> = {
+// The till's one material: a white surface with 12 px corners and a hairline edge on the counter grey,
+// lifted a little off it (depth.ts). Filled tones are for buttons and the rare state that must be seen
+// across the room; everything else is neutral, and a state shows as a chip on it (status-chip.tsx). tint is
+// a second button's soft blue: clearly pressable, never as loud as the one solid blue button.
+export type Fill = Tone | 'tint';
+
+const FILL: Record<Fill, string> = {
   action: 'bg-action border-action',
   ok: 'bg-ok border-ok',
   warn: 'bg-warn border-warn',
   stop: 'bg-stop border-stop',
   neutral: 'bg-surface border-edge',
+  tint: 'bg-action-soft border-action-soft',
 };
 
 // Text and pictograms on a filled surface of each tone.
@@ -59,14 +65,21 @@ export const SOFT: Record<Tone, string> = {
   neutral: 'bg-rule',
 };
 
-type SurfaceStyle = { tone?: Tone; className?: string };
+type SurfaceStyle = { tone?: Fill; className?: string };
 
 export function surfaceClass({ tone = 'neutral', className }: SurfaceStyle) {
   return cx('rounded-card border', FILL[tone], className);
 }
 
-export function Card({ tone, className, ...props }: ViewProps & SurfaceStyle) {
-  return <View className={surfaceClass({ tone, className })} {...props} />;
+// A white card lifts off the counter; a filled one, or one inside another card (depth="flat"), doesn't.
+function useDepth(tone: Fill, depth: Depth | undefined) {
+  const scheme = useScheme();
+  return depthStyle(depth ?? (tone === 'neutral' ? 'lift' : 'flat'), scheme);
+}
+
+export function Card({ tone = 'neutral', depth, className, style, ...props }: ViewProps & SurfaceStyle & { depth?: Depth }) {
+  const lift = useDepth(tone, depth);
+  return <View className={surfaceClass({ tone, className })} style={[lift, style]} {...props} />;
 }
 
 // A surface you can press: it darkens and sinks a little while held (NativeWind's active: state on a
@@ -74,13 +87,15 @@ export function Card({ tone, className, ...props }: ViewProps & SurfaceStyle) {
 // Disabled keeps its words readable: a grey surface with quiet text, never a faded colour.
 export function PressableCard({
   tone = 'neutral',
+  depth,
   className,
   disabled,
   haptic = false,
   children,
   onPress,
   ...props
-}: Omit<PressableProps, 'children' | 'style'> & SurfaceStyle & { haptic?: boolean; children: ReactNode }) {
+}: Omit<PressableProps, 'children' | 'style'> & SurfaceStyle & { depth?: Depth; haptic?: boolean; children: ReactNode }) {
+  const lift = useDepth(tone, disabled ? 'flat' : depth);
   return (
     <Pressable
       accessibilityRole="button"
@@ -95,6 +110,7 @@ export function PressableCard({
         disabled ? 'border-edge bg-rule' : FILL[tone],
         className,
       )}
+      style={lift}
       {...props}>
       {children}
     </Pressable>

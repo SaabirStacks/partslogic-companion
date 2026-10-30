@@ -21,7 +21,7 @@ import { plural, when } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
 import { useWorkingLocation } from '@/session/location-provider';
-import { ActionBar } from '@/ui/action-bar';
+import { ActionBar, BottomBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
 import { ConfirmScanCard } from '@/ui/confirm-scan-card';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
@@ -359,7 +359,7 @@ function CountingBin({ counting, run }: { counting: Counting; run?: { text: stri
         placeholder="Barcode or part number"
         scanEnabled={!counting.held.pending}
         onScan={counting.scan}
-        banner={<JobBanner size="headline" title={`Bin ${count.binCode}`} detail={[run?.text, 'Blind count'].filter(Boolean).join(' · ')} />}
+        banner={<JobBanner size="headline" family={liveWorkflow(count.workflow).family} title={`Bin ${count.binCode}`} detail={[run?.text, 'Blind count'].filter(Boolean).join(' · ')} />}
         result={<LastScan counting={counting} />}
         action={
           // While a scan waits on Count or Skip, it's the only decision on screen.
@@ -372,7 +372,7 @@ function CountingBin({ counting, run }: { counting: Counting; run?: { text: stri
             />
           )
         }>
-        {run ? <Button label="All bins" icon="stockTake" variant="secondary" compact onPress={run.onOverview} /> : null}
+        {run ? <Button label="All bins" icon="stockTake" variant="tinted" compact onPress={run.onOverview} /> : null}
         {progress.stage === 'attention' ? (
           <StatusStrip tone="stop" icon="stop" text={progress.reason ? `Not sent · ${progress.reason}` : 'Not sent'} />
         ) : null}
@@ -485,10 +485,14 @@ function Result({ counting }: { counting: Counting }) {
   const finished = counting.finished!;
   const summary = countSummary(counting.progressOf(finished.stocktakeId));
   return (
-    <Scroll className="bg-ground" contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-8">
-      <CountReceipt binCode={finished.binCode} summary={summary} units={finished.units} />
-      <Button label="Count next bin" icon="count" onPress={counting.dismissFinished} />
-      <Button label="Board" variant="secondary" onPress={() => router.dismissTo('/')} />
-    </Scroll>
+    <View className="flex-1 bg-ground">
+      <Scroll toEdge={false} contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-6">
+        <CountReceipt binCode={finished.binCode} summary={summary} units={finished.units} />
+      </Scroll>
+      <BottomBar className="gap-2">
+        <Button label="Count next bin" icon="count" onPress={counting.dismissFinished} />
+        <Button label="Board" variant="secondary" onPress={() => router.dismissTo('/')} />
+      </BottomBar>
+    </View>
   );
 }

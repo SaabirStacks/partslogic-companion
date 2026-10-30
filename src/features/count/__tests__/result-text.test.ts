@@ -20,7 +20,7 @@ describe('countSummary', () => {
     expect(summary.tone).toBe('ok');
     expect(summary.items.map((item) => [item.label, item.value])).toEqual([
       ['Put away', 6],
-      ['To Unbinned', 1],
+      ['Back to Unbinned', 1],
       ['Found', 2],
     ]);
   });

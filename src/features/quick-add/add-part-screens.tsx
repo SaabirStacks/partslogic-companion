@@ -61,11 +61,11 @@ export function ScanCode({ onCode }: { onCode: (code: string) => void }) {
     <JobScreen
       placeholder="Barcode on the box"
       onScan={(code) => void check(code)}
-      banner={<JobBanner title="Scan the barcode" />}
+      banner={<JobBanner family="parts" title="Scan the barcode" />}
       result={
         found?.kind === 'part' ? (
           <ScanResultCard key={found.partId} tone="warn" status={{ icon: 'warning', label: 'Already a part' }} title={found.name}>
-            <Button label="Open the part" icon="forward" variant="secondary" compact onPress={() => router.push(`/part/${found.partId}`)} />
+            <Button label="Open the part" icon="forward" variant="tinted" compact onPress={() => router.push(`/part/${found.partId}`)} />
           </ScanResultCard>
         ) : found ? (
           <ScanResultCard key={found.title} tone="warn" status={{ icon: 'warning', label: 'Not added' }} title={found.title} detail={found.detail} />

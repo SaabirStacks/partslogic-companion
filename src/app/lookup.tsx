@@ -122,19 +122,19 @@ function Answer({ view, lookUp, currency, binMatches }: { view: LookUpView; look
     case 'unknown':
       return (
         <ScanResultCard tone="warn" status={{ icon: 'warning', label: 'Unknown code' }} title={view.code} detail={barcodeProblem(view.code)}>
-          <Button label="Search instead" icon="lookup" variant="secondary" compact onPress={() => lookUp.search(view.code)} />
+          <Button label="Search instead" icon="lookup" variant="tinted" compact onPress={() => lookUp.search(view.code)} />
         </ScanResultCard>
       );
     case 'offline':
       return (
         <ScanResultCard tone="warn" status={{ icon: 'offline', label: 'No signal' }} title={view.code} detail="Not in the scan list on this phone">
-          <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => lookUp.retry(view.code, view.typed)} />
+          <Button label="Try again" icon="retry" variant="tinted" compact onPress={() => lookUp.retry(view.code, view.typed)} />
         </ScanResultCard>
       );
     case 'error':
       return (
         <ScanResultCard tone="stop" status={{ icon: 'stop', label: 'Didn’t work' }} title={view.code} detail={view.message}>
-          <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => lookUp.retry(view.code, view.typed)} />
+          <Button label="Try again" icon="retry" variant="tinted" compact onPress={() => lookUp.retry(view.code, view.typed)} />
         </ScanResultCard>
       );
     case 'results':

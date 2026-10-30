@@ -38,6 +38,9 @@ export const ICONS = {
   forward: symbol('chevron.right', 'chevron_right'),
   back: symbol('chevron.left', 'arrow_back'),
   signOut: symbol('rectangle.portrait.and.arrow.right', 'logout'),
+  expand: symbol('arrow.up.left.and.arrow.down.right', 'open_in_full'),
+  noPhoto: symbol('photo', 'hide_image'),
+  sound: symbol('speaker.wave.2.fill', 'volume_up'),
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol; web: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

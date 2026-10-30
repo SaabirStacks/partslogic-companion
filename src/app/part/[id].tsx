@@ -30,7 +30,7 @@ export default function PartCard() {
   );
 
   if (!valid || data === null) return <Notice icon="lookup" tone="warn" title="Part not found" line="It may have been merged or removed." />;
-  if (data) return <PartView detail={data.detail} savedAt={data.savedAt} />;
+  if (data) return <PartView detail={data.detail} savedAt={data.savedAt} onRefresh={reload} refreshing={loading} />;
   if (error && !loading) {
     const offline = classifyQueueError(error as { code?: string; message?: string }) === 'retry';
     return (
@@ -39,7 +39,7 @@ export default function PartCard() {
         tone={offline ? 'warn' : 'stop'}
         title={offline ? 'No signal' : 'Didn’t load'}
         line={offline ? 'This part isn’t saved on this phone yet.' : (error as Error).message}>
-        <Button label="Try again" icon="retry" variant="secondary" onPress={reload} />
+        <Button label="Try again" icon="retry" variant="tinted" onPress={reload} />
       </Notice>
     );
   }

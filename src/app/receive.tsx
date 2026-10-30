@@ -50,7 +50,7 @@ export default function Receive() {
         placeholder="Barcode or part number"
         scanEnabled={!receiving.held.pending}
         onScan={receiving.scan}
-        banner={<JobBanner size="headline" title={deliveryName(delivery.sender)} detail={bannerDetail(delivery, receiving.number)} />}
+        banner={<JobBanner size="headline" family="inbound" title={deliveryName(delivery.sender)} detail={bannerDetail(delivery, receiving.number)} />}
         result={<LastScan receiving={receiving} />}
         action={
           // While a scan waits on Add or Skip, it's the only decision on screen.
