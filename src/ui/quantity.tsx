@@ -3,7 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 
 import { Icon } from './icon';
 import { surfaceClass, PressableCard } from './surface';
-import { Txt } from './text';
+import { Ticking } from './ticking';
 import { useColour } from './theme';
 
 function Step({ label, icon, onPress, disabled }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {
@@ -65,9 +65,7 @@ export function Quantity({
           setEditing(true);
         }}
         className="h-14 min-w-12 items-center justify-center px-1">
-        <Txt variant="headline" numbers className="font-extrabold">
-          {total}
-        </Txt>
+        <Ticking value={total} origin="center" variant="headline" className="font-extrabold" />
       </Pressable>
       <Step label={`One more ${name}`} icon="plus" onPress={() => onStep(1)} />
     </View>

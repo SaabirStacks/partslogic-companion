@@ -1,11 +1,13 @@
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Pressable, useWindowDimensions, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import type { BinChoice } from '@/features/count/bin-choices';
 import { formatQty } from '@/features/part/stock';
 import { plural } from '@/lib/format';
 import { cx } from '@/ui/cx';
 import { Icon } from '@/ui/icon';
+import { STEP_BACK, STEP_IN } from '@/ui/motion';
 import { PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
 
@@ -58,6 +60,14 @@ export function BinTiles({
   const columns = width >= 600 ? 6 : fontScale > 1.3 ? 3 : 4;
   const size = Math.floor((width - GUTTERS - GAP * (columns - 1)) / columns);
   const asking = step.shown.indexOf('?');
+  // Which way the last step went, so the new tiles come in from that side (React's "storing information
+  // from previous renders" pattern).
+  const [depth, setDepth] = useState(path.length);
+  const [back, setBack] = useState(false);
+  if (depth !== path.length) {
+    setDepth(path.length);
+    setBack(path.length < depth);
+  }
 
   return (
     <View className="gap-3">
@@ -100,7 +110,7 @@ export function BinTiles({
 
       {action}
 
-      <View className="flex-row flex-wrap" style={{ gap: GAP }}>
+      <Animated.View key={path.join('/')} entering={back ? STEP_BACK : STEP_IN} className="flex-row flex-wrap" style={{ gap: GAP }}>
         {step.tiles.map((tile) => (
           <Tile
             key={tile.key}
@@ -114,7 +124,7 @@ export function BinTiles({
             onPress={() => (tile.bin ? onBin(tile.bin) : onPath(tile.path))}
           />
         ))}
-      </View>
+      </Animated.View>
       {step.tiles.length === 0 ? (
         <Txt variant="caption" className="px-1">
           No bins here

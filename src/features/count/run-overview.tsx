@@ -10,6 +10,7 @@ import { BottomBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { cx } from '@/ui/cx';
+import { ProgressBar } from '@/ui/progress-bar';
 import { Segmented } from '@/ui/segmented';
 import type { ChipState } from '@/ui/status-chip';
 import { StatusChip } from '@/ui/status-chip';
@@ -119,9 +120,7 @@ export function RunOverview({
         <Txt variant="caption">{started}</Txt>
         {progress.others.length > 0 ? <Txt variant="caption">{`Counting with ${peopleText(progress.others)}`}</Txt> : null}
       </View>
-      <View className="h-2 overflow-hidden rounded-full bg-rule" importantForAccessibility="no">
-        <View className="h-2 rounded-full bg-action" style={{ width: `${Math.round(share * 100)}%` }} />
-      </View>
+      <ProgressBar share={share} family="stock" />
       {progress.closed ? (
         <StatusStrip
           tone="neutral"

@@ -15,6 +15,7 @@ import { StatusChip } from '@/ui/status-chip';
 import { Card, PressableCard, TONE_TEXT } from '@/ui/surface';
 import { SectionLabel } from '@/ui/section-label';
 import { Txt } from '@/ui/text';
+import { Ticking } from '@/ui/ticking';
 import { StatusStrip } from '@/ui/status-strip';
 import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
@@ -92,9 +93,7 @@ export function PartView({ detail, savedAt, onRefresh, refreshing = false }: { d
           <View className="flex-1 flex-row items-baseline gap-2">
             {answer.onHand !== null ? (
               <>
-                <Txt variant="display" numbers ink={TONE_TEXT[answer.tone]}>
-                  {answer.onHand}
-                </Txt>
+                <Ticking value={answer.onHand} variant="display" ink={TONE_TEXT[answer.tone]} />
                 <Txt variant="label" ink="text-quiet-ink">
                   on hand
                 </Txt>
