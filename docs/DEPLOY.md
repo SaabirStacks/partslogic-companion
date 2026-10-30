@@ -173,6 +173,18 @@ whenever a change needs a new build (see below).
 `app.json` sets `ios.config.usesNonExemptEncryption: false`. The app only uses standard HTTPS and
 on-device encryption, so App Store Connect won't ask the export-compliance question for each build.
 
+### If the iPhone app closes as it opens
+
+You don't need Xcode. When a TestFlight build crashes, the iPhone asks to send a report to Apple; tap
+**Share**. Reports appear in App Store Connect under **TestFlight → Crashes**, and Claude can read them
+through the Expo connector (`testflight_crashes` with the bundle ID).
+
+Build 4 (29 October 2026) closed at launch on iOS 27 with `NoSceneLifecycleAdoption` in the report.
+Apps built with the iOS 27 SDK (Xcode 27) must use UIKit's scene life cycle, and Expo SDK 57 apps have to
+opt in: `app.json` sets `ios.enableSceneSupport` through the `expo-build-properties` plugin
+([Expo's guide](https://github.com/expo/fyi/blob/main/ios-scene-lifecycle.md#staying-on-sdk-57-with-xcode-27)).
+Remove that setting when the app moves to SDK 58, which has scene support built in.
+
 ## Before each release
 
 ```bash
