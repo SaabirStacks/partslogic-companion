@@ -1,7 +1,14 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { FlatList, Modal, Pressable, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import {
+  GestureDetector,
+  GestureHandlerRootView,
+  usePanGesture,
+  usePinchGesture,
+  useSimultaneousGestures,
+  useTapGesture,
+} from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -151,44 +158,50 @@ function ZoomablePhoto({ url, width, label, onZoom }: { url: string; width: numb
     scheduleOnRN(onZoom, false);
   };
 
-  const pinch = Gesture.Pinch()
-    .onStart(() => {
+  // Gesture Handler 3's hooks: the callbacks run on the UI thread, like the animation they drive.
+  const pinch = usePinchGesture({
+    onActivate: () => {
       start.set(scale.get());
-    })
-    .onUpdate((event) => {
+    },
+    onUpdate: (event) => {
       scale.set(Math.min(MAX_ZOOM, Math.max(1, start.get() * event.scale)));
-    })
-    .onEnd(() => {
+    },
+    onDeactivate: () => {
       if (scale.get() <= 1.05) reset();
       else scheduleOnRN(onZoom, true);
-    });
+    },
+  });
 
-  const pan = Gesture.Pan()
-    .averageTouches(true)
-    .onStart(() => {
+  const pan = usePanGesture({
+    averageTouches: true,
+    onActivate: () => {
       fromX.set(x.get());
       fromY.set(y.get());
-    })
-    .onUpdate((event) => {
+    },
+    onUpdate: (event) => {
       if (scale.get() <= 1) return;
       x.set(fromX.get() + event.translationX);
       y.set(fromY.get() + event.translationY);
-    });
+    },
+  });
 
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .onEnd(() => {
+  const doubleTap = useTapGesture({
+    numberOfTaps: 2,
+    onDeactivate: () => {
       if (scale.get() > 1) reset();
       else {
         scale.set(withTiming(2.2, { duration: 220, easing: EASE_OUT }));
         scheduleOnRN(onZoom, true);
       }
-    });
+    },
+  });
+
+  const gestures = useSimultaneousGestures(pinch, pan, doubleTap);
 
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }, { translateY: y.get() }, { scale: scale.get() }] }));
 
   return (
-    <GestureDetector gesture={Gesture.Simultaneous(pinch, pan, doubleTap)}>
+    <GestureDetector gesture={gestures}>
       <View accessible accessibilityRole="image" accessibilityLabel={label} style={{ width }} className="flex-1 items-center justify-center overflow-hidden">
         <Animated.View style={[{ width: width - 32, height: width - 32 }, style]}>
           <Image source={{ uri: url }} contentFit="contain" style={{ flex: 1, backgroundColor: 'white', borderRadius: 16 }} />

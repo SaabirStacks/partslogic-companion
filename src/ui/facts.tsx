@@ -80,6 +80,8 @@ export function FactSwitch({
         onValueChange={onChange}
         trackColor={{ true: colourOf('ok'), false: colourOf('edge') }}
         ios_backgroundColor={colourOf('edge')}
+        // White in both themes, as on iPhone; Android and the web otherwise tint it.
+        thumbColor="#ffffff"
       />
     </View>
   );
