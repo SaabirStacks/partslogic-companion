@@ -1,5 +1,13 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Keyboard, RefreshControl, ScrollView, TextInput, View, type ScrollViewProps } from 'react-native';
+import {
+  Keyboard,
+  RefreshControl,
+  ScrollView,
+  TextInput,
+  type ScrollViewInstance,
+  type ScrollViewProps,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useColour } from './theme';
@@ -24,8 +32,8 @@ export function Scroll({
 }: Omit<ScrollViewProps, 'children' | 'refreshControl'> & { toEdge?: boolean; children?: ReactNode; onRefresh?: () => void; refreshing?: boolean }) {
   const insets = useSafeAreaInsets();
   const colourOf = useColour();
-  const scroll = useRef<ScrollView>(null);
-  const inner = useRef<View>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
+  const inner = useRef<ViewInstance>(null);
   const offset = useRef(0);
   const height = useRef(0);
 

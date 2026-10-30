@@ -85,7 +85,7 @@ export function BinPicker({
     <PlaceholderRows label="Loading bins" />
   ) : typed ? (
     <Txt variant="caption" className="px-1">{`No bin called ${typed} here`}</Txt>
-  ) : list.failed ? null : (
+  ) : list.failed ? undefined : (
     <Txt variant="caption" className="px-1">No bins yet</Txt>
   );
 
