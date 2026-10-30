@@ -83,6 +83,7 @@ export function PartView({ detail, savedAt, onRefresh, refreshing = false }: { d
 
       <StockCard
         answer={answer}
+        onHand={item ? item.onHand : null}
         lines={item ? item.stock : null}
         nameOf={nameOf}
         canMove={canMove}

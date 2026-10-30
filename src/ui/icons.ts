@@ -41,6 +41,10 @@ export const ICONS = {
   expand: symbol('arrow.up.left.and.arrow.down.right', 'open_in_full'),
   noPhoto: symbol('photo', 'hide_image'),
   sound: symbol('speaker.wave.2.fill', 'volume_up'),
+  // Stock that isn't available: kept for an order, held until someone signs it off, or locked away.
+  reserved: symbol('bookmark.fill', 'bookmark'),
+  held: symbol('pause.circle.fill', 'pause_circle'),
+  locked: symbol('lock.fill', 'lock'),
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol; web: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;
