@@ -10,6 +10,7 @@ import { BoardView } from '@/features/board/board-view';
 import { partAnswer } from '@/features/lookup/answer';
 import { PartAnswerCard } from '@/features/lookup/part-answer-card';
 import { PartRow } from '@/features/part/part-row';
+import { PartSkeleton } from '@/features/part/part-skeleton';
 import { PartView } from '@/features/part/part-view';
 import { AddPartLink } from '@/features/quick-add/add-part-link';
 import { AddForm } from '@/features/quick-add/add-part-screens';
@@ -838,6 +839,14 @@ const SCREENS: Record<string, () => ReactNode> = {
       <View className="flex-1">
         <StackHeader title="Part" />
         <PartView detail={OIL_FILTER_STATUSES} savedAt={null} />
+      </View>
+    </Fixtures>
+  ),
+  'part-loading': () => (
+    <Fixtures>
+      <View className="flex-1">
+        <StackHeader title="Part" />
+        <PartSkeleton />
       </View>
     </Fixtures>
   ),

@@ -43,7 +43,10 @@ rare thing that must be seen across the room. Dark mode keeps the same roles, li
 
 Rules:
 - Never colour alone. A state is a word plus a symbol; a family is also a name and an icon.
-- A list choice is marked by shape, not colour: a dark outline and a tick (`Choice`, `BinChip`, tiles).
+- A chosen row, chip or tile is marked in the colour of **what** is chosen (`pickColours` in `family.ts`): bins
+  violet (their colour on the part card), who goods come from teal, a part's brand plum, a location blue (the
+  board's location pin). A 2 pt outline, a soft fill and a tick in that colour, so the outline and tick still
+  mark it without colour (`Choice`, `BinChip`, Tab view tiles; `PressableCard`'s `chosen`).
 - The location is shown once, on the board's pill. Job screens never repeat it. A bin in another location is
   named with that location first (`features/bins/bin-name.ts`).
 
@@ -108,8 +111,9 @@ for locked); under each bin, what in it is set aside. The nine stock statuses an
 `src/stock/statuses.ts`. PartsLogic doesn't tag stock yet, so today everything on hand is Available.
 
 A job ends with a receipt (`ReceiptCard`): where it stands (a chip that fills in as PartsLogic answers), the
-reference large, when, then the numbers as rows. Lists that can be fetched again pull to refresh. Loading
-lists show grey placeholder rows in the list's shape, not a lone spinner.
+reference large, when, then the numbers as rows. Lists that can be fetched again pull to refresh. Anything
+loading shows breathing grey shapes of what's coming (`Breathing` in `placeholder.tsx`: list rows, bin chips, the
+whole part card), never a lone spinner, and the real content fades in over them.
 
 ## Motion
 

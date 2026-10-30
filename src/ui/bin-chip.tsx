@@ -2,13 +2,16 @@ import { View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { cx } from './cx';
+import { pickColours } from './family';
 import { Icon } from './icon';
 import { TICK_IN } from './motion';
 import { Card, PressableCard } from './surface';
 import { Txt } from './text';
 
-// A bin as a small label: its code and, when it holds stock, how many (A-01 ×4). A chosen bin gets a dark
-// outline and a tick, the same mark as any choice in a list.
+const BIN = pickColours('bin');
+
+// A bin as a small label: its code and, when it holds stock, how many (A-01 ×4). A chosen bin gets the
+// mark of any choice in a list, in a bin's violet: an outline, a soft fill and a tick.
 export function BinChip({
   code,
   qty,
@@ -25,7 +28,7 @@ export function BinChip({
     <View className="flex-row items-center gap-1.5">
       {selected ? (
         <Animated.View entering={TICK_IN}>
-          <View className="h-5 w-5 items-center justify-center rounded-full bg-ink">
+          <View className={cx('h-5 w-5 items-center justify-center rounded-full', BIN.dot)}>
             <Icon name="check" size={11} colour="surface" />
           </View>
         </Animated.View>
@@ -40,9 +43,9 @@ export function BinChip({
       ) : null}
     </View>
   );
-  const frame = cx('min-h-12 justify-center px-3', selected && 'border-2 border-ink');
+  const frame = 'min-h-12 justify-center px-3';
   return onPress ? (
-    <PressableCard haptic="tick" accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} className={frame}>
+    <PressableCard haptic="tick" chosen={selected ? BIN : null} accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} className={frame}>
       {face}
     </PressableCard>
   ) : (

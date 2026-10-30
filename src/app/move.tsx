@@ -13,6 +13,7 @@ import { BinChip } from '@/ui/bin-chip';
 import { Button } from '@/ui/button';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
+import { PlaceholderChips } from '@/ui/placeholder';
 import { Card } from '@/ui/surface';
 import { Quantity } from '@/ui/quantity';
 import { ScanResultCard } from '@/ui/scan-result-card';
@@ -77,8 +78,12 @@ export default function Move() {
                 />
               ))}
             </View>
+          ) : moving.loading ? (
+            <PlaceholderChips label="Checking the bins" />
           ) : (
-            <Txt variant="caption" className="px-1">{moving.loading ? 'Checking the bins' : 'Not in any bin'}</Txt>
+            <Txt variant="caption" className="px-1">
+              Not in any bin
+            </Txt>
           )}
         </>
       ) : null}

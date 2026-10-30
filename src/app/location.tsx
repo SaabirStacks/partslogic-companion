@@ -37,6 +37,7 @@ export default function LocationSheet() {
       {locations.map((item) => {
         return (
           <Choice
+            pick="place"
             key={item.id}
             title={item.name}
             detail={item.code.toLowerCase() !== item.name.toLowerCase() ? item.code : null}

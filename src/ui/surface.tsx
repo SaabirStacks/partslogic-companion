@@ -6,6 +6,7 @@ import type { TouchMoment } from '@/feel/moments';
 
 import { cx } from './cx';
 import { depthStyle, type Depth } from './depth';
+import type { FamilyColours } from './family';
 import type { ColourName, Tone } from './palette';
 import { useScheme } from './theme';
 
@@ -86,7 +87,9 @@ export function Card({ tone = 'neutral', depth, className, style, ...props }: Vi
 
 // A surface you can press: it darkens and sinks a little while held (NativeWind's active: state on a
 // plain Pressable; an animated wrapper loses these styles on phones). haptic is the touch it makes
-// (moments.ts): true for a main action's light tap, 'tick' for choosing, 'firm' for a red button.
+// (moments.ts): true for a main action's light tap, 'tick' for choosing, 'firm' for a red button. chosen
+// draws it as the one picked (a 2 pt outline and soft fill in what's chosen's colour, family.ts) in place of
+// its fill: two clashing colour classes on one element don't resolve reliably.
 // Disabled keeps its words readable: a grey surface with quiet text, never a faded colour.
 export function PressableCard({
   tone = 'neutral',
@@ -94,10 +97,12 @@ export function PressableCard({
   className,
   disabled,
   haptic = false,
+  chosen = null,
   children,
   onPress,
   ...props
-}: Omit<PressableProps, 'children' | 'style'> & SurfaceStyle & { depth?: Depth; haptic?: boolean | TouchMoment; children: ReactNode }) {
+}: Omit<PressableProps, 'children' | 'style'> &
+  SurfaceStyle & { depth?: Depth; haptic?: boolean | TouchMoment; chosen?: FamilyColours | null; children: ReactNode }) {
   const lift = useDepth(tone, disabled ? 'flat' : depth);
   return (
     <Pressable
@@ -110,7 +115,7 @@ export function PressableCard({
       }}
       className={cx(
         'rounded-card border active:scale-[0.98] active:opacity-85',
-        disabled ? 'border-edge bg-rule' : FILL[tone],
+        disabled ? 'border-edge bg-rule' : chosen ? cx('border-2', chosen.border, chosen.bg) : FILL[tone],
         className,
       )}
       style={lift}

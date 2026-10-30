@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { useBinName } from '@/features/bins/use-bin-name';
 import { partAnswer } from '@/features/lookup/answer';
@@ -10,9 +10,9 @@ import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
 import { Fact, Facts } from '@/ui/facts';
 import { SectionLabel } from '@/ui/section-label';
+import { PlaceholderRows } from '@/ui/placeholder';
 import { Txt } from '@/ui/text';
 import { StatusStrip } from '@/ui/status-strip';
-import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
 import { getPartAlternatives, type PartDetail } from '@/vendor/partslogic/shared/catalogue';
 import { roleAtLeast } from '@/vendor/partslogic/shared/members';
@@ -118,14 +118,13 @@ export function PartView({ detail, savedAt, onRefresh, refreshing = false }: { d
 }
 
 function Alternatives({ partId, currency }: { partId: number; currency: string }) {
-  const colourOf = useColour();
   const [open, setOpen] = useState(false);
   const { data, error, loading, reload } = useRemote(open ? `alternatives:${partId}` : null, () =>
     getPartAlternatives(supabase, partId),
   );
 
   if (!open) return <Button label="Alternatives" icon="lookup" variant="tinted" onPress={() => setOpen(true)} />;
-  if (loading && !data) return <ActivityIndicator accessibilityLabel="Loading alternatives" color={colourOf('quiet-ink')} className="py-4" />;
+  if (loading && !data) return <PlaceholderRows count={2} label="Loading alternatives" />;
   if (error && !data) return <Button label="Alternatives didn’t load · try again" icon="retry" variant="tinted" onPress={reload} />;
   if (!data || data.length === 0) return <StatusStrip tone="neutral" icon="lookup" text="No alternatives on record" />;
   return (

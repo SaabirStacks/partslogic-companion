@@ -1,13 +1,14 @@
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef } from 'react';
-import { View } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { loadPart } from '@/features/part/load-part';
+import { PartSkeleton } from '@/features/part/part-skeleton';
 import { PartView } from '@/features/part/part-view';
 import { useRemote } from '@/lib/use-remote';
 import { Button } from '@/ui/button';
+import { APPEAR } from '@/ui/motion';
 import { Notice } from '@/ui/notice';
-import { Card } from '@/ui/surface';
 import { classifyQueueError } from '@/vendor/partslogic/shared/errors';
 
 // The whole part, one tap from any scan. Nothing about stock is hidden (see PartView).
@@ -30,7 +31,14 @@ export default function PartCard() {
   );
 
   if (!valid || data === null) return <Notice icon="lookup" tone="warn" title="Part not found" line="It may have been merged or removed." />;
-  if (data) return <PartView detail={data.detail} savedAt={data.savedAt} onRefresh={reload} refreshing={loading} />;
+  // The part fades in over its skeleton when it arrives; a pull to refresh keeps it on screen.
+  if (data) {
+    return (
+      <Animated.View entering={APPEAR} style={{ flex: 1 }}>
+        <PartView detail={data.detail} savedAt={data.savedAt} onRefresh={reload} refreshing={loading} />
+      </Animated.View>
+    );
+  }
   if (error && !loading) {
     const offline = classifyQueueError(error as { code?: string; message?: string }) === 'retry';
     return (
@@ -43,16 +51,5 @@ export default function PartCard() {
       </Notice>
     );
   }
-  return <Skeleton />;
-}
-
-function Skeleton() {
-  return (
-    <View accessibilityLabel="Loading part" className="gap-3 bg-ground px-3 pt-3">
-      <Card className="h-24" />
-      <Card className="h-28" />
-      <Card className="h-16" />
-      <Card className="h-16" />
-    </View>
-  );
+  return <PartSkeleton />;
 }
