@@ -106,7 +106,9 @@ back office, so what the phone does and what the office sees agree.
   - **Outbound** (later): pick, pack, outbound staging, dispatch, return to supplier.
   - **Sync:** what's waiting to send, what needs attention, and what was sent. Work PartsLogic refuses
     for good (a count of a bin since removed, say) can be discarded, together with what waits behind it.
-- **Working location:** each phone works in one location at a time, chosen once and remembered.
+- **Working location:** each phone works in one location at a time, chosen once and remembered. It
+  shows once, on the board; job screens never repeat it ("Unbinned", "A-01"). A bin in another location
+  is named with that location first.
 - **Labels in use:** manufacturer and supplier labels. PartsLogic's own labels come later; bins carry a
   name on the shelf, not a barcode, so bins are typed or picked.
 - **Scanning:**
@@ -121,7 +123,7 @@ back office, so what the phone does and what the office sees agree.
 
 ## Capabilities and Constraints
 
-- **Built with:** Expo SDK 57, Expo Router, React Native, NativeWind.
+- **Built with:** Expo SDK 58, Expo Router, React Native, NativeWind.
 - **Offline:**
   - outbox kept in SQLite
   - a scan list saved on the phone for offline lookups
@@ -150,11 +152,18 @@ back office, so what the phone does and what the office sees agree.
   - **Nothing playful or gamey.** No confetti, mascots or streaks.
   - **No explanation text.** No paragraphs telling staff what a screen does. The design must be intuitive
     and focused on the job, not a reference app.
-- The look is the **trade counter** (chosen 24 Oct with the task screens mock-up): white cards on a light
-  grey counter, the phone's own typeface in sentence case, and colour with two jobs only. Blue is the
-  button to press; green, yellow and red are states, always a word and a symbol on a soft chip. The
-  tokens live once in `src/ui/palette.ts`; the parts in `src/ui/surface.tsx`, `text.tsx`,
-  `status-chip.tsx` and `choice.tsx`.
+- The look is the **trade counter** (chosen 24 Oct with the task screens mock-up, finished in the
+  polish of 30 Oct): white cards on a light grey counter, the phone's own typeface in sentence case, and
+  colour with three jobs only:
+  - **Blue** is the button to press (a second button is blue-tinted, never another colour).
+  - **Green, yellow and red** are states, always a word and a symbol on a soft chip.
+  - **Family colours** say what kind of job it is: teal for goods in, violet for stock, plum for parts.
+    They mark a job's tile, its header rule, its section dot and its progress bar, never a button.
+  The tokens live once in `src/ui/palette.ts`; the system is written up in `DESIGN.md`.
+- **Sound and touch** mark what staff need to know without looking: a scan read, something to check, a
+  refusal, a finished job, and a quiet tick on − / + and choices. They're short tones, not tunes.
+  Sounds follow the silent switch and can be turned off in Account; haptics always play. One table says
+  which moment sounds and feels like what (`src/feel/moments.ts`).
 
 ## Evidence on Hand
 
@@ -164,8 +173,8 @@ back office, so what the phone does and what the office sees agree.
 ## Product Principles
 
 1. **The job is the screen.** Each screen does one job, and its main action sits in the thumb zone.
-2. **The scan is the moment.** A scan lands as a big, unmistakable result, with sound-free haptics and
-   colour by outcome.
+2. **The scan is the moment.** A scan lands as a big, unmistakable result, with a short sound, a haptic
+   and colour by outcome.
 3. **Numbers over sentences.** Quantities, codes and states carry the meaning; prose is a last resort.
 4. **Never lose work.** Offline is normal. Everything queues and shows where it stands.
 5. **Same truth as the office.** The phone calls PartsLogic's own functions and never re-implements stock

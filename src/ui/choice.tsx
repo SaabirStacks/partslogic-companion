@@ -26,6 +26,7 @@ export function Choice({
       accessibilityRole="radio"
       accessibilityState={{ selected, checked: selected }}
       accessibilityLabel={accessibilityLabel ?? (detail ? `${title}, ${detail}` : title)}
+      haptic="tick"
       onPress={onPress}
       className={cx('min-h-14 flex-row items-center gap-3 px-4 py-2.5', selected && 'border-2 border-ink')}>
       <View className="flex-1 gap-0.5">

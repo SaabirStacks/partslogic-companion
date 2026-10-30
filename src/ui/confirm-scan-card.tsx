@@ -45,7 +45,7 @@ export function ConfirmScanCard({
     return (
       <ScanResultCard key={pending.key} tone="stop" status={{ icon: 'stop', label: 'Didn’t work' }} title={code} detail={hit.message}>
         <View className="flex-row flex-wrap gap-2">
-          <Button label="Try again" icon="retry" variant="secondary" compact onPress={onRetry} />
+          <Button label="Try again" icon="retry" variant="tinted" compact onPress={onRetry} />
           <Button label="Skip" icon="close" variant="secondary" compact onPress={onSkip} />
         </View>
       </ScanResultCard>
@@ -54,7 +54,7 @@ export function ConfirmScanCard({
 
   if (hit.type === 'bin') {
     return (
-      <ScanResultCard key={pending.key} tone="warn" status={{ icon: 'bin', label: 'That’s a bin' }} title={hit.bin} detail={hit.location}>
+      <ScanResultCard key={pending.key} tone="warn" status={{ icon: 'bin', label: 'That’s a bin' }} title={hit.bin}>
         <Button label="OK" variant="secondary" compact onPress={onSkip} />
       </ScanResultCard>
     );

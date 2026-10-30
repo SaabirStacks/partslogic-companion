@@ -1,6 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import { useState } from 'react';
 
+import { feel } from '@/feel/feel';
+import type { Moment } from '@/feel/moments';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import { useOutbox } from '@/queue/outbox-provider';
@@ -19,13 +21,26 @@ export type QuickAddOutcome =
   | { kind: 'confirm-brand'; message: string }
   | { kind: 'error'; message: string };
 
+// How each answer sounds: added (or saved to add later) is a finished job; a question is something to check.
+const MOMENT: Record<QuickAddOutcome['kind'], Moment> = {
+  added: 'done',
+  queued: 'done',
+  conflict: 'unknown',
+  'confirm-brand': 'unknown',
+  error: 'refused',
+};
+
 // Adds a part for a scanned code. With signal it asks PartsLogic straight away, so a conflict or a
 // new-brand question is answered on the spot; without, the request waits in the outbox.
 export function useQuickAdd(code: string) {
   const online = useOnline();
   const outbox = useOutbox();
   const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<QuickAddOutcome | null>(null);
+  const [outcome, setAnswer] = useState<QuickAddOutcome | null>(null);
+  const setOutcome = (next: QuickAddOutcome | null) => {
+    if (next) feel(MOMENT[next.kind]);
+    setAnswer(next);
+  };
 
   async function queue(brand: BrandChoice, number: string, confirmNewBrand: boolean) {
     await outbox.enqueue(

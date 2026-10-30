@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { useBinName } from '@/features/bins/use-bin-name';
 import { BinPicker } from '@/features/bins/bin-picker';
 import { useBinChoices } from '@/features/count/use-bin-choices';
 import { useMove } from '@/features/move/use-move';
@@ -33,6 +34,7 @@ export default function Move() {
   const moving = useMove({ partId: idParam(params.partId), fromBinId: idParam(params.fromBinId) });
   const { from, to, result } = moving;
   const { location } = useWorkingLocation();
+  const nameOf = useBinName();
   const [picking, setPicking] = useState(false);
   // The location's bins load the first time the list is opened.
   const [wanted, setWanted] = useState(false);
@@ -43,14 +45,14 @@ export default function Move() {
       placeholder="Part number, barcode or bin"
       scanEnabled={moving.online && !moving.busy && !result}
       onScan={moving.scan}
-      banner={<JobBanner title={moving.name ?? 'Scan the part'} detail={from ? `From ${from.place}` : null} />}
+      banner={<JobBanner family="stock" title={moving.name ?? 'Scan the part'} detail={from ? `From ${nameOf(from.place)}` : null} />}
       result={<Answer moving={moving} />}
       action={
         result ? (
           <ActionBar label={result.kind === 'refused' ? 'Change and try again' : 'Move more'} icon="move" onPress={moving.again} />
         ) : from && to ? (
           <ActionBar
-            label={`Move ${formatQty(moving.qty)} · ${from.place} → ${to.label}`}
+            label={`Move ${formatQty(moving.qty)} · ${nameOf(from.place)} → ${nameOf(to.label)}`}
             icon="move"
             busy={moving.busy}
             disabled={!!moving.problem || !moving.online}
@@ -68,7 +70,7 @@ export default function Move() {
               {moving.stock.map((line) => (
                 <BinChip
                   key={line.binId}
-                  code={line.place}
+                  code={nameOf(line.place)}
                   qty={formatQty(line.qty)}
                   selected={line.binId === from?.binId}
                   onPress={() => moving.chooseFrom(line.binId)}
@@ -86,7 +88,7 @@ export default function Move() {
           <SectionLabel>To</SectionLabel>
           {to ? (
             <View className="flex-row flex-wrap gap-2">
-              <BinChip code={to.label} selected onPress={moving.clearTo} />
+              <BinChip code={nameOf(to.label)} selected onPress={moving.clearTo} />
             </View>
           ) : (
             <>
@@ -95,14 +97,14 @@ export default function Move() {
                 {moving.stock
                   .filter((line) => line.binId !== from.binId)
                   .map((line) => (
-                    <BinChip key={line.binId} code={line.place} qty={formatQty(line.qty)} onPress={() => moving.chooseTo({ binId: line.binId, label: line.place })} />
+                    <BinChip key={line.binId} code={nameOf(line.place)} qty={formatQty(line.qty)} onPress={() => moving.chooseTo({ binId: line.binId, label: line.place })} />
                   ))}
               </View>
               {location ? (
                 <Button
-                  label={`Choose from all bins in ${location.name}`}
+                  label="Choose from all bins"
                   icon="bin"
-                  variant="secondary"
+                  variant="tinted"
                   onPress={() => {
                     setWanted(true);
                     setPicking(true);
@@ -116,7 +118,7 @@ export default function Move() {
           <Card className="flex-row items-center justify-between gap-3 px-3 py-2">
             <Quantity total={moving.qty} name={moving.name ?? 'the part'} onStep={(change) => moving.setQty(moving.qty + change)} onSet={moving.setQty} />
             {moving.available > 1 && moving.qty !== moving.available ? (
-              <Button label={`All ${formatQty(moving.available)}`} variant="secondary" compact onPress={() => moving.setQty(moving.available)} />
+              <Button label={`All ${formatQty(moving.available)}`} variant="tinted" compact onPress={() => moving.setQty(moving.available)} />
             ) : null}
           </Card>
           {moving.problem && to ? <Txt variant="caption" ink="text-stop-ink" className="px-1">{moving.problem}</Txt> : null}
@@ -127,12 +129,11 @@ export default function Move() {
         <BinPicker
           visible={picking}
           title="Move to which bin?"
-          location={location.name}
           list={bins}
           held={new Map(moving.stock.map((line) => [line.binId, line.qty]))}
           skip={new Set(from ? [from.binId] : [])}
           onPick={(bin) => {
-            moving.chooseTo({ binId: bin.binId, label: `${location.code}/${bin.code}` });
+            moving.chooseTo({ binId: bin.binId, label: bin.code });
             setPicking(false);
           }}
           onClose={() => setPicking(false)}

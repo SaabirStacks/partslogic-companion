@@ -180,10 +180,10 @@ You don't need Xcode. When a TestFlight build crashes, the iPhone asks to send a
 through the Expo connector (`testflight_crashes` with the bundle ID).
 
 Build 4 (29 October 2026) closed at launch on iOS 27 with `NoSceneLifecycleAdoption` in the report.
-Apps built with the iOS 27 SDK (Xcode 27) must use UIKit's scene life cycle, and Expo SDK 57 apps have to
-opt in: `app.json` sets `ios.enableSceneSupport` through the `expo-build-properties` plugin
-([Expo's guide](https://github.com/expo/fyi/blob/main/ios-scene-lifecycle.md#staying-on-sdk-57-with-xcode-27)).
-Remove that setting when the app moves to SDK 58, which has scene support built in.
+Apps built with the iOS 27 SDK (Xcode 27) must use UIKit's scene life cycle. Expo SDK 57 apps had to opt in
+with `ios.enableSceneSupport` (through the `expo-build-properties` plugin); SDK 58 has scene support built
+in, so the app no longer sets it and the `expo-build-properties` dependency was removed
+([Expo's guide](https://github.com/expo/fyi/blob/main/ios-scene-lifecycle.md)).
 
 ## Before each release
 
@@ -251,8 +251,13 @@ which is why the first one runs from a computer.
 ## Versions
 
 `eas.json` uses `appVersionSource: remote`, so EAS keeps the build numbers (Android `versionCode`, iOS
-`buildNumber`), and `production` raises them on every build. The version people see, `1.0.0`, comes from
-`version` in `app.json`. It also decides which builds an update can reach (see above).
+`buildNumber`), and `production` raises them on every build. The version people see comes from `version`
+in `app.json`. It also decides which builds an update can reach (see above).
+
+| Version | What needed the new build | Phones on the version before |
+|---|---|---|
+| `1.0.0` | The first builds (Expo SDK 57) | — |
+| `1.1.0` | Expo SDK 58, and sounds (`expo-audio`) | Keep working, but get no more updates. Install the `1.1.0` build: a new APK on Android, the new TestFlight build on iPhone |
 
 ## Later: the stores
 

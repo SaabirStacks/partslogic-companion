@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { db } from '@/db/database';
+import { feel } from '@/feel/feel';
 import { deviceLabel } from '@/lib/device';
 import { useOutbox } from '@/queue/outbox-provider';
 import { feedbackFor } from '@/scan/feedback';
@@ -66,7 +67,7 @@ export function useDelivery() {
   }, [load]);
 
   const label = (current: Delivery, count: number) =>
-    `Delivery from ${deliveryName(current.sender)} started ${time(current.startedAt)} · ${count} ${count === 1 ? 'line' : 'lines'}`;
+    `Delivery from ${deliveryName(current.sender)} started\u00a0${time(current.startedAt)} · ${count} ${count === 1 ? 'line' : 'lines'}`;
 
   async function addLine(current: Delivery, code: string, qty: number, name: string | null) {
     const first = lines.length === 0;
@@ -174,9 +175,10 @@ export function useDelivery() {
       if (!delivery) return;
       await outbox.enqueue(
         { kind: 'close_receipt', clientId: Crypto.randomUUID(), documentId: delivery.documentId },
-        `Finish delivery from ${deliveryName(delivery.sender)} started ${time(delivery.startedAt)}`,
+        `Finish delivery from ${deliveryName(delivery.sender)} started\u00a0${time(delivery.startedAt)}`,
       );
       await store.finish(delivery.documentId);
+      feel('done');
       setFinished({ delivery: { ...delivery, finishedAt: new Date().toISOString() }, lines });
       setLastLine(null);
       held.clear();

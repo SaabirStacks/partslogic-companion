@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { binsUnder } from '@/features/bins/bin-steps';
 import { BinTiles } from '@/features/bins/bin-tiles';
@@ -13,8 +13,8 @@ import { SectionLabel } from '@/ui/section-label';
 import { Segmented } from '@/ui/segmented';
 import { StatusStrip } from '@/ui/status-strip';
 import { Txt } from '@/ui/text';
-import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
+import { PlaceholderRows } from '@/ui/placeholder';
 import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 
 import { countedShort, countedText, type BinChoice } from './bin-choices';
@@ -40,7 +40,6 @@ type BinList = { choices: BinChoice[]; loading: boolean; failed: boolean; savedA
 export function RunPlanView({
   initial,
   openingOffered = true,
-  locationName,
   list,
   joinable = [],
   busy = false,
@@ -50,7 +49,6 @@ export function RunPlanView({
 }: {
   initial: RunWorkflow;
   openingOffered?: boolean;
-  locationName: string;
   list: BinList;
   joinable?: SharedRun[];
   busy?: boolean;
@@ -59,7 +57,6 @@ export function RunPlanView({
   onJoin?: (run: SharedRun) => void;
   onStart: (bins: RunBinPlan[], as: RunWorkflow) => void;
 }) {
-  const colourOf = useColour();
   const [asked, setKind] = useState<RunWorkflow>(initial);
   const kind: RunWorkflow = openingOffered ? asked : 'stock-take';
   const noun = kind === 'opening-stock' ? 'opening stock' : 'stock take';
@@ -97,7 +94,7 @@ export function RunPlanView({
       <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-4">
         {joinable.length > 0 ? (
           <>
-            <SectionLabel>{`Open in ${locationName} now`}</SectionLabel>
+            <SectionLabel>Open now</SectionLabel>
             {joinable.map((run) => (
               <JoinRunCard key={run.runId} run={run} busy={busy} onJoin={() => onJoin?.(run)} />
             ))}
@@ -107,7 +104,7 @@ export function RunPlanView({
         {notice}
         {openingOffered ? <Segmented options={KINDS} value={kind} onChange={setKind} /> : null}
         {kind === 'opening-stock' ? (
-          <StatusStrip tone="warn" icon="opening" text={`Setting up ${locationName}: what’s found becomes its opening stock`} />
+          <StatusStrip tone="neutral" icon="opening" text="Setting up: what’s found becomes opening stock" />
         ) : null}
         <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
           Which bins?
@@ -116,18 +113,14 @@ export function RunPlanView({
         {list.failed && list.choices.length === 0 ? (
           <>
             <StatusStrip tone="stop" icon="offline" text="Bins didn’t load" />
-            <Button label="Try again" icon="retry" variant="secondary" onPress={list.reload} />
+            <Button label="Try again" icon="retry" variant="tinted" onPress={list.reload} />
           </>
         ) : null}
-        {list.loading ? (
-          <View className="py-4">
-            <ActivityIndicator color={colourOf('quiet-ink')} />
-          </View>
-        ) : null}
+        {list.loading && list.choices.length === 0 ? <PlaceholderRows count={3} label="Loading bins" /> : null}
 
         <View className="gap-2" accessibilityRole="radiogroup">
           <Choice
-            title={`Every bin in ${locationName}`}
+            title="Every bin"
             detail={plural(list.choices.length, 'bin', 'bins')}
             selected={plan === 'every'}
             onPress={() => setPlan('every')}
@@ -158,7 +151,7 @@ export function RunPlanView({
                     <Button
                       label={allUnder ? `Clear the ${under.length} in ${place}` : `Choose all ${under.length} in ${place}`}
                       icon={allUnder ? 'close' : 'check'}
-                      variant="secondary"
+                      variant="tinted"
                       compact
                       onPress={() => setAll(under, !allUnder)}
                     />

@@ -14,7 +14,7 @@ export default function NoAccess() {
     <SafeAreaView className="flex-1 bg-ground">
       <Notice
         icon={notMember ? 'account' : 'offline'}
-        tone={notMember ? 'stop' : 'warn'}
+        tone={notMember ? 'action' : 'warn'}
         title={notMember ? 'No access yet' : 'No signal'}
         line={notMember ? `${email} isn't a PartsLogic member. An owner adds you in the back office.` : 'PartsLogic can’t be reached.'}>
         <Button label={notMember ? 'Check again' : 'Try again'} icon="retry" onPress={retry} busy={checking} />

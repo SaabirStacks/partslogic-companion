@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { db } from '@/db/database';
+import { feel } from '@/feel/feel';
 import { deviceLabel } from '@/lib/device';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
@@ -85,7 +86,7 @@ export function useBinCount(workflow: CountWorkflow) {
     void Promise.resolve().then(load);
   }, [load]);
 
-  const label = (current: BinCount) => `Count of bin ${current.binCode} started ${time(current.startedAt)}`;
+  const label = (current: BinCount) => `Count of bin ${current.binCode} started\u00a0${time(current.startedAt)}`;
 
   // Saves the new totals and queues them, replacing totals not yet sent (PartsLogic takes the latest).
   async function apply(current: BinCount, action: BinSessionAction | BinSessionAction[], labels = current.labels) {
@@ -244,6 +245,7 @@ export function useBinCount(workflow: CountWorkflow) {
         `Finish count of bin ${count.binCode}`,
       );
       await store.finish(count.stocktakeId);
+      feel('done');
       setFinished({
         stocktakeId: count.stocktakeId,
         binCode: count.binCode,

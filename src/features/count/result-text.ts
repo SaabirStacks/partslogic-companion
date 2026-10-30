@@ -40,7 +40,7 @@ export function countSummary(progress: CountProgress): CountSummary {
     label: review ? 'Done · office will review' : 'Done',
     items: [
       { value: result.putAway, label: 'Put away', tone: result.putAway > 0 ? 'ok' : undefined },
-      { value: result.returned, label: 'To Unbinned' },
+      { value: result.returned, label: 'Back to Unbinned' },
       { value: result.found, label: 'Found' },
       ...(result.unresolved > 0 ? [{ value: result.unresolved, label: 'Unknown', tone: 'warn' as const }] : []),
     ],

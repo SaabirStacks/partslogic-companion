@@ -52,7 +52,7 @@ export default function Sync() {
   const sent = outbox.items.filter((item) => item.status === 'done');
 
   return (
-    <Scroll className="bg-ground" contentContainerClassName="gap-3 px-4 pt-3">
+    <Scroll className="bg-ground" contentContainerClassName="gap-3 px-4 pt-3" onRefresh={outbox.sendNow}>
       <Animated.View key={state.label} entering={APPEAR}>
         <Card accessible accessibilityRole="header" accessibilityLabel={state.label} className="gap-2 p-4">
           <StatusChip tone={state.tone} icon={state.icon} label={state.label} large />
@@ -61,7 +61,7 @@ export default function Sync() {
       </Animated.View>
 
       {outbox.waiting > 0 && online ? (
-        <Button label="Send now" icon="sync" variant="secondary" onPress={outbox.sendNow} />
+        <Button label="Send now" icon="sync" variant="tinted" onPress={outbox.sendNow} />
       ) : null}
       {outbox.lastProblem && outbox.waiting > 0 ? (
         <StatusStrip tone="warn" icon="retry" text={`Last try didn’t get through · ${outbox.lastProblem}`} />
@@ -78,7 +78,7 @@ export default function Sync() {
             {item.lastError ? <Txt variant="caption" ink="text-stop-ink">{item.lastError}</Txt> : null}
             <View className="flex-row gap-2">
               <View className="flex-1">
-                <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => void outbox.retry(item.clientId)} />
+                <Button label="Try again" icon="retry" variant="tinted" compact onPress={() => void outbox.retry(item.clientId)} />
               </View>
               <View className="flex-1">
                 <Button label="Discard" icon="close" variant="secondary" compact onPress={() => setDiscarding(item)} />
@@ -130,7 +130,7 @@ export default function Sync() {
         {scanIndex.saved ? <Fact label="Updated" value={when(scanIndex.saved.syncedAt)} last /> : null}
       </Facts>
       {online && scanIndex.progress === null ? (
-        <Button label="Update scan list" icon="retry" variant="secondary" onPress={scanIndex.update} />
+        <Button label="Update scan list" icon="retry" variant="tinted" onPress={scanIndex.update} />
       ) : null}
       <ConfirmSheet
         visible={discarding !== null}

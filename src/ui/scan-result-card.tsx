@@ -2,13 +2,15 @@ import type { ReactNode } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { depthStyle } from './depth';
 import { Icon } from './icon';
 import type { IconName } from './icons';
 import { RISE } from './motion';
 import type { Tone } from './palette';
 import { StatusChip } from './status-chip';
-import { surfaceClass } from './surface';
+import { surfaceClass, TONE_TEXT } from './surface';
 import { Txt } from './text';
+import { useScheme } from './theme';
 
 export type ResultStatus = { icon: IconName; label: string };
 
@@ -28,11 +30,13 @@ export function ScanResultCard({
   status: ResultStatus;
   title: string;
   detail?: string | null;
-  quantity?: { value: string; label: string };
+  // tone colours the number by its state (on hand in stock, at reorder, out); blind counts leave it black.
+  quantity?: { value: string; label: string; tone?: Tone };
   // Opens what was scanned in full (the part, with stock per bin).
   onPress?: () => void;
   children?: ReactNode;
 }) {
+  const scheme = useScheme();
   const summary = [status.label, title, quantity ? `${quantity.value} ${quantity.label}` : null, detail]
     .filter(Boolean)
     .join(', ');
@@ -58,7 +62,7 @@ export function ScanResultCard({
         </View>
         {quantity ? (
           <View className="items-end">
-            <Txt variant="headline" numbers numberOfLines={1} className="font-extrabold">
+            <Txt variant="headline" numbers numberOfLines={1} ink={TONE_TEXT[quantity.tone ?? 'neutral']} className="font-extrabold">
               {quantity.value}
             </Txt>
             <Txt variant="caption" numberOfLines={1}>
@@ -72,7 +76,7 @@ export function ScanResultCard({
 
   return (
     <Animated.View entering={RISE} accessibilityLiveRegion="polite">
-      <View style={SHADOW} className={surfaceClass({ className: 'gap-3 p-4' })}>
+      <View style={depthStyle('raise', scheme)} className={surfaceClass({ className: 'gap-3 p-4' })}>
         {onPress ? (
           <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onPress} className="gap-3 active:opacity-75">
             {face}
@@ -88,11 +92,3 @@ export function ScanResultCard({
   );
 }
 
-// The result card sits over the camera's bottom edge, so it lifts off it a little.
-const SHADOW = {
-  shadowColor: '#000',
-  shadowOpacity: 0.18,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 6,
-} as const;

@@ -35,3 +35,6 @@ export const scanIndexPref = pref<ScanIndexState>('scan-index');
 // How bins are browsed when choosing one: a part of the name at a time (Tab view) or one long list.
 export type BinView = 'tabs' | 'list';
 export const binViewPref = pref<BinView>('bin-view');
+
+// Whether the app makes sounds (scans, warnings, finished jobs). Unset means on; haptics stay either way.
+export const soundsPref = pref<boolean>('sounds');

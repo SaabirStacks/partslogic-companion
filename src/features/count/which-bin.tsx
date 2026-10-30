@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { BinTiles } from '@/features/bins/bin-tiles';
 import { BIN_VIEWS, useBinBrowse } from '@/features/bins/use-bin-browse';
@@ -16,7 +16,7 @@ import { StatusChip } from '@/ui/status-chip';
 import { StatusStrip } from '@/ui/status-strip';
 import { Card, PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
-import { useColour } from '@/ui/theme';
+import { PlaceholderRows } from '@/ui/placeholder';
 
 import { countedShort, countedText, exactBin, filterBins, type BinChoice } from './bin-choices';
 
@@ -54,7 +54,6 @@ export function WhichBinView({
   // What else belongs under the list: counts finished on this phone.
   footer?: ReactNode;
 }) {
-  const colourOf = useColour();
   const [query, setQuery] = useState('');
   const [creating, setCreating] = useState(false);
   const [newCode, setNewCode] = useState('');
@@ -85,7 +84,7 @@ export function WhichBinView({
 
         {waiting && waiting.units > 0 ? (
           <PressableCard
-            accessibilityLabel={`${plural(waiting.units, 'unit', 'units')} waiting in ${waiting.location} Unbinned. See what's waiting`}
+            accessibilityLabel={`${plural(waiting.units, 'unit', 'units')} waiting in Unbinned. See what's waiting`}
             onPress={onWaiting ?? (() => {})}
             disabled={!onWaiting}
             className="min-h-16 flex-row items-center gap-3 px-4 py-3">
@@ -93,7 +92,7 @@ export function WhichBinView({
               <Txt variant="label" numbers className="font-bold">
                 {`${plural(waiting.units, 'unit', 'units')} waiting`}
               </Txt>
-              <Txt variant="caption">{`In ${waiting.location} Unbinned`}</Txt>
+              <Txt variant="caption">In Unbinned</Txt>
             </View>
             <StatusChip tone="warn" icon="putAway" label="To put away" />
             {onWaiting ? <Icon name="forward" size={16} colour="quiet-ink" /> : null}
@@ -104,14 +103,10 @@ export function WhichBinView({
         {list.failed && list.choices.length === 0 ? (
           <>
             <StatusStrip tone="stop" icon="offline" text="Bins didn’t load" />
-            <Button label="Try again" icon="retry" variant="secondary" onPress={list.reload} />
+            <Button label="Try again" icon="retry" variant="tinted" onPress={list.reload} />
           </>
         ) : null}
-        {list.loading ? (
-          <View className="py-4">
-            <ActivityIndicator color={colourOf('quiet-ink')} />
-          </View>
-        ) : null}
+        {list.loading && list.choices.length === 0 ? <PlaceholderRows label="Loading bins" /> : null}
 
         {typed === '' && list.choices.length > 0 ? <Segmented options={BIN_VIEWS} value={browse.view} onChange={browse.setView} /> : null}
 
@@ -176,7 +171,7 @@ export function WhichBinView({
           <Button
             label={typed && shown.length === 0 ? `New bin ${typed}` : 'New bin'}
             icon="plus"
-            variant="secondary"
+            variant="tinted"
             onPress={() => {
               setNewCode(shown.length === 0 ? typed : '');
               setCreating(true);

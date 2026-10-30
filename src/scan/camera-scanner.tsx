@@ -51,7 +51,7 @@ export function CameraScanner({ onScan, enabled = true, onResume }: CameraScanne
           {permission.canAskAgain ? (
             <Button label="Allow camera" onPress={() => void requestPermission()} />
           ) : (
-            <Button label="Open settings" variant="secondary" onPress={() => void Linking.openSettings()} />
+            <Button label="Open settings" variant="tinted" onPress={() => void Linking.openSettings()} />
           )}
         </View>
       </View>

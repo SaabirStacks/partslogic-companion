@@ -2,7 +2,7 @@ import { View } from 'react-native';
 
 import { clock, plural } from '@/lib/format';
 import { Button } from '@/ui/button';
-import { StatusChip } from '@/ui/status-chip';
+import { ReceiptCard } from '@/ui/receipt';
 import { StatusStrip } from '@/ui/status-strip';
 import { Card } from '@/ui/surface';
 import { Txt } from '@/ui/text';
@@ -55,47 +55,31 @@ export function RunReceipt({
   return (
     <View className="flex-1 bg-ground">
       <Scroll toEdge={setUp?.answer === 'ask'} contentContainerClassName="flex-grow justify-center gap-4 px-4 pt-6">
-        <Card accessible accessibilityLabel={`${title} ${left ? 'left to the others' : 'finished'}. ${plural(progress.counted, 'bin', 'bins')}, ${plural(progress.units, 'unit', 'units')}`} className="gap-4 p-5">
-          <View className="items-center gap-2">
-            <StatusChip
-              tone={toCheck > 0 ? 'warn' : left ? 'neutral' : 'ok'}
-              icon={toCheck > 0 ? 'warning' : left ? 'account' : 'sent'}
-              label={[left ? 'Left to the others' : 'Finished', toCheck > 0 ? 'to check' : null].filter(Boolean).join(' · ')}
-            />
-            <Txt accessibilityRole="header" variant="display" className="text-center">
-              {plural(progress.counted, 'bin', 'bins')}
-            </Txt>
-            <Txt variant="caption" numbers className="text-center">
-              {[run.locationName, span].filter(Boolean).join(' · ')}
-            </Txt>
-          </View>
-          <View className="border-t border-rule pt-1">
-            {rows.map(([label, value]) => (
-              <View key={label} className="min-h-11 flex-row items-center justify-between gap-3">
-                <Txt variant="body" numberOfLines={1} className="flex-1">
-                  {label}
-                </Txt>
-                <Txt variant="label" numbers className="font-extrabold">
-                  {value}
-                </Txt>
-              </View>
-            ))}
-          </View>
-        </Card>
+        <ReceiptCard
+          chip={{
+            tone: toCheck > 0 ? 'warn' : left ? 'neutral' : 'ok',
+            icon: toCheck > 0 ? 'warning' : left ? 'account' : 'sent',
+            label: [left ? 'Left to the others' : 'Finished', toCheck > 0 ? 'to check' : null].filter(Boolean).join(' · '),
+          }}
+          reference={plural(progress.counted, 'bin', 'bins')}
+          line={span}
+          rows={rows.map(([label, value]) => ({ label, value, tone: label.startsWith('For the office') ? 'warn' : undefined }))}
+          accessibilityLabel={`${title} ${left ? 'left to the others' : 'finished'}. ${plural(progress.counted, 'bin', 'bins')}, ${plural(progress.units, 'unit', 'units')}`}
+        />
         {left ? <StatusStrip tone="neutral" icon="stockTake" text={`The ${title.toLowerCase()} stays open for the others to finish`} /> : null}
         {setUp?.answer === 'ask' ? (
           <Card className="gap-3 p-4">
             <View className="gap-1">
-              <Txt variant="title" className="font-extrabold">{`Is ${setUp.location} fully set up?`}</Txt>
+              <Txt variant="title" className="font-extrabold">Is this location fully set up?</Txt>
               <Txt variant="caption">Yes, and opening stock won’t be offered here again. Not yet, and you can set up the rest another time.</Txt>
             </View>
             <Button label="Yes, it’s set up" icon="check" onPress={setUp.onYes} />
             <Button label="Not yet" variant="secondary" onPress={setUp.onNotYet} />
           </Card>
         ) : setUp?.answer === 'yes' ? (
-          <StatusStrip tone="ok" icon="sent" text={`${setUp.location} is set up · opening stock is done`} />
+          <StatusStrip tone="ok" icon="sent" text="Set up · opening stock is done" />
         ) : setUp?.answer === 'not-yet' ? (
-          <StatusStrip tone="neutral" icon="opening" text={`Opening stock stays open for ${setUp.location}`} />
+          <StatusStrip tone="neutral" icon="opening" text="Opening stock stays open for another run" />
         ) : null}
       </Scroll>
       {/* While the set-up question waits, its answer is the way on (Not yet is the way out). */}

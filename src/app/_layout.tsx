@@ -7,6 +7,7 @@ import { Platform, View } from 'react-native';
 
 import { Gallery } from '@/dev/gallery';
 import { NotSetUp } from '@/features/setup/not-set-up';
+import { prepareFeel } from '@/feel/feel';
 import { publicConfig } from '@/lib/config';
 import { OutboxProvider } from '@/queue/outbox-provider';
 import { ScanIndexProvider } from '@/scan/scan-index-provider';
@@ -22,8 +23,10 @@ import { liveWorkflow } from '@/workflows/catalogue';
  * Direction: the trade counter (the till look approved with the task screens mock-up).
  *
  * THESIS      Calm by default, like a good till: white cards on a light grey counter, near-black words, and
- *             colour with exactly two jobs. Blue marks the button you're meant to press; green, yellow and
- *             red are states (done or sent, check it, stopped), shown as a word and a symbol on a soft chip.
+ *             colour with three jobs. Blue marks the button you're meant to press; green, yellow and red
+ *             are states (done or sent, check it, stopped), shown as a word and a symbol on a soft chip;
+ *             teal, violet and plum say which family a job is (goods in, stock, parts). Short sounds and
+ *             haptics mark the moments that matter without looking (src/feel). DESIGN.md has the system.
  * OWN-WORLD   Light grey ground, white surfaces with 12 px corners and a hairline edge (graphite at night).
  *             The phone's own typeface in sentence case; quantities, codes and bins in tabular figures.
  *             Pictograms are SF Symbols / Material symbols, bold. Tokens in palette.ts, parts in surface.tsx,
@@ -40,6 +43,11 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const scheme = useScheme();
+
+  // Ready the sounds as the app opens, so the first scan beeps on time.
+  useEffect(() => {
+    if (Platform.OS !== 'web') prepareFeel();
+  }, []);
 
   // On the web the app is only the dev review gallery: the phone screens drawn from fixtures, for
   // screenshots at phone size. Nothing on the web signs in or keeps data.

@@ -1,4 +1,4 @@
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { plural } from '@/lib/format';
 import { Button } from '@/ui/button';
@@ -6,8 +6,8 @@ import { Icon } from '@/ui/icon';
 import { StatusStrip } from '@/ui/status-strip';
 import { Card, PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
-import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
+import { PlaceholderRows } from '@/ui/placeholder';
 
 import type { WaitingRow } from './waiting';
 
@@ -15,7 +15,6 @@ import type { WaitingRow } from './waiting';
 // shelf says which, and tapping it starts putting away into that shelf; one with no shelf yet opens the
 // part. Needs signal.
 export function WaitingView({
-  location,
   rows,
   loading,
   failed,
@@ -24,7 +23,6 @@ export function WaitingView({
   onRow,
   onRetry,
 }: {
-  location: string;
   rows: WaitingRow[];
   loading: boolean;
   failed: boolean;
@@ -33,7 +31,6 @@ export function WaitingView({
   onRow: (row: WaitingRow) => void;
   onRetry: () => void;
 }) {
-  const colourOf = useColour();
   const units = rows.reduce((sum, row) => sum + row.qty, 0);
   return (
     <Scroll className="flex-1 bg-ground" contentContainerClassName="gap-3 px-4 pt-4">
@@ -41,21 +38,17 @@ export function WaitingView({
         <Txt variant="headline" numbers className="font-extrabold">
           {loading ? 'Waiting' : `${plural(units, 'unit', 'units')} waiting`}
         </Txt>
-        <Txt variant="caption">{loading ? `In ${location} Unbinned` : `In ${location} Unbinned · ${plural(rows.length, 'part', 'parts')}`}</Txt>
+        <Txt variant="caption">{loading ? 'In Unbinned' : `In Unbinned · ${plural(rows.length, 'part', 'parts')}`}</Txt>
       </View>
 
       {!online ? <StatusStrip tone="warn" icon="offline" text="What’s waiting shows when you’re back online" /> : null}
       {failed && rows.length === 0 && online ? (
         <>
           <StatusStrip tone="stop" icon="offline" text="Didn’t load" />
-          <Button label="Try again" icon="retry" variant="secondary" onPress={onRetry} />
+          <Button label="Try again" icon="retry" variant="tinted" onPress={onRetry} />
         </>
       ) : null}
-      {loading ? (
-        <View className="py-4">
-          <ActivityIndicator color={colourOf('quiet-ink')} />
-        </View>
-      ) : null}
+      {loading && rows.length === 0 ? <PlaceholderRows count={3} label="Loading what’s waiting" /> : null}
       {!loading && !failed && online && rows.length === 0 ? (
         <Card className="items-center gap-1 p-5">
           <Txt variant="label" className="font-bold">

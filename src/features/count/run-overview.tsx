@@ -10,6 +10,7 @@ import { BottomBar } from '@/ui/action-bar';
 import { Button } from '@/ui/button';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { cx } from '@/ui/cx';
+import { ProgressBar } from '@/ui/progress-bar';
 import { Segmented } from '@/ui/segmented';
 import type { ChipState } from '@/ui/status-chip';
 import { StatusChip } from '@/ui/status-chip';
@@ -107,7 +108,7 @@ export function RunOverview({
     if (canTap(bin, counting, closed)) onBin(bin);
   };
 
-  const started = [run.locationName, `started ${when(run.startedAt)}`, run.startedBy ? `by ${run.startedBy}` : null].filter(Boolean).join(' · ');
+  const started = [`Started ${when(run.startedAt)}`, run.startedBy ? `by ${run.startedBy}` : null].filter(Boolean).join(' · ');
   const left = progress.total - progress.counted;
 
   const header = (
@@ -119,12 +120,10 @@ export function RunOverview({
         <Txt variant="caption">{started}</Txt>
         {progress.others.length > 0 ? <Txt variant="caption">{`Counting with ${peopleText(progress.others)}`}</Txt> : null}
       </View>
-      <View className="h-2 overflow-hidden rounded-full bg-rule" importantForAccessibility="no">
-        <View className="h-2 rounded-full bg-action" style={{ width: `${Math.round(share * 100)}%` }} />
-      </View>
+      <ProgressBar share={share} family="stock" />
       {progress.closed ? (
         <StatusStrip
-          tone="warn"
+          tone="neutral"
           icon="stockTake"
           text={[`${progress.closed.by ?? 'Someone'} finished this ${noun}`, progress.closed.at ? clock(progress.closed.at) : null].filter(Boolean).join(' · ')}
         />
@@ -198,11 +197,11 @@ export function RunOverview({
         {closed ? null : (
           <View className="flex-row gap-2">
             <View className="flex-1">
-              <Button label="Pause" icon="waiting" variant="secondary" compact onPress={onPause} />
+              <Button label="Pause" icon="waiting" variant="tinted" compact onPress={onPause} />
             </View>
             {progress.counted > 0 && left > 0 && next?.state !== 'counting' ? (
               <View className="flex-1">
-                <Button label="Finish now" variant="secondary" compact onPress={() => setFinishingEarly(true)} />
+                <Button label="Finish now" variant="tinted" compact onPress={() => setFinishingEarly(true)} />
               </View>
             ) : run.shared && progress.done && online ? (
               // In case finishing it for everyone can't get through: whoever has signal can finish it.

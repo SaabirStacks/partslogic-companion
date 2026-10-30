@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Modal, SectionList, View } from 'react-native';
+import { Modal, SectionList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { exactBin, type BinChoice } from '@/features/count/bin-choices';
@@ -15,7 +15,8 @@ import { Segmented } from '@/ui/segmented';
 import { StatusStrip } from '@/ui/status-strip';
 import { PressableCard } from '@/ui/surface';
 import { Txt } from '@/ui/text';
-import { useColour, useScheme } from '@/ui/theme';
+import { useScheme } from '@/ui/theme';
+import { PlaceholderRows } from '@/ui/placeholder';
 
 import { binSections } from './bin-sections';
 import { BinTiles } from './bin-tiles';
@@ -37,7 +38,6 @@ type BinList = {
 export function BinPicker({
   visible,
   title,
-  location,
   list,
   held,
   skip,
@@ -47,7 +47,6 @@ export function BinPicker({
   visible: boolean;
   // "Move to which bin?"
   title: string;
-  location: string;
   list: BinList;
   // How much of the part each bin already holds.
   held?: ReadonlyMap<number, number>;
@@ -58,7 +57,6 @@ export function BinPicker({
 }) {
   const insets = useSafeAreaInsets();
   const scheme = useScheme();
-  const colourOf = useColour();
   const [query, setQuery] = useState('');
   const browse = useBinBrowse();
   const typed = query.trim().toUpperCase();
@@ -84,13 +82,11 @@ export function BinPicker({
     else close();
   };
   const empty = list.loading ? (
-    <View className="py-6">
-      <ActivityIndicator color={colourOf('quiet-ink')} />
-    </View>
+    <PlaceholderRows label="Loading bins" />
   ) : typed ? (
     <Txt variant="caption" className="px-1">{`No bin called ${typed} here`}</Txt>
-  ) : list.failed ? null : (
-    <Txt variant="caption" className="px-1">{`No bins in ${location} yet`}</Txt>
+  ) : list.failed ? undefined : (
+    <Txt variant="caption" className="px-1">No bins yet</Txt>
   );
 
   return (
@@ -104,7 +100,7 @@ export function BinPicker({
                 <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
                   {title}
                 </Txt>
-                <Txt variant="caption">{`${plural(list.choices.length, 'bin', 'bins')} in ${location}`}</Txt>
+                <Txt variant="caption">{plural(list.choices.length, 'bin', 'bins')}</Txt>
               </View>
               <PressableCard accessibilityLabel="Close" onPress={close} className="h-12 w-12 items-center justify-center rounded-[10px]">
                 <Icon name="close" size={22} />
@@ -126,7 +122,7 @@ export function BinPicker({
             {list.failed && list.choices.length === 0 ? (
               <>
                 <StatusStrip tone="stop" icon="offline" text="Bins didn’t load" />
-                <Button label="Try again" icon="retry" variant="secondary" onPress={list.reload} />
+                <Button label="Try again" icon="retry" variant="tinted" onPress={list.reload} />
               </>
             ) : null}
             {typed === '' ? <Segmented options={BIN_VIEWS} value={browse.view} onChange={browse.setView} /> : null}

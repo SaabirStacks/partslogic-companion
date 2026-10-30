@@ -50,7 +50,7 @@ export default function Receive() {
         placeholder="Barcode or part number"
         scanEnabled={!receiving.held.pending}
         onScan={receiving.scan}
-        banner={<JobBanner size="headline" title={deliveryName(delivery.sender)} detail={bannerDetail(delivery, receiving.number)} />}
+        banner={<JobBanner size="headline" family="inbound" title={deliveryName(delivery.sender)} detail={bannerDetail(delivery, receiving.number)} />}
         result={<LastScan receiving={receiving} />}
         action={
           // While a scan waits on Add or Skip, it's the only decision on screen.
@@ -176,8 +176,7 @@ function GroupRow({ group, receiving }: { group: LineGroup; receiving: Receiving
 // The strip's second line: the receipt number once PartsLogic gives one, the delivery note, and where the
 // stock goes.
 function bannerDetail(delivery: Delivery, number: string | null): string {
-  const place = delivery.locationName ? `into ${delivery.locationName} Unbinned` : 'into Unbinned';
-  return [number ?? 'Not sent yet', delivery.reference, place].filter(Boolean).join(' · ');
+  return [number ?? 'Not sent yet', delivery.reference, 'into Unbinned'].filter(Boolean).join(' · ');
 }
 
 // After Finish: the receipt, and the next job.

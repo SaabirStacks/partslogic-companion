@@ -30,7 +30,7 @@ import type { SenderOption } from '@/features/receive/sender-options';
 import { WhoIsItFromView } from '@/features/receive/who-is-it-from';
 import { NotSetUp } from '@/features/setup/not-set-up';
 import { syncState } from '@/features/board/sync-state';
-import { ActionBar } from '@/ui/action-bar';
+import { ActionBar, BottomBar } from '@/ui/action-bar';
 import { BinChip } from '@/ui/bin-chip';
 import { Button } from '@/ui/button';
 import { ConfirmScanCard } from '@/ui/confirm-scan-card';
@@ -101,7 +101,7 @@ function SampleJob({ confirming = false, held }: { confirming?: boolean; held?: 
         placeholder="Barcode or part number"
         onScan={noop}
         scanEnabled={!held}
-        banner={<JobBanner size="headline" title="BGA" detail="GR-0042 · DN 448210 · into Main Unbinned" />}
+        banner={<JobBanner size="headline" family="inbound" title="BGA" detail="GR-0042 · DN 448210 · into Unbinned" />}
         result={
           held ? (
             <ConfirmScanCard
@@ -239,9 +239,9 @@ const binList = (savedAt: string | null = null) => ({
   reload: noop,
 });
 
-// Bins as MAIN will have them: even aisles 00 to 24 (8 for 08), letters A to E, numbers 01 to 10. Aisle 02
+// Bins as MAIN will have them: even aisles 00 to 24, letters A to E, numbers 01 to 10. Aisle 02
 // was counted on 3 Oct, apart from its E shelf.
-const MAIN_AISLES = ['00', '02', '04', '06', '8', '10', '12', '14', '16', '18', '20', '22', '24'];
+const MAIN_AISLES = ['00', '02', '04', '06', '08', '10', '12', '14', '16', '18', '20', '22', '24'];
 const mainBins = () => ({
   choices: MAIN_AISLES.flatMap((aisle, a) =>
     ['A', 'B', 'C', 'D', 'E'].flatMap((letter, l) =>
@@ -415,6 +415,12 @@ const SCREENS: Record<string, () => ReactNode> = {
       onLocation={noop}
       onSync={noop}
       onAccount={noop}
+      recent={[
+        { partId: 1, brand: 'Mann', number: 'HU 816 x', description: 'Oil filter' },
+        { partId: 2, brand: 'Bosch', number: '0 986 494 119', description: 'Brake pad set, front axle' },
+        { partId: 3, brand: 'NGK', number: 'BKR6E', description: 'Spark plug' },
+      ]}
+      onPart={noop}
     />
   ),
   job: () => <SampleJob />,
@@ -436,7 +442,6 @@ const SCREENS: Record<string, () => ReactNode> = {
     <View className="flex-1">
       <StackHeader title="To put away" />
       <WaitingView
-        location="Main"
         rows={[
           { partId: 1, name: 'Bosch 0 986 494 119', qty: 12, shelf: { binId: 3, code: 'B-01' } },
           { partId: 2, name: 'Mann HU 816 x', qty: 8, shelf: { binId: 1, code: 'A-01' } },
@@ -463,7 +468,7 @@ const SCREENS: Record<string, () => ReactNode> = {
       <JobScreen
         placeholder="Barcode or part number"
         onScan={noop}
-        banner={<JobBanner size="headline" title="Bin A-01" detail="MAIN · Blind count" />}
+        banner={<JobBanner size="headline" family="stock" title="Bin A-01" detail="Blind count" />}
         result={<ScanResultCard tone="ok" status={{ icon: 'sent', label: 'Counted' }} title="Mann HU 816 x" detail="4011558726304" quantity={{ value: '6', label: 'Counted' }} />}
         action={<ActionBar label="Finish · 9 units" icon="check" onPress={noop} secondary={{ label: 'Discard', icon: 'close', onPress: noop }} />}>
         <Tally
@@ -480,19 +485,19 @@ const SCREENS: Record<string, () => ReactNode> = {
   'run-plan': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />
-      <RunPlanView initial="stock-take" locationName="Main" list={binList()} onStart={noop} />
+      <RunPlanView initial="stock-take" list={binList()} onStart={noop} />
     </View>
   ),
   'run-plan-main': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />
-      <RunPlanView initial="stock-take" locationName="Main" list={mainBins()} onStart={noop} />
+      <RunPlanView initial="stock-take" list={mainBins()} onStart={noop} />
     </View>
   ),
   'run-plan-opening': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />
-      <RunPlanView initial="opening-stock" locationName="Main" list={binList()} onStart={noop} />
+      <RunPlanView initial="opening-stock" list={binList()} onStart={noop} />
     </View>
   ),
   'run-overview': () => (
@@ -510,7 +515,7 @@ const SCREENS: Record<string, () => ReactNode> = {
   'run-plan-join': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />
-      <RunPlanView initial="stock-take" locationName="Main" list={mainBins()} joinable={[mainShared()]} onJoin={noop} onStart={noop} />
+      <RunPlanView initial="stock-take" list={mainBins()} joinable={[mainShared()]} onJoin={noop} onStart={noop} />
     </View>
   ),
   'run-overview-shared': () => {
@@ -525,7 +530,7 @@ const SCREENS: Record<string, () => ReactNode> = {
           run={run}
           online
           progress={runProgress(run, [])}
-          notice={<StatusStrip tone="warn" icon="warning" text="Sam had already started a stock take here, so you’ve joined it" />}
+          notice={<StatusStrip tone="neutral" icon="stockTake" text="Sam had already started a stock take here, so you’ve joined it" />}
           onBin={noop}
           onPause={noop}
           onFinish={noop}
@@ -609,7 +614,7 @@ const SCREENS: Record<string, () => ReactNode> = {
   'run-plan-set-up': () => (
     <View className="flex-1">
       <StackHeader title="Stock take" />
-      <RunPlanView initial="stock-take" openingOffered={false} locationName="Main" list={binList()} onStart={noop} />
+      <RunPlanView initial="stock-take" openingOffered={false} list={binList()} onStart={noop} />
     </View>
   ),
   'run-receipt-opening': () => (
@@ -631,7 +636,7 @@ const SCREENS: Record<string, () => ReactNode> = {
       <JobScreen
         placeholder="Barcode or part number"
         onScan={noop}
-        banner={<JobBanner size="headline" title="Bin A-02" detail="Stock take · 1 of 4 bins · Blind count" />}
+        banner={<JobBanner size="headline" family="stock" title="Bin A-02" detail="Stock take · 1 of 4 bins · Blind count" />}
         result={<ScanResultCard tone="ok" status={{ icon: 'sent', label: 'Counted' }} title="NGK BKR6E" detail="087295104401" quantity={{ value: '4', label: 'Counted' }} />}
         action={<ActionBar label="Finish · 4 units" icon="check" onPress={noop} secondary={{ label: 'Discard', icon: 'close', onPress: noop }} />}>
         <Button label="All bins" icon="stockTake" variant="secondary" compact onPress={noop} />
@@ -665,11 +670,13 @@ const SCREENS: Record<string, () => ReactNode> = {
     return (
       <View className="flex-1 bg-ground">
         <StackHeader title="Put away" />
-        <ScrollView contentContainerClassName="flex-grow justify-center gap-4 px-4 py-8">
+        <ScrollView contentContainerClassName="flex-grow justify-center gap-4 px-4 py-6">
           <CountReceipt binCode="A-01" summary={summary} units={9} />
+        </ScrollView>
+        <BottomBar className="gap-2">
           <Button label="Count next bin" icon="count" onPress={noop} />
           <Button label="Board" variant="secondary" onPress={noop} />
-        </ScrollView>
+        </BottomBar>
       </View>
     );
   },
@@ -679,7 +686,7 @@ const SCREENS: Record<string, () => ReactNode> = {
       <JobScreen
         placeholder="Part number, barcode or bin"
         onScan={noop}
-        banner={<JobBanner title="Mann HU 816 x" detail="From A-01" />}
+        banner={<JobBanner family="stock" title="Mann HU 816 x" detail="From A-01" />}
         result={<ScanResultCard tone="ok" status={{ icon: 'sent', label: 'Bin scanned' }} title="B-12" />}
         action={<ActionBar label="Move 4 · A-01 → B-12" icon="move" onPress={noop} />}>
         <SectionLabel>From</SectionLabel>
@@ -705,18 +712,18 @@ const SCREENS: Record<string, () => ReactNode> = {
       <JobScreen
         placeholder="Part number, barcode or bin"
         onScan={noop}
-        banner={<JobBanner title="Mann HU 816 x" detail="From EM12/00-A-01" />}>
+        banner={<JobBanner family="stock" title="Mann HU 816 x" detail="From 00-A-01" />}>
         <SectionLabel>From</SectionLabel>
         <View className="flex-row flex-wrap gap-2">
-          <BinChip code="EM12/00-A-01" qty={8} selected onPress={noop} />
-          <BinChip code="EM12/02-A-03" qty={4} onPress={noop} />
+          <BinChip code="00-A-01" qty={8} selected onPress={noop} />
+          <BinChip code="02-A-03" qty={4} onPress={noop} />
         </View>
         <SectionLabel>To</SectionLabel>
         <Txt variant="caption" className="px-1">Scan the bin label, or choose:</Txt>
         <View className="flex-row flex-wrap gap-2">
-          <BinChip code="EM12/02-A-03" qty={4} onPress={noop} />
+          <BinChip code="02-A-03" qty={4} onPress={noop} />
         </View>
-        <Button label="Choose from all bins in MAIN" icon="bin" variant="secondary" onPress={noop} />
+        <Button label="Choose from all bins" icon="bin" variant="tinted" onPress={noop} />
       </JobScreen>
     </View>
   ),
@@ -724,9 +731,8 @@ const SCREENS: Record<string, () => ReactNode> = {
     <BinPicker
       visible
       title="Move to which bin?"
-      location="MAIN"
       list={mainBins()}
-      // The part is in 02-B-03 (4) and 8-A-01 (2); it's leaving 00-A-01.
+      // The part is in 02-B-03 (4) and 08-A-01 (2); it's leaving 00-A-01.
       held={
         new Map([
           [1112, 4],

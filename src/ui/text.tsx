@@ -16,7 +16,7 @@ const VARIANT: Record<TextVariant, string> = {
   body: 'text-[17px] leading-[23px]',
   label: 'text-[17px] leading-[22px] font-semibold',
   caption: 'text-[15px] leading-[20px]',
-  section: 'text-[13px] leading-[18px] font-semibold uppercase tracking-[0.6px]',
+  section: 'text-[14px] leading-[19px] font-bold uppercase tracking-[0.6px]',
 };
 
 const DEFAULT_INK: Record<TextVariant, string> = {
@@ -26,12 +26,14 @@ const DEFAULT_INK: Record<TextVariant, string> = {
   body: 'text-ink',
   label: 'text-ink',
   caption: 'text-quiet-ink',
-  section: 'text-quiet-ink',
+  section: 'text-label',
 };
 
 // The biggest sizes are already made for arm's length, so they grow less with the reading size than the
 // rest; the layout stays whole at the largest settings.
-const MAX_SCALE: Record<TextVariant, number> = { display: 1.35, headline: 1.5, title: 1.8, body: 2, label: 2, caption: 2, section: 1.8 };
+const MAX_SCALE: Record<TextVariant, number> = { display: 1.35, headline: 1.5, title: 1.8, body: 2, label: 2, caption: 2, section: 1.7 };
+
+export type TxtProps = TextProps & { variant?: TextVariant; ink?: string; numbers?: boolean; className?: string };
 
 export function Txt({
   variant = 'body',
@@ -39,7 +41,7 @@ export function Txt({
   numbers = false,
   className,
   ...props
-}: TextProps & { variant?: TextVariant; ink?: string; numbers?: boolean; className?: string }) {
+}: TxtProps) {
   return (
     <Text
       maxFontSizeMultiplier={MAX_SCALE[variant]}

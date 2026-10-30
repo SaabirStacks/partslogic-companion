@@ -2,10 +2,10 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { feel } from '@/feel/feel';
 import { useDebounced } from '@/lib/use-debounced';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
-import { scanFeedback } from '@/scan/feedback';
 import { resolveCode } from '@/scan/resolve';
 import { useWorkingLocation } from '@/session/location-provider';
 import { ActionBar } from '@/ui/action-bar';
@@ -42,17 +42,17 @@ export function ScanCode({ onCode }: { onCode: (code: string) => void }) {
     try {
       const hit = await resolveCode(code, location);
       if (hit.type === 'part') {
-        scanFeedback.unknown();
+        feel('unknown');
         setFound({ kind: 'part', partId: hit.partId, name: `${hit.brand} ${hit.number}` });
       } else if (hit.type === 'bin') {
-        scanFeedback.unknown();
+        feel('unknown');
         setFound({ kind: 'other', title: hit.bin, detail: 'That’s a bin label' });
       } else {
-        scanFeedback.found();
+        feel('scan');
         onCode(code);
       }
     } catch (error) {
-      scanFeedback.failed();
+      feel('refused');
       setFound({ kind: 'other', title: code, detail: (error as Error).message });
     }
   }
@@ -61,11 +61,11 @@ export function ScanCode({ onCode }: { onCode: (code: string) => void }) {
     <JobScreen
       placeholder="Barcode on the box"
       onScan={(code) => void check(code)}
-      banner={<JobBanner title="Scan the barcode" />}
+      banner={<JobBanner family="parts" title="Scan the barcode" />}
       result={
         found?.kind === 'part' ? (
           <ScanResultCard key={found.partId} tone="warn" status={{ icon: 'warning', label: 'Already a part' }} title={found.name}>
-            <Button label="Open the part" icon="forward" variant="secondary" compact onPress={() => router.push(`/part/${found.partId}`)} />
+            <Button label="Open the part" icon="forward" variant="tinted" compact onPress={() => router.push(`/part/${found.partId}`)} />
           </ScanResultCard>
         ) : found ? (
           <ScanResultCard key={found.title} tone="warn" status={{ icon: 'warning', label: 'Not added' }} title={found.title} detail={found.detail} />

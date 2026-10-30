@@ -12,6 +12,7 @@ import { PartRow } from '@/features/part/part-row';
 import type { RecentPart } from '@/lib/prefs';
 import { useRemote } from '@/lib/use-remote';
 import { isSystemBin } from '@/scan/system-bins';
+import { binName, otherLocationName } from '@/features/bins/bin-name';
 import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import { ActionBar } from '@/ui/action-bar';
@@ -54,7 +55,7 @@ export default function LookUp() {
       action={<Action view={view} lookUp={lookUp} canCount={canCount} />}>
       {binMatches.length > 0 && location ? (
         <>
-          <SectionLabel>{`Bins in ${location.name}`}</SectionLabel>
+          <SectionLabel>Bins</SectionLabel>
           {binMatches.map((bin) => (
             <PressableCard
               key={bin.binId}
@@ -98,6 +99,18 @@ export default function LookUp() {
   );
 }
 
+// A scanned or chosen bin: its name, and the location only when it's not this phone's.
+function BinAnswer({ view }: { view: Extract<LookUpView, { kind: 'bin' }> }) {
+  const { location, locations } = useWorkingLocation();
+  const elsewhere = otherLocationName(view.location, location, locations);
+  const title = binName(view.bin, location, locations);
+  return isSystemBin(view.bin) ? (
+    <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'System bin' }} title={title} detail={[elsewhere, 'Can’t be counted'].filter(Boolean).join(' · ')} />
+  ) : (
+    <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'Bin' }} title={title} detail={elsewhere} />
+  );
+}
+
 function Answer({ view, lookUp, currency, binMatches }: { view: LookUpView; lookUp: LookUpApi; currency: string; binMatches: number }) {
   switch (view.kind) {
     case 'working':
@@ -105,27 +118,23 @@ function Answer({ view, lookUp, currency, binMatches }: { view: LookUpView; look
     case 'part':
       return <PartCard key={view.at} part={view.part} currency={currency} onOpen={() => lookUp.openPart(view.part)} />;
     case 'bin':
-      return isSystemBin(view.bin) ? (
-        <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'System bin' }} title={view.bin} detail={`${view.location} · Can’t be counted`} />
-      ) : (
-        <ScanResultCard tone="neutral" status={{ icon: 'bin', label: 'Bin' }} title={view.bin} detail={view.location} />
-      );
+      return <BinAnswer view={view} />;
     case 'unknown':
       return (
         <ScanResultCard tone="warn" status={{ icon: 'warning', label: 'Unknown code' }} title={view.code} detail={barcodeProblem(view.code)}>
-          <Button label="Search instead" icon="lookup" variant="secondary" compact onPress={() => lookUp.search(view.code)} />
+          <Button label="Search instead" icon="lookup" variant="tinted" compact onPress={() => lookUp.search(view.code)} />
         </ScanResultCard>
       );
     case 'offline':
       return (
         <ScanResultCard tone="warn" status={{ icon: 'offline', label: 'No signal' }} title={view.code} detail="Not in the scan list on this phone">
-          <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => lookUp.retry(view.code, view.typed)} />
+          <Button label="Try again" icon="retry" variant="tinted" compact onPress={() => lookUp.retry(view.code, view.typed)} />
         </ScanResultCard>
       );
     case 'error':
       return (
         <ScanResultCard tone="stop" status={{ icon: 'stop', label: 'Didn’t work' }} title={view.code} detail={view.message}>
-          <Button label="Try again" icon="retry" variant="secondary" compact onPress={() => lookUp.retry(view.code, view.typed)} />
+          <Button label="Try again" icon="retry" variant="tinted" compact onPress={() => lookUp.retry(view.code, view.typed)} />
         </ScanResultCard>
       );
     case 'results':

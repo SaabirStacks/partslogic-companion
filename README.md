@@ -4,7 +4,7 @@ The phone app for PartsLogic, Eclipse Auto Parts' parts and stock system. Staff 
 own iPhones and Android phones to look parts up, receive deliveries, put stock away and count bins, and it
 keeps working with no signal.
 
-Built with Expo (SDK 57), Expo Router, TypeScript and NativeWind. It talks to the same Supabase project as
+Built with Expo (SDK 58), Expo Router, TypeScript and NativeWind. It talks to the same Supabase project as
 the PartsLogic back office and calls the same database functions; it never reimplements stock rules.
 
 | Path | What it is |

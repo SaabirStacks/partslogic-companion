@@ -1,4 +1,4 @@
-import { Easing, FadeIn, FadeInDown, LinearTransition, ReduceMotion } from 'react-native-reanimated';
+import { Easing, FadeIn, FadeInDown, FadeInLeft, FadeInRight, LinearTransition, ReduceMotion } from 'react-native-reanimated';
 
 // The app's few moves, in one place. Motion only ever shows a change of state (a scan landing, a line
 // arriving, a total changing), fast enough that nobody waits for it. With the
@@ -12,6 +12,11 @@ export const RISE = FadeInDown.duration(160).easing(EASE_OUT).reduceMotion(Reduc
 
 // Something new arriving in place: a resume row, a changed status.
 export const APPEAR = FadeIn.duration(160).reduceMotion(ReduceMotion.Never);
+
+// The next set of choices arriving from the side being moved towards: deeper (an aisle, then its letters)
+// from the right, a step back from the left.
+export const STEP_IN = FadeInRight.duration(180).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
+export const STEP_BACK = FadeInLeft.duration(180).easing(EASE_OUT).reduceMotion(ReduceMotion.System);
 
 // Neighbours sliding to make room when a line is added or removed.
 export const SETTLE = LinearTransition.duration(180).easing(EASE_OUT).reduceMotion(ReduceMotion.System);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 
 import { clock } from '@/lib/format';
 import { ActionBar } from '@/ui/action-bar';
@@ -12,7 +12,7 @@ import { SearchInput } from '@/ui/search-input';
 import { Segmented } from '@/ui/segmented';
 import { StatusStrip } from '@/ui/status-strip';
 import { Txt } from '@/ui/text';
-import { useColour } from '@/ui/theme';
+import { PlaceholderRows } from '@/ui/placeholder';
 
 import { cleanReference, REFERENCE_MAX, SENDER_KINDS, type Sender } from './sender';
 import type { SenderOption } from './sender-options';
@@ -75,7 +75,6 @@ export function WhoIsItFromView({
   onReference: (text: string) => void;
   onStart: () => void;
 }) {
-  const colourOf = useColour();
   const isChosen = (option: SenderOption) => chosen?.kind === option.kind && chosen.id === option.id;
   const noun = kind === 'supplier' ? 'suppliers' : 'manufacturers';
 
@@ -92,14 +91,10 @@ export function WhoIsItFromView({
         {list.failed && list.options.length === 0 ? (
           <>
             <StatusStrip tone="stop" icon="offline" text={kind === 'supplier' ? 'Suppliers didn’t load' : 'Search needs signal'} />
-            <Button label="Try again" icon="retry" variant="secondary" onPress={list.reload} />
+            <Button label="Try again" icon="retry" variant="tinted" onPress={list.reload} />
           </>
         ) : null}
-        {list.loading ? (
-          <View className="py-4">
-            <ActivityIndicator color={colourOf('quiet-ink')} />
-          </View>
-        ) : null}
+        {list.loading && list.options.length === 0 ? <PlaceholderRows label="Loading" /> : null}
         {!list.loading && !list.failed && list.options.length === 0 ? (
           <Txt variant="caption" className="px-1">
             {query.trim() ? `No ${noun} match “${query.trim()}”` : `No ${noun} yet · the office adds them in PartsLogic`}

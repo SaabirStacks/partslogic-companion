@@ -2,22 +2,24 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
+import { setSoundsEnabled, soundsEnabled } from '@/feel/feel';
 import { useOutbox } from '@/queue/outbox-provider';
 import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
-import { Fact, Facts } from '@/ui/facts';
+import { Fact, Facts, FactSwitch } from '@/ui/facts';
 import { Txt } from '@/ui/text';
 
 const capitalise = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-// Who is signed in on this phone, where they're working, and sign out.
+// Who is signed in on this phone, where they're working, this phone's sounds, and sign out.
 export function AccountSection() {
   const { state, signOut } = useSession();
   const { location } = useWorkingLocation();
   const { waiting, needsAttention } = useOutbox();
   const [confirming, setConfirming] = useState(false);
+  const [sounds, setSounds] = useState(soundsEnabled);
   if (state.status !== 'member') return null;
   const unsent = waiting + needsAttention;
 
@@ -31,6 +33,18 @@ export function AccountSection() {
         <Fact label="Role" value={capitalise(state.member.role)} />
         <Fact label="Location" value={location?.name ?? 'Not chosen'} onPress={() => router.push('/location')} />
         <Fact label="Workspace" value={state.member.workspaceName} last />
+      </Facts>
+      <Facts>
+        <FactSwitch
+          label="Sounds"
+          detail="Beeps for scans, warnings and finished jobs. The silent switch turns them off too."
+          value={sounds}
+          onChange={(on) => {
+            setSounds(on);
+            setSoundsEnabled(on);
+          }}
+          last
+        />
       </Facts>
       <Button label="Sign out" icon="signOut" variant="destructive" onPress={() => setConfirming(true)} />
       <ConfirmSheet
