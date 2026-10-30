@@ -25,7 +25,7 @@ export function Ticking({
   const style = useAnimatedStyle(() => ({ transform: [{ scale: 1 + swell.get() * 0.14 }] }));
 
   return (
-    <Animated.View style={[{ alignSelf: origin === 'center' ? 'center' : 'flex-start', transformOrigin: origin }, style]}>
+    <Animated.View style={[{ transformOrigin: origin }, style]}>
       <Txt numbers numberOfLines={1} {...text}>
         {value}
       </Txt>

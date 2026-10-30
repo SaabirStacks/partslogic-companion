@@ -54,7 +54,7 @@ import { boardFor } from '@/workflows/catalogue';
 import { useBinBrowse } from '@/features/bins/use-bin-browse';
 import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 
-import { Fixtures, OIL_FILTER, OUTBOX_ITEMS, RECENT } from './fixtures';
+import { Fixtures, OIL_FILTER, OIL_FILTER_LOW, OIL_FILTER_OUT, OUTBOX_ITEMS, RECENT } from './fixtures';
 
 // Dev-only: every screen of the redesign drawn from fixture data, so it can be captured in a browser at
 // phone size for review (?screen=board). Light or dark follows the browser's colour scheme. The native
@@ -822,6 +822,22 @@ const SCREENS: Record<string, () => ReactNode> = {
       <View className="flex-1">
         <StackHeader title="Part" />
         <PartView detail={OIL_FILTER} savedAt={null} />
+      </View>
+    </Fixtures>
+  ),
+  'part-low': () => (
+    <Fixtures>
+      <View className="flex-1">
+        <StackHeader title="Part" />
+        <PartView detail={OIL_FILTER_LOW} savedAt={null} />
+      </View>
+    </Fixtures>
+  ),
+  'part-out': () => (
+    <Fixtures>
+      <View className="flex-1">
+        <StackHeader title="Part" />
+        <PartView detail={OIL_FILTER_OUT} savedAt={null} />
       </View>
     </Fixtures>
   ),

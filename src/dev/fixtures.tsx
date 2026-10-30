@@ -92,6 +92,16 @@ export const OIL_FILTER = {
   },
 } as unknown as import('@/vendor/partslogic/shared/catalogue').PartDetail;
 
+// The same filter low on stock (one bin empty, so its row has no Move), and with none left.
+export const OIL_FILTER_LOW = {
+  ...OIL_FILTER,
+  item: { ...OIL_FILTER.item, onHand: 3, belowReorder: true, stock: [{ binId: 1, place: 'A-01', qty: 3 }, { binId: 2, place: 'C-03', qty: 0 }] },
+} as typeof OIL_FILTER;
+export const OIL_FILTER_OUT = {
+  ...OIL_FILTER,
+  item: { ...OIL_FILTER.item, onHand: 0, belowReorder: true, stock: [] },
+} as typeof OIL_FILTER;
+
 export const RECENT = [
   { partId: 7, brand: 'Mann', number: 'HU 816 x', description: 'Oil filter' },
   { partId: 8, brand: 'Bosch', number: '0 986 494 119', description: 'Brake pad set, front axle' },

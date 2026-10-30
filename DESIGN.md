@@ -54,8 +54,8 @@ The phone's own typeface (San Francisco, Roboto), in sentence case. Codes and qu
 
 | Variant | Size / line | Weight | For |
 |---|---|---|---|
-| `display` | 40 / 44 | 800 | Part numbers, on hand, a receipt's reference |
-| `headline` | 28 / 32 | 700 | Totals, quantities, screen titles |
+| `display` | 40 / 44 | 800 | Part numbers, a receipt's reference |
+| `headline` | 28 / 32 | 700 | Totals (on hand, a tally), quantities, screen titles |
 | `title` | 20 / 25 | 700 | Card titles, bin names in rows |
 | `body` | 17 / 23 | 400 | Sentences, when one is needed |
 | `label` | 17 / 22 | 600 | Row names, button words |
@@ -98,6 +98,10 @@ Every scanning job is laid out the same way (`JobScreen`), so a scan always land
 3. The result card, raised, rising over the camera's bottom edge.
 4. The tally (big totals) and the lines, scrolling.
 5. The one main action, pinned at the bottom.
+
+A part's stock is a short stock sheet (`StockCard`): On hand heads it on its state's soft colour, with the
+state in words under it, then each bin with Move beside it. Every number sits in one column, so the total
+reads as the sum of the bins under it.
 
 A job ends with a receipt (`ReceiptCard`): where it stands (a chip that fills in as PartsLogic answers), the
 reference large, when, then the numbers as rows. Lists that can be fetched again pull to refresh. Loading
