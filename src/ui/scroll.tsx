@@ -1,5 +1,12 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Keyboard, ScrollView, TextInput, View, type ScrollViewProps } from 'react-native';
+import {
+  Keyboard,
+  ScrollView,
+  TextInput,
+  type ScrollViewInstance,
+  type ScrollViewProps,
+  type ViewInstance,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // How much room is left below the last thing in a list.
@@ -18,8 +25,8 @@ export function Scroll({
   ...props
 }: Omit<ScrollViewProps, 'children'> & { toEdge?: boolean; children?: ReactNode }) {
   const insets = useSafeAreaInsets();
-  const scroll = useRef<ScrollView>(null);
-  const inner = useRef<View>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
+  const inner = useRef<ViewInstance>(null);
   const offset = useRef(0);
   const height = useRef(0);
 

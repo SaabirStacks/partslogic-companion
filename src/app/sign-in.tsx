@@ -1,6 +1,6 @@
 import { useNetworkState } from 'expo-network';
 import { useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSession } from '@/session/session-provider';
@@ -15,7 +15,7 @@ import { Scroll } from '@/ui/scroll';
 export default function SignIn() {
   const { checking, signIn } = useSession();
   const offline = useNetworkState().isInternetReachable === false;
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

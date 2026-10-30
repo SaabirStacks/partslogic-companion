@@ -1,12 +1,12 @@
 import type { Ref } from 'react';
-import { TextInput, View, type TextInputProps } from 'react-native';
+import { TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 
 import { Txt } from './text';
 import { useColour } from './theme';
 
 // A labelled text box, 56 tall, on a white surface. The label sits above it, never a placeholder that
 // disappears while typing.
-export function Field({ label, ref, ...props }: TextInputProps & { label: string; ref?: Ref<TextInput> }) {
+export function Field({ label, ref, ...props }: TextInputProps & { label: string; ref?: Ref<TextInputInstance> }) {
   const colourOf = useColour();
   return (
     <View className="gap-1.5">

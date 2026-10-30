@@ -121,7 +121,7 @@ back office, so what the phone does and what the office sees agree.
 
 ## Capabilities and Constraints
 
-- **Built with:** Expo SDK 57, Expo Router, React Native, NativeWind.
+- **Built with:** Expo SDK 58, Expo Router, React Native, NativeWind.
 - **Offline:**
   - outbox kept in SQLite
   - a scan list saved on the phone for offline lookups
