@@ -9,13 +9,8 @@ import { useRemote } from '@/lib/use-remote';
 import { useSession } from '@/session/session-provider';
 import { Button } from '@/ui/button';
 import { Fact, Facts } from '@/ui/facts';
-import { familyColours } from '@/ui/family';
-import { Icon } from '@/ui/icon';
-import { StatusChip } from '@/ui/status-chip';
-import { Card, PressableCard, TONE_TEXT } from '@/ui/surface';
 import { SectionLabel } from '@/ui/section-label';
 import { Txt } from '@/ui/text';
-import { Ticking } from '@/ui/ticking';
 import { StatusStrip } from '@/ui/status-strip';
 import { useColour } from '@/ui/theme';
 import { Scroll } from '@/ui/scroll';
@@ -24,11 +19,13 @@ import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 
 import { PartPhotos, photoList } from './part-photos';
 import { PartRow } from './part-row';
+import { StockCard } from './stock-card';
 import { formatPrice, formatQty } from './stock';
 
 // The whole part, photo first: the picture big enough to recognise the part, then who makes it and its
-// number, then stock and every bin on one card (with Move), prices, codes and alternatives. Nothing about
-// stock is hidden. savedAt is set when this is the copy saved on the phone (no signal).
+// number, then stock as a short stock sheet (on hand, then every bin with Move), prices, codes and
+// alternatives. Nothing about stock is hidden. savedAt is set when this is the copy saved on the phone (no
+// signal).
 const savedTime = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -62,7 +59,6 @@ export function PartView({ detail, savedAt, onRefresh, refreshing = false }: { d
     ...(item?.sku ? [{ label: 'SKU', value: item.sku }] : []),
     ...detail.barcodes.map((barcode) => ({ label: 'Barcode', value: barcode.display })),
   ];
-  const bins = familyColours('stock');
 
   return (
     <Scroll className="bg-ground" contentContainerClassName="gap-3 px-4 pt-3" onRefresh={onRefresh} refreshing={refreshing}>
@@ -85,55 +81,13 @@ export function PartView({ detail, savedAt, onRefresh, refreshing = false }: { d
         ) : null}
       </View>
 
-      <Card className="overflow-hidden">
-        <View
-          accessible
-          accessibilityLabel={`${answer.status.label}${answer.onHand !== null ? `, ${answer.onHand} on hand` : ''}`}
-          className="min-h-16 flex-row items-center gap-3 px-4 py-3">
-          <View className="flex-1 flex-row items-baseline gap-2">
-            {answer.onHand !== null ? (
-              <>
-                <Ticking value={answer.onHand} variant="display" ink={TONE_TEXT[answer.tone]} />
-                <Txt variant="label" ink="text-quiet-ink">
-                  on hand
-                </Txt>
-              </>
-            ) : null}
-          </View>
-          <StatusChip tone={answer.tone} icon={answer.status.icon} label={answer.status.label} />
-        </View>
-        {item && item.stock.length === 0 ? (
-          <View className="border-t border-rule px-4 py-3">
-            <Txt variant="caption">Not in any bin</Txt>
-          </View>
-        ) : null}
-        {item?.stock.map((line) => (
-          <View key={line.binId} className="min-h-16 flex-row items-center gap-3 border-t border-rule py-2 pl-4 pr-2">
-            <View className={`h-8 w-8 items-center justify-center rounded-[9px] ${bins.bg}`}>
-              <Icon name="bin" size={16} colour={bins.ink} />
-            </View>
-            <Txt variant="title" numberOfLines={1} className="flex-1 font-bold">
-              {nameOf(line.place)}
-            </Txt>
-            <Txt variant="headline" numbers className="font-extrabold">
-              {formatQty(line.qty)}
-            </Txt>
-            {canMove && line.qty > 0 ? (
-              <PressableCard
-                tone="tint"
-                haptic
-                accessibilityLabel={`Move stock from ${nameOf(line.place)}`}
-                onPress={() => router.push({ pathname: '/move', params: { partId: String(part.id), fromBinId: String(line.binId) } })}
-                className="h-12 flex-row items-center gap-1.5 px-3">
-                <Icon name="move" size={18} colour="action-ink" />
-                <Txt variant="label" ink="text-action-ink" className="font-bold">
-                  Move
-                </Txt>
-              </PressableCard>
-            ) : null}
-          </View>
-        ))}
-      </Card>
+      <StockCard
+        answer={answer}
+        lines={item ? item.stock : null}
+        nameOf={nameOf}
+        canMove={canMove}
+        onMove={(line) => router.push({ pathname: '/move', params: { partId: String(part.id), fromBinId: String(line.binId) } })}
+      />
 
       {prices.length > 0 ? (
         <>
