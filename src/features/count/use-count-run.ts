@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { db } from '@/db/database';
+import { feel } from '@/feel/feel';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
@@ -219,6 +220,7 @@ export function useCountRun(workflow: RunWorkflow, refresh: unknown, watching: b
         }
       }
       await runs.finish(run.runId);
+      feel('done');
       setNotice(null);
       setFinished({ run: { ...ending, finishedAt: new Date().toISOString() }, progress: runProgress(ending, runCounts), end });
       setRun(null);

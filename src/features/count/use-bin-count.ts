@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { db } from '@/db/database';
+import { feel } from '@/feel/feel';
 import { deviceLabel } from '@/lib/device';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
@@ -244,6 +245,7 @@ export function useBinCount(workflow: CountWorkflow) {
         `Finish count of bin ${count.binCode}`,
       );
       await store.finish(count.stocktakeId);
+      feel('done');
       setFinished({
         stocktakeId: count.stocktakeId,
         binCode: count.binCode,

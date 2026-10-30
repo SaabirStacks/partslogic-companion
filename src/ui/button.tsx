@@ -40,7 +40,7 @@ export function Button({ label, onPress, variant = 'primary', icon, busy = false
   return (
     <PressableCard
       tone={FILL_OF[variant]}
-      haptic={variant === 'primary' || variant === 'tinted'}
+      haptic={variant === 'destructive' ? 'firm' : variant === 'primary' || variant === 'tinted'}
       accessibilityLabel={label}
       accessibilityState={{ disabled, busy }}
       disabled={disabled}

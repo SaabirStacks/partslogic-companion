@@ -38,7 +38,7 @@ export function BinChip({
   );
   const frame = cx('min-h-12 justify-center px-3', selected && 'border-2 border-ink');
   return onPress ? (
-    <PressableCard accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} className={frame}>
+    <PressableCard haptic="tick" accessibilityLabel={label} accessibilityState={{ selected }} onPress={onPress} className={frame}>
       {face}
     </PressableCard>
   ) : (

@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
+import { feel } from '@/feel/feel';
 import { recentPartsPref, type RecentPart } from '@/lib/prefs';
 import { supabase } from '@/lib/supabase';
-import { scanFeedback } from '@/scan/feedback';
 import { resolveCode } from '@/scan/resolve';
 import { useWorkingLocation } from '@/session/location-provider';
 import { classifyQueueError } from '@/vendor/partslogic/shared/errors';
@@ -61,24 +61,24 @@ export function useLookUp() {
     try {
       const hit = await resolveCode(code, location);
       if (hit.type === 'part') {
-        scanFeedback.found();
+        feel('scan');
         const part = { partId: hit.partId, brand: hit.brand, number: hit.number, description: null };
         remember(part);
         setView({ kind: 'part', code, part, at: Date.now() });
       } else if (hit.type === 'bin') {
-        scanFeedback.found();
+        feel('scan');
         setView({ kind: 'bin', code, binId: hit.binId, bin: hit.bin, location: hit.location });
       } else if (hit.type === 'offline') {
-        scanFeedback.failed();
+        feel('refused');
         setView({ kind: 'offline', code, typed });
       } else if (typed) {
         await search(code);
       } else {
-        scanFeedback.unknown();
+        feel('unknown');
         setView({ kind: 'unknown', code });
       }
     } catch (error) {
-      scanFeedback.failed();
+      feel('refused');
       setView({ kind: 'error', code, typed, message: (error as Error).message });
     }
   }
@@ -96,7 +96,7 @@ export function useLookUp() {
     openPart,
     // A bin chosen from the list, shown as if its label had been scanned.
     showBin: (bin: { binId: number; code: string }) => {
-      scanFeedback.found();
+      feel('scan');
       setView({ kind: 'bin', code: bin.code, binId: bin.binId, bin: bin.code, location: location?.code ?? '' });
     },
     clear: () => setView({ kind: 'idle' }),

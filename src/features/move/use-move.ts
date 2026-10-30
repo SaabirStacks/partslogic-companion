@@ -2,11 +2,11 @@ import { useState } from 'react';
 
 import { useBinName } from '@/features/bins/use-bin-name';
 import { formatQty } from '@/features/part/stock';
+import { feel } from '@/feel/feel';
 import { deviceLabel } from '@/lib/device';
 import { useOnline } from '@/lib/network';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
-import { scanFeedback } from '@/scan/feedback';
 import { resolveCode } from '@/scan/resolve';
 import { useWorkingLocation } from '@/session/location-provider';
 import { getPartDetail } from '@/vendor/partslogic/shared/catalogue';
@@ -53,34 +53,34 @@ export function useMove(start: { partId: number | null; fromBinId: number | null
     try {
       const hit = await resolveCode(code, location);
       if (hit.type === 'part') {
-        scanFeedback.found();
+        feel('scan');
         choosePart(hit.partId);
       } else if (hit.type === 'bin') {
         if (partId === null) {
-          scanFeedback.unknown();
+          feel('unknown');
           setNotice({ title: hit.bin, detail: 'Scan the part first' });
         } else if (fromBinId === null) {
           const holding = stock.find((line) => line.binId === hit.binId);
           if (holding) {
-            scanFeedback.found();
+            feel('scan');
             setFromBinId(hit.binId);
           } else {
-            scanFeedback.unknown();
+            feel('unknown');
             setNotice({ title: hit.bin, detail: 'None of it here · choose the bin it’s in' });
           }
         } else if (hit.binId === fromBinId) {
-          scanFeedback.unknown();
+          feel('unknown');
           setNotice({ title: hit.bin, detail: 'That’s where it’s coming from' });
         } else {
-          scanFeedback.found();
+          feel('scan');
           setTo({ binId: hit.binId, label: hit.bin });
         }
       } else {
-        scanFeedback.unknown();
+        feel('unknown');
         setNotice({ title: code, detail: 'Not a part or bin we know' });
       }
     } catch (error) {
-      scanFeedback.failed();
+      feel('refused');
       setNotice({ title: code, detail: (error as Error).message });
     }
   }
@@ -90,10 +90,10 @@ export function useMove(start: { partId: number | null; fromBinId: number | null
     setBusy(true);
     try {
       await transferStock(supabase, { fromBinId, toBinId: to.binId, partId, qty, reference: `Moved on ${deviceLabel()}` });
-      scanFeedback.found();
+      feel('done');
       setResult({ kind: 'moved', message: `${formatQty(qty)} · ${nameOf(from?.place ?? '')} → ${nameOf(to.label)}` });
     } catch (error) {
-      scanFeedback.failed();
+      feel('refused');
       setResult(
         outcomeUnknown(error)
           ? { kind: 'unknown', message: 'No answer from PartsLogic · check the stock before trying again' }

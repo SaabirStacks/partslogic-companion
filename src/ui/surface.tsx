@@ -1,6 +1,8 @@
-import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
 import { Pressable, View, type GestureResponderEvent, type PressableProps, type ViewProps } from 'react-native';
+
+import { feel } from '@/feel/feel';
+import type { TouchMoment } from '@/feel/moments';
 
 import { cx } from './cx';
 import { depthStyle, type Depth } from './depth';
@@ -83,7 +85,8 @@ export function Card({ tone = 'neutral', depth, className, style, ...props }: Vi
 }
 
 // A surface you can press: it darkens and sinks a little while held (NativeWind's active: state on a
-// plain Pressable; an animated wrapper loses these styles on phones). Main actions add a light haptic.
+// plain Pressable; an animated wrapper loses these styles on phones). haptic is the touch it makes
+// (moments.ts): true for a main action's light tap, 'tick' for choosing, 'firm' for a red button.
 // Disabled keeps its words readable: a grey surface with quiet text, never a faded colour.
 export function PressableCard({
   tone = 'neutral',
@@ -94,7 +97,7 @@ export function PressableCard({
   children,
   onPress,
   ...props
-}: Omit<PressableProps, 'children' | 'style'> & SurfaceStyle & { depth?: Depth; haptic?: boolean; children: ReactNode }) {
+}: Omit<PressableProps, 'children' | 'style'> & SurfaceStyle & { depth?: Depth; haptic?: boolean | TouchMoment; children: ReactNode }) {
   const lift = useDepth(tone, disabled ? 'flat' : depth);
   return (
     <Pressable
@@ -102,7 +105,7 @@ export function PressableCard({
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={(event: GestureResponderEvent) => {
-        if (haptic) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (haptic) feel(haptic === true ? 'press' : haptic);
         onPress?.(event);
       }}
       className={cx(

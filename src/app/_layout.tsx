@@ -7,6 +7,7 @@ import { Platform, View } from 'react-native';
 
 import { Gallery } from '@/dev/gallery';
 import { NotSetUp } from '@/features/setup/not-set-up';
+import { prepareFeel } from '@/feel/feel';
 import { publicConfig } from '@/lib/config';
 import { OutboxProvider } from '@/queue/outbox-provider';
 import { ScanIndexProvider } from '@/scan/scan-index-provider';
@@ -40,6 +41,11 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const scheme = useScheme();
+
+  // Ready the sounds as the app opens, so the first scan beeps on time.
+  useEffect(() => {
+    if (Platform.OS !== 'web') prepareFeel();
+  }, []);
 
   // On the web the app is only the dev review gallery: the phone screens drawn from fixtures, for
   // screenshots at phone size. Nothing on the web signs in or keeps data.

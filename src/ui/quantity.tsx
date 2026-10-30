@@ -8,7 +8,7 @@ import { useColour } from './theme';
 
 function Step({ label, icon, onPress, disabled }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {
   return (
-    <PressableCard accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-14 w-14 items-center justify-center">
+    <PressableCard haptic="tick" accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-14 w-14 items-center justify-center">
       <Icon name={icon} size={22} />
     </PressableCard>
   );

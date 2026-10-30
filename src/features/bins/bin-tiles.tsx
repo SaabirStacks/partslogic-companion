@@ -181,7 +181,7 @@ function Tile({
   return (
     <View style={{ width: size, minHeight: size }}>
       <PressableCard
-        haptic
+        haptic="tick"
         accessibilityRole={choosing ? 'checkbox' : 'button'}
         accessibilityState={choosing ? { checked: all } : undefined}
         accessibilityLabel={spoken}

@@ -1,5 +1,7 @@
 import { Pressable, View } from 'react-native';
 
+import { feel } from '@/feel/feel';
+
 import { cx } from './cx';
 import { Txt } from './text';
 
@@ -24,7 +26,10 @@ export function Segmented<T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={option.label}
-            onPress={() => onChange(option.value)}
+            onPress={() => {
+              if (!on) feel('tick');
+              onChange(option.value);
+            }}
             style={on ? RAISED : undefined}
             className={cx('min-h-11 flex-1 items-center justify-center rounded-[9px] px-2', on && 'bg-surface')}>
             <Txt variant="label" ink={on ? 'text-ink' : 'text-quiet-ink'} numberOfLines={1} className="font-bold">
