@@ -6,6 +6,7 @@ import type { BinChoice } from '@/features/count/bin-choices';
 import { formatQty } from '@/features/part/stock';
 import { plural } from '@/lib/format';
 import { cx } from '@/ui/cx';
+import { pickColours } from '@/ui/family';
 import { Icon } from '@/ui/icon';
 import { STEP_BACK, STEP_IN } from '@/ui/motion';
 import { PressableCard } from '@/ui/surface';
@@ -14,6 +15,8 @@ import { Txt } from '@/ui/text';
 import { binStep, type StepAsk, type StepTile } from './bin-steps';
 
 const GAP = 8;
+// A chosen tile is marked in a bin's violet, like any chosen bin.
+const BIN = pickColours('bin');
 // The screens it sits in keep 16 px either side.
 const GUTTERS = 32;
 
@@ -198,10 +201,11 @@ function Tile({
         accessibilityState={choosing ? { checked: all } : undefined}
         accessibilityLabel={spoken}
         onPress={onPress}
-        className={cx('flex-1 items-center justify-center gap-0.5 px-1.5 py-2', all && 'border-2 border-ink')}>
+        chosen={all ? BIN : null}
+        className="flex-1 items-center justify-center gap-0.5 px-1.5 py-2">
         {all ? (
           // On the corner, clear of the number.
-          <View className="absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full border-2 border-ground bg-ink">
+          <View className={cx('absolute -right-2 -top-2 h-6 w-6 items-center justify-center rounded-full border-2 border-ground', BIN.dot)}>
             <Icon name="check" size={12} colour="surface" />
           </View>
         ) : null}

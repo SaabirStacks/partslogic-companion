@@ -131,6 +131,7 @@ export function AddForm({ code }: { code: string }) {
           <>
             <SectionLabel>Brand</SectionLabel>
             <Choice
+              pick="brand"
               selected
               title={brand.brandId == null ? `${brand.name} · new` : brand.name}
               detail="Tap to change"
@@ -154,6 +155,7 @@ export function AddForm({ code }: { code: string }) {
             {adding.online
               ? (brands.data ?? []).slice(0, 6).map((option) => (
                   <Choice
+                    pick="brand"
                     key={option.brandId}
                     title={option.name}
                     detail={[option.alias ? `Also ${option.alias}` : null, `${option.parts} parts`].filter(Boolean).join(' · ')}

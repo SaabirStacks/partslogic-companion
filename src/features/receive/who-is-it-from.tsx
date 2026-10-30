@@ -103,7 +103,7 @@ export function WhoIsItFromView({
 
         <View className="gap-2" accessibilityRole="radiogroup">
           {list.options.slice(0, 40).map((option) => (
-            <Choice key={`${option.kind}:${option.id}`} title={option.name} detail={option.detail} selected={isChosen(option)} onPress={() => onChoose(option)} />
+            <Choice pick="sender" key={`${option.kind}:${option.id}`} title={option.name} detail={option.detail} selected={isChosen(option)} onPress={() => onChoose(option)} />
           ))}
         </View>
 

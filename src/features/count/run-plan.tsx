@@ -120,13 +120,15 @@ export function RunPlanView({
 
         <View className="gap-2" accessibilityRole="radiogroup">
           <Choice
+            pick="bin"
             title="Every bin"
             detail={plural(list.choices.length, 'bin', 'bins')}
             selected={plan === 'every'}
             onPress={() => setPlan('every')}
           />
-          <Choice title="Choose bins" detail="An aisle or a few shelves" selected={plan === 'choose'} onPress={() => setPlan('choose')} />
+          <Choice pick="bin" title="Choose bins" detail="An aisle or a few shelves" selected={plan === 'choose'} onPress={() => setPlan('choose')} />
           <Choice
+            pick="bin"
             title="Never counted"
             detail={plural(never, 'bin', 'bins')}
             selected={plan === 'never'}
@@ -162,6 +164,7 @@ export function RunPlanView({
               <View className="gap-2">
                 {list.choices.map((bin) => (
                   <Choice
+                    pick="bin"
                     key={bin.binId}
                     title={bin.code}
                     detail={countedText(bin.lastCounted)}

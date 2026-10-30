@@ -17,3 +17,21 @@ const FAMILY: Record<WorkflowFamily, FamilyColours> = {
 export function familyColours(family: WorkflowFamily): FamilyColours {
   return FAMILY[family];
 }
+
+// What a chosen row, chip or tile is drawn in: the colour of the thing chosen, as it's coloured elsewhere.
+// Bins are stock violet (as on the part card), who goods come from is inbound teal, a part's brand is parts
+// plum, and a place (a location) takes the blue of the board's location pin. The outline and tick stay, so
+// colour is never the only sign of a choice.
+export type PickKind = 'bin' | 'sender' | 'brand' | 'place';
+
+const PICK: Record<PickKind, FamilyColours> = {
+  bin: FAMILY.stock,
+  sender: FAMILY.inbound,
+  brand: FAMILY.parts,
+  // The blue outbound borrows until it has a colour of its own.
+  place: FAMILY.outbound,
+};
+
+export function pickColours(kind: PickKind): FamilyColours {
+  return PICK[kind];
+}
