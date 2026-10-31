@@ -19,9 +19,12 @@ export function Choice({
   pick,
   onPress,
   accessibilityLabel,
+  detailLines = 1,
 }: {
   title: string;
   detail?: string | null;
+  // How many lines the detail may take (a role's description needs two).
+  detailLines?: number;
   selected?: boolean;
   // What's being chosen, which sets the colour it's marked in.
   pick: PickKind;
@@ -43,7 +46,7 @@ export function Choice({
           {title}
         </Txt>
         {detail ? (
-          <Txt variant="caption" numberOfLines={1}>
+          <Txt variant="caption" numberOfLines={detailLines}>
             {detail}
           </Txt>
         ) : null}

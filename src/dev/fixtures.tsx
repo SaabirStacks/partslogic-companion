@@ -7,6 +7,8 @@ import { ScanIndexContext, type ScanIndexContextValue } from '@/scan/scan-index-
 import { LocationContext, type LocationContextValue } from '@/session/location-provider';
 import { SessionContext, type SessionContextValue } from '@/session/session-provider';
 import type { SessionState } from '@/session/session-state';
+import type { AppRole, CurrentMember } from '@/vendor/partslogic/shared/members';
+import type { Person } from '@/vendor/partslogic/shared/people';
 
 // Dev-only stand-ins for the app's providers, so the review gallery can draw the real screens without
 // signing in, a database or a network. Nothing here runs on a phone.
@@ -23,11 +25,13 @@ export const LOCATIONS = [
 export const MEMBER: SessionState = {
   status: 'member',
   email: 'counter@example.com',
-  member: { userId: 'fixture', role: 'counter', workspaceName: 'Eclipse Auto Parts', currency: 'GBP' },
+  member: { userId: 'fixture', role: 'counter', name: 'Rahman', needsPassword: false, workspaceName: 'Eclipse Auto Parts', currency: 'GBP' },
 };
 
 export function Fixtures({
   session = MEMBER,
+  realRole,
+  previewRole = null,
   waiting = 0,
   needsAttention = 0,
   items = [],
@@ -35,6 +39,9 @@ export function Fixtures({
   children,
 }: {
   session?: SessionState;
+  // The signed-in person's own role when it differs from the one shown (a developer previewing).
+  realRole?: AppRole;
+  previewRole?: AppRole | null;
   waiting?: number;
   needsAttention?: number;
   items?: OutboxItem[];
@@ -42,7 +49,17 @@ export function Fixtures({
   online?: boolean;
   children: ReactNode;
 }) {
-  const sessionValue: SessionContextValue = { state: session, checking: false, signIn: async () => null, signOut: later, retry: noop };
+  const sessionValue: SessionContextValue = {
+    state: session,
+    checking: false,
+    signIn: async () => null,
+    choosePassword: async () => null,
+    signOut: later,
+    retry: noop,
+    realRole: realRole ?? (session.status === 'member' ? session.member.role : null),
+    previewRole,
+    setPreviewRole: noop,
+  };
   const locationValue: LocationContextValue = { location: LOCATIONS[0], locations: LOCATIONS, status: 'ready', choose: noop, refresh: noop };
   const outboxValue: OutboxContextValue = {
     enqueue: later,
@@ -140,3 +157,23 @@ export const OUTBOX_ITEMS: OutboxItem[] = [
   item('c', 'Count of bin A-01 started 09:40', 'done', at(9, 52)),
   item('d', 'Add part MANN HU 816 x', 'done', at(9, 31)),
 ];
+
+// People as an admin's phone would list them: two waiting for a role (made in Supabase), the owners, and a
+// counter on a set-up code.
+export const PEOPLE: Person[] = [
+  { userId: 'p-woasif', email: 'woasif@eclipseautoparts.com', name: null, role: null, needsPassword: false, signedUpAt: '2026-10-29T13:46:00', lastSignedInAt: '2026-10-30T08:12:00', isMe: false, canChange: true },
+  { userId: 'p-rayan', email: 'rayan@eclipseautoparts.com', name: null, role: null, needsPassword: false, signedUpAt: '2026-10-29T13:48:00', lastSignedInAt: null, isMe: false, canChange: true },
+  { userId: 'p-saabir', email: 'saabir@eclipseautoparts.com', name: 'Saabir', role: 'developer', needsPassword: false, signedUpAt: '2026-09-25T10:00:00', lastSignedInAt: '2026-10-31T07:40:00', isMe: true, canChange: false },
+  { userId: 'p-ilias', email: 'ilias@eclipseautoparts.com', name: 'Ilias', role: 'owner', needsPassword: false, signedUpAt: '2026-10-09T09:00:00', lastSignedInAt: '2026-10-24T16:20:00', isMe: false, canChange: true },
+  { userId: 'p-rahman', email: 'rahman@eclipseautoparts.com', name: 'Rahman Ali', role: 'counter', needsPassword: true, signedUpAt: '2026-10-31T09:05:00', lastSignedInAt: null, isMe: false, canChange: true },
+];
+
+export const DEVELOPER_MEMBER: CurrentMember = {
+  userId: '64e08d79-9231-4caa-b2a7-85127c32ed2e',
+  role: 'developer',
+  name: 'Saabir',
+  needsPassword: false,
+  workspaceName: 'Eclipse Auto Parts',
+  currency: 'GBP',
+};
+export const DEVELOPER: SessionState = { status: 'member', email: 'saabir@eclipseautoparts.com', member: DEVELOPER_MEMBER };

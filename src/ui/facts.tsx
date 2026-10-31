@@ -3,6 +3,7 @@ import { Pressable, Switch, View } from 'react-native';
 
 import { cx } from './cx';
 import { Icon } from './icon';
+import type { IconName } from './icons';
 import { Card } from './surface';
 import { Txt } from './text';
 import { useColour } from './theme';
@@ -84,5 +85,39 @@ export function FactSwitch({
         thumbColor="#ffffff"
       />
     </View>
+  );
+}
+
+// A line that opens another screen: a symbol, what it is, one line on what's there, and a chevron.
+export function FactLink({
+  icon,
+  label,
+  detail,
+  onPress,
+  last = false,
+}: {
+  icon: IconName;
+  label: string;
+  detail?: string | null;
+  onPress: () => void;
+  last?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={detail ? `${label}, ${detail}` : label}
+      onPress={onPress}
+      className={cx('min-h-16 flex-row items-center gap-3 px-4 py-3 active:bg-rule', !last && 'border-b border-rule')}>
+      <View className="h-9 w-9 items-center justify-center rounded-[9px] bg-rule">
+        <Icon name={icon} size={18} colour="action-ink" />
+      </View>
+      <View className="flex-1 gap-0.5">
+        <Txt variant="label" className="font-bold">
+          {label}
+        </Txt>
+        {detail ? <Txt variant="caption">{detail}</Txt> : null}
+      </View>
+      <Icon name="forward" size={16} colour="quiet-ink" />
+    </Pressable>
   );
 }

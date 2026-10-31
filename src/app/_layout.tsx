@@ -14,6 +14,8 @@ import { OutboxProvider } from '@/queue/outbox-provider';
 import { ScanIndexProvider } from '@/scan/scan-index-provider';
 import { LocationProvider } from '@/session/location-provider';
 import { SessionProvider, useSession } from '@/session/session-provider';
+import { CloseButton } from '@/ui/close-button';
+import { headerOptions } from '@/ui/header';
 import { Icon } from '@/ui/icon';
 import { colour, themeVars, type Scheme } from '@/ui/palette';
 import { PressableCard } from '@/ui/surface';
@@ -80,16 +82,7 @@ export default function RootLayout() {
 // A job's native header: its name in bold on the ground colour, the system back control, and Look up on
 // the right so a part can be checked mid-job without losing the job.
 function jobHeader(scheme: Scheme, title: string, quickLookUp = true) {
-  return {
-    headerShown: true,
-    title,
-    headerTitleStyle: { fontSize: 19, fontWeight: '700' as const, color: colour(scheme, 'ink') },
-    headerStyle: { backgroundColor: colour(scheme, 'ground') },
-    headerTintColor: colour(scheme, 'ink'),
-    headerShadowVisible: false,
-    headerBackButtonDisplayMode: 'minimal' as const,
-    headerRight: quickLookUp ? () => <QuickLookUp /> : undefined,
-  };
+  return { ...headerOptions(scheme, title), headerRight: quickLookUp ? () => <QuickLookUp /> : undefined };
 }
 
 function QuickLookUp() {
@@ -119,6 +112,9 @@ function RootStack({ scheme }: { scheme: Scheme }) {
       <Stack.Protected guard={status === 'not-member' || status === 'unavailable'}>
         <Stack.Screen name="no-access" />
       </Stack.Protected>
+      <Stack.Protected guard={status === 'choose-password'}>
+        <Stack.Screen name="choose-password" />
+      </Stack.Protected>
       <Stack.Protected guard={status === 'member'}>
         <Stack.Screen name="index" />
         <Stack.Screen name="lookup" options={jobHeader(scheme, liveWorkflow('lookup').label, false)} />
@@ -131,6 +127,12 @@ function RootStack({ scheme }: { scheme: Scheme }) {
         <Stack.Screen name="location" options={{ ...SHEET, sheetAllowedDetents: [0.5, 1] }} />
         <Stack.Screen name="move" options={jobHeader(scheme, liveWorkflow('transfer').label)} />
         <Stack.Screen name="quick-add" options={jobHeader(scheme, liveWorkflow('add-part').label)} />
+        {/* Opened from the Account sheet, so they come up over it as their own screens. */}
+        <Stack.Screen name="people" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="developer"
+          options={{ ...headerOptions(scheme, 'Developer'), presentation: 'modal', headerLeft: () => <CloseButton label="Close Developer" /> }}
+        />
       </Stack.Protected>
     </Stack>
   );

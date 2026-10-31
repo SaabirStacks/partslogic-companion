@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@partslogic/db-types';
 
 import { DataError, dataError } from './errors';
-import type { AppRole } from './members';
 import { readBoolean, readNumber, readRecord, readString } from './read';
 
 type Client = SupabaseClient<Database>;
@@ -272,6 +271,21 @@ export type BinSummary = {
   parts: number;
 };
 
+// One level of a location's bins, split from their codes (00-A-01 is aisle 00, level A, bin 01). A group
+// counts what sits under it; parts are distinct parts, so a part in two bins of an aisle counts once.
+export type BinTreeEntry =
+  | {
+      kind: 'group';
+      path: string[];
+      label: string;
+      bins: number;
+      activeBins: number;
+      stockedBins: number;
+      units: number;
+      parts: number;
+    }
+  | { kind: 'bin'; label: string; bin: BinSummary };
+
 export type BinsCreated = { created: number; skipped: number; skippedCodes: string[] };
 
 export async function listLocationSummaries(supabase: Client): Promise<LocationSummary[]> {
@@ -313,6 +327,49 @@ export async function listLocationBins(supabase: Client, locationId: number): Pr
           },
         ],
   );
+}
+
+// What sits one level below `path` in a location: the top level when the path is empty.
+export async function listLocationBinTree(
+  supabase: Client,
+  locationId: number,
+  path: string[] = [],
+): Promise<BinTreeEntry[]> {
+  const { data, error } = await supabase.rpc('location_bin_tree', { p_location: locationId, p_path: path });
+  if (error) throw dataError(error);
+  return (data ?? []).flatMap((row): BinTreeEntry[] => {
+    if (row.label == null) return [];
+    if (row.kind === 'bin') {
+      if (row.bin_id == null || row.code == null) return [];
+      return [
+        {
+          kind: 'bin',
+          label: row.label,
+          bin: {
+            id: row.bin_id,
+            code: row.code,
+            description: row.description,
+            isActive: row.is_active ?? true,
+            isSystem: row.is_system ?? false,
+            units: readNumber(row.units) ?? 0,
+            parts: row.parts ?? 0,
+          },
+        },
+      ];
+    }
+    return [
+      {
+        kind: 'group',
+        path: row.path ?? [...path, row.label],
+        label: row.label,
+        bins: row.bins ?? 0,
+        activeBins: row.active_bins ?? 0,
+        stockedBins: row.stocked_bins ?? 0,
+        units: readNumber(row.units) ?? 0,
+        parts: row.parts ?? 0,
+      },
+    ];
+  });
 }
 
 // Adds many bins to a location; codes the location already has are skipped.
@@ -365,14 +422,6 @@ export async function deleteBin(supabase: Client, binId: number): Promise<void> 
   const { data, error } = await supabase.from('bins').delete().eq('id', binId).eq('is_system', false).select('id');
   if (error) throw dataError(error);
   if (!data.length) throw new DataError('That bin cannot be removed (it may be a system bin), or you need the editor role.', '42501');
-}
-
-// ---------------------------------------------------------------------------------------------- people
-
-export async function setMemberRole(supabase: Client, userId: string, role: AppRole): Promise<void> {
-  const { data, error } = await supabase.from('members').update({ role }).eq('user_id', userId).select('user_id');
-  if (error) throw dataError(error);
-  if (!data.length) throw new DataError('You need the admin role to change roles (and the owner role to make an owner).', '42501');
 }
 
 // ---------------------------------------------------------------------------------------------- Autodoc and engine

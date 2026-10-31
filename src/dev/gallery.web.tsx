@@ -2,11 +2,18 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import Account from '@/app/account';
+import ChoosePassword from '@/app/choose-password';
+import AddPerson from '@/app/people/add';
 import LocationSheet from '@/app/location';
 import NoAccess from '@/app/no-access';
 import SignIn from '@/app/sign-in';
 import Sync from '@/app/sync';
 import { BoardView } from '@/features/board/board-view';
+import { DeveloperView } from '@/features/developer/developer-view';
+import { PreviewStrip } from '@/features/developer/preview-strip';
+import { PeopleList } from '@/features/people/people-list';
+import { PersonView } from '@/features/people/person-view';
+import { SetupCode } from '@/features/people/setup-code';
 import { partAnswer } from '@/features/lookup/answer';
 import { PartAnswerCard } from '@/features/lookup/part-answer-card';
 import { PartRow } from '@/features/part/part-row';
@@ -56,7 +63,7 @@ import { useBinBrowse } from '@/features/bins/use-bin-browse';
 import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 import { NetworkContext } from '@/lib/network';
 
-import { Fixtures, OIL_FILTER, OIL_FILTER_LOW, OIL_FILTER_OUT, OIL_FILTER_STATUSES, OUTBOX_ITEMS, RECENT } from './fixtures';
+import { DEVELOPER, DEVELOPER_MEMBER, Fixtures, OIL_FILTER, PEOPLE, OIL_FILTER_LOW, OIL_FILTER_OUT, OIL_FILTER_STATUSES, OUTBOX_ITEMS, RECENT } from './fixtures';
 
 // Dev-only: every screen of the redesign drawn from fixture data, so it can be captured in a browser at
 // phone size for review (?screen=board). Light or dark follows the browser's colour scheme. The native
@@ -909,6 +916,102 @@ const SCREENS: Record<string, () => ReactNode> = {
     <Fixtures waiting={2}>
       <Account />
     </Fixtures>
+  ),
+  'account-developer': () => (
+    <Fixtures session={DEVELOPER}>
+      <Account />
+    </Fixtures>
+  ),
+  'account-previewing': () => (
+    <Fixtures session={{ status: 'member', email: 'saabir@eclipseautoparts.com', member: { ...DEVELOPER_MEMBER, role: 'counter' } }} realRole="developer" previewRole="counter">
+      <Account />
+    </Fixtures>
+  ),
+  'board-previewing': () => (
+    <Fixtures session={DEVELOPER} realRole="developer" previewRole="counter">
+      <BoardView
+        sections={boardFor('counter')}
+        openWork={[]}
+        notice={<PreviewStrip />}
+        location="Main"
+        sync={syncState({ waiting: 0, needsAttention: 0, online: true })}
+        onJob={noop}
+        onResume={noop}
+        onLocation={noop}
+        onSync={noop}
+        onAccount={noop}
+      />
+    </Fixtures>
+  ),
+  people: () => (
+    <PeopleList people={PEOPLE} loading={false} problem={null} online onAdd={noop} onOpen={noop} onRefresh={noop} />
+  ),
+  'people-loading': () => (
+    <PeopleList people={undefined} loading problem={null} online onAdd={noop} onOpen={noop} onRefresh={noop} />
+  ),
+  'person-waiting': () => (
+    <PersonView person={PEOPLE[0]!} myRole="developer" online outcome={null} busy={false} onName={noop} onEmail={noop} onRole={noop} onNewCode={noop} onRemove={noop} />
+  ),
+  'person-counter': () => (
+    <PersonView
+      person={{ ...PEOPLE[4]!, needsPassword: false, lastSignedInAt: '2026-10-31T10:15:00' }}
+      myRole="developer"
+      online
+      outcome={{ ok: true, text: 'Rahman Ali is now a counter' }}
+      busy={false}
+      onName={noop}
+      onEmail={noop}
+      onRole={noop}
+      onNewCode={noop}
+      onRemove={noop}
+    />
+  ),
+  'person-above': () => (
+    <PersonView
+      person={{ ...PEOPLE[2]!, isMe: false }}
+      myRole="owner"
+      online
+      outcome={null}
+      busy={false}
+      onName={noop}
+      onEmail={noop}
+      onRole={noop}
+      onNewCode={noop}
+      onRemove={noop}
+    />
+  ),
+  'person-me': () => (
+    <PersonView person={PEOPLE[2]!} myRole="developer" online outcome={null} busy={false} onName={noop} onEmail={noop} onRole={noop} onNewCode={noop} onRemove={noop} />
+  ),
+  'add-person': () => (
+    <Fixtures session={DEVELOPER}>
+      <AddPerson />
+    </Fixtures>
+  ),
+  'setup-code': () => (
+    <ScrollView contentContainerClassName="gap-3 px-4 pb-10 pt-3">
+      <StatusStrip tone="ok" icon="sent" text="Rahman Ali can sign in now" />
+      <SetupCode person={{ name: 'Rahman Ali', email: 'rahman@eclipseautoparts.com' }} code="K7MQ-4XPA-2RHT" />
+    </ScrollView>
+  ),
+  'choose-password': () => (
+    <Fixtures session={{ status: 'choose-password', email: 'rahman@eclipseautoparts.com', member: { ...DEVELOPER_MEMBER, role: 'counter', name: 'Rahman Ali', needsPassword: true } }}>
+      <ChoosePassword />
+    </Fixtures>
+  ),
+  developer: () => (
+    <DeveloperView
+      app={{ version: '1.1.0', runtime: '1.1.0', update: '0193f1a2 · 31 Oct', channel: 'production', phone: 'iPhone 17 Pro · iOS 27.0' }}
+      connection={{ phone: 'Online (Wi-Fi)', partsLogic: 'Answered in 118 ms' }}
+      checking={false}
+      outbox={{ waiting: 2, needsAttention: 0, lastSentAt: '2026-10-31T09:42:00', lastProblem: null }}
+      account={{ email: 'saabir@eclipseautoparts.com', userId: '64e08d79-9231-4caa-b2a7-85127c32ed2e' }}
+      previewRole={null}
+      onCheck={noop}
+      onOpenSync={noop}
+      onPreview={noop}
+      onShare={noop}
+    />
   ),
 };
 

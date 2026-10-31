@@ -19,7 +19,17 @@ can be poor, the phone is held at arm's length and there may be gloves. In goods
 quickly one after another.
 
 Roles come from PartsLogic: **viewer** (look up only), **counter** (all floor jobs), **editor** (also sees
-cost prices), plus admin and owner.
+cost prices), plus **admin** (manages people), **owner**, and **developer** (everything, plus the Developer
+tools; owners can't change a developer).
+
+- **People (admins and up):** Account › People lists every account, those waiting for a role first. An admin
+  gives roles up to their own, renames people, changes a sign-in email, gives a new set-up code or removes
+  access; never for themselves or anyone above them (the server holds the rules). Add a person makes the
+  account and shows a one-time **set-up code** (like K7MQ-4XPA-2RHT) to hand over; no email is sent. The
+  person signs in with it as the password and must choose their own before anything else.
+- **Developer (developers only):** Account › Developer shows the app's version and update, the connection, the
+  outbox, and **Preview as** a role: the board and jobs as that role sees them, with a "Previewing as" strip
+  and Stop. PartsLogic still checks the real role.
 
 ## Product Purpose
 

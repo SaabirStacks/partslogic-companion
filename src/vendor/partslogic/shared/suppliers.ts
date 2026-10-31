@@ -14,13 +14,15 @@ export type SupplierUpload = {
   createdAt: string;
 };
 
-// A supplier you buy from: price-list and manual sources, with whether a column mapping is saved.
+// A supplier you buy from: price-list and manual sources, with whether a column mapping is saved. Archived
+// suppliers aren't offered; one on hold is, marked as such.
 export type SupplierOption = {
   supplierId: number;
   name: string;
   kind: string;
   hasProfile: boolean;
   lastUpload: SupplierUpload | null;
+  status: 'active' | 'on_hold';
 };
 
 export async function listSupplierOptions(supabase: Client): Promise<SupplierOption[]> {
@@ -42,6 +44,7 @@ export async function listSupplierOptions(supabase: Client): Promise<SupplierOpt
           batchId && file && createdAt
             ? { batchId, file, status: readString(last?.status) ?? 'uploaded', rows: readNumber(last?.rows), createdAt }
             : null,
+        status: row.status === 'on_hold' ? 'on_hold' : 'active',
       },
     ];
   });

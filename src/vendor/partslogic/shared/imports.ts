@@ -31,8 +31,12 @@ export type ImportFields = {
   category?: ImportRule;
   facts?: { [key: string]: ImportRule };
   oe?: { mode: 'oe'; number: string[]; make?: string[]; makeMeaning?: 'explicit' | 'example' };
-  xrefs?: { mode: 'brandColumns'; splitOn?: string };
+  // mode 'brandColumns': columns headed with a brand name hold that brand's numbers; columns: ones chosen by hand.
+  xrefs?: { mode?: 'brandColumns'; splitOn?: string; columns?: XrefColumns };
 };
+// header -> the brand whose equivalent numbers the column lists ("Alt Ref" -> "FEBI BILSTEIN"). In the mapper a
+// blank brand means the column is marked as cross-references but its brand isn't chosen yet.
+export type XrefColumns = { [header: string]: string };
 export type ImportSpec = {
   label?: string;
   fields: ImportFields;
@@ -89,6 +93,7 @@ export type AlsoMapping = { [header: string]: ImportTarget[] };
 export type SuggestedMapping = {
   mapping: ColumnMapping;
   also: AlsoMapping;
+  xrefColumns: XrefColumns;
   settings: MappingSettings;
   preserved: PreservedRule[];
 };
@@ -203,10 +208,14 @@ export function specToMapping(spec: ImportSpec, headers: string[]): SuggestedMap
     }
   }
   assign(spec.ignore, 'ignore');
+  const xrefColumns: XrefColumns = Object.fromEntries(
+    Object.entries(spec.fields.xrefs?.columns ?? {}).filter(([header]) => header in mapping),
+  );
 
   return {
     mapping,
     also,
+    xrefColumns,
     settings: {
       defaultBrand: spec.source?.brand ?? null,
       currency: spec.source?.currency ?? 'GBP',
@@ -225,12 +234,13 @@ export function suggestMapping(headers: string[], saved: ImportSpec | null): Sug
     : {
         mapping: Object.fromEntries(headers.map((h) => [h, null])),
         also: {},
+        xrefColumns: {},
         settings: DEFAULT_MAPPING_SETTINGS,
         preserved: [],
       };
   const mapping = { ...base.mapping };
   const taken = new Set(Object.values(mapping).filter((value): value is ImportTarget => value != null));
-  const lockedHeaders = new Set(base.preserved.flatMap((rule) => rule.headers));
+  const lockedHeaders = new Set([...base.preserved.flatMap((rule) => rule.headers), ...Object.keys(base.xrefColumns)]);
 
   for (const [target, spellings] of Object.entries(SYNONYMS) as [Exclude<ImportTarget, 'ignore'>, string[]][]) {
     if (taken.has(target) && target !== 'category') continue;
@@ -243,7 +253,7 @@ export function suggestMapping(headers: string[], saved: ImportSpec | null): Sug
       }
     }
   }
-  return { mapping, also: base.also, settings: base.settings, preserved: base.preserved };
+  return { mapping, also: base.also, xrefColumns: base.xrefColumns, settings: base.settings, preserved: base.preserved };
 }
 
 export function headersFor(mapping: ColumnMapping, target: ImportTarget, also: AlsoMapping = {}): string[] {
@@ -269,6 +279,7 @@ export function buildSpec(
   settings: MappingSettings,
   base: ImportSpec | null = null,
   also: AlsoMapping = {},
+  xrefColumns: XrefColumns = {},
 ): ImportSpec {
   const sourcesFor = (target: ImportTarget, baseSources: string[] | undefined) =>
     inBaseOrder(
@@ -319,10 +330,19 @@ export function buildSpec(
       ...(baseOe?.makeMeaning || settings.oeMakeMeaning !== 'explicit' ? { makeMeaning: settings.oeMakeMeaning } : {}),
     };
   }
-  if (settings.xrefsFromBrandColumns) {
+  const chosenXrefs: XrefColumns = Object.fromEntries([
+    ...Object.entries(xrefColumns).filter(([header, brand]) => header in mapping && mapping[header] == null && brand.trim() !== ''),
+    ...Object.entries(base?.fields.xrefs?.columns ?? {}).filter(([header]) => !(header in mapping)),
+  ]);
+  const hasChosenXrefs = Object.keys(chosenXrefs).length > 0;
+  if (settings.xrefsFromBrandColumns || hasChosenXrefs) {
     const splitOn = settings.splitOn || '/';
     const keepImplicit = base?.fields.xrefs != null && base.fields.xrefs.splitOn === undefined && splitOn === '/';
-    fields.xrefs = { mode: 'brandColumns', ...(keepImplicit ? {} : { splitOn }) };
+    fields.xrefs = {
+      ...(settings.xrefsFromBrandColumns ? { mode: 'brandColumns' as const } : {}),
+      ...(keepImplicit ? {} : { splitOn }),
+      ...(hasChosenXrefs ? { columns: chosenXrefs } : {}),
+    };
   }
 
   const ignoreHere = headersFor(mapping, 'ignore');
@@ -349,9 +369,19 @@ export function buildSpec(
 // fix: a one-click answer the mapper can offer next to the problem.
 export type MappingProblem = { level: 'error' | 'warning'; message: string; fix?: 'codes-are-part-numbers' };
 
-export function validateMapping(mapping: ColumnMapping, settings: MappingSettings, also: AlsoMapping = {}): MappingProblem[] {
+export function validateMapping(
+  mapping: ColumnMapping,
+  settings: MappingSettings,
+  also: AlsoMapping = {},
+  xrefColumns: XrefColumns = {},
+): MappingProblem[] {
   const used = (target: ImportTarget) => headersFor(mapping, target, also).length > 0;
   const problems: MappingProblem[] = [];
+  for (const [header, brand] of Object.entries(xrefColumns)) {
+    if (header in mapping && mapping[header] == null && brand.trim() === '') {
+      problems.push({ level: 'error', message: `Choose the brand whose numbers “${header}” lists.` });
+    }
+  }
   if (!used('part_number')) problems.push({ level: 'error', message: 'Choose the part number column.' });
   if (!used('cost')) problems.push({ level: 'error', message: 'Choose the cost column.' });
   if (!used('brand') && !settings.defaultBrand?.trim()) {
@@ -421,8 +451,18 @@ export function readImportSpec(value: Json | undefined): ImportSpec | null {
     };
   }
   const xrefs = readRecord(fieldsRecord.xrefs);
-  if (readString(xrefs?.mode) === 'brandColumns') {
-    fields.xrefs = { mode: 'brandColumns', ...(typeof xrefs?.splitOn === 'string' ? { splitOn: xrefs.splitOn } : {}) };
+  const xrefColumns: XrefColumns = Object.fromEntries(
+    Object.entries(readRecord(xrefs?.columns) ?? {}).flatMap(([header, brand]) =>
+      typeof brand === 'string' ? [[header, brand]] : [],
+    ),
+  );
+  const autoXrefs = readString(xrefs?.mode) === 'brandColumns';
+  if (autoXrefs || Object.keys(xrefColumns).length > 0) {
+    fields.xrefs = {
+      ...(autoXrefs ? { mode: 'brandColumns' as const } : {}),
+      ...(typeof xrefs?.splitOn === 'string' ? { splitOn: xrefs.splitOn } : {}),
+      ...(Object.keys(xrefColumns).length > 0 ? { columns: xrefColumns } : {}),
+    };
   }
 
   const source = readRecord(spec.source);

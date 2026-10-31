@@ -1,6 +1,13 @@
-import { fromCache, signInProblem, stateAfterLookup } from '../session-state';
+import { fromCache, passwordCheck, passwordProblem, signInProblem, stateAfterLookup, toCache } from '../session-state';
 
-const member = { userId: 'u1', role: 'counter' as const, workspaceName: 'Eclipse Auto Parts', currency: 'GBP' };
+const member = {
+  userId: 'u1',
+  role: 'counter' as const,
+  name: null,
+  needsPassword: false,
+  workspaceName: 'Eclipse Auto Parts',
+  currency: 'GBP',
+};
 
 describe('stateAfterLookup', () => {
   it('lets a member in', () => {
@@ -21,13 +28,24 @@ describe('stateAfterLookup', () => {
   it('reports PartsLogic unreachable when offline with nothing saved', () => {
     expect(stateAfterLookup('a@b.co', { ok: false }, null)).toEqual({ status: 'unavailable', email: 'a@b.co' });
   });
+
+  it('asks someone on a set-up code to choose a password first, online or not', () => {
+    const coded = { ...member, needsPassword: true };
+    expect(stateAfterLookup('a@b.co', { ok: true, member: coded }, null).status).toBe('choose-password');
+    expect(stateAfterLookup('a@b.co', { ok: false }, coded).status).toBe('choose-password');
+  });
 });
 
 describe('fromCache', () => {
   const cached = { userId: 'u1', role: 'counter', workspaceName: 'Eclipse Auto Parts', currency: 'GBP' };
 
-  it('uses the saved member for the same user', () => {
+  it('uses the saved member for the same user, including one saved before names existed', () => {
     expect(fromCache(cached, 'u1')).toEqual(member);
+    expect(fromCache(toCache({ ...member, name: 'Rahman', needsPassword: true }), 'u1')).toEqual({
+      ...member,
+      name: 'Rahman',
+      needsPassword: true,
+    });
   });
 
   it("ignores another user's saved member and unknown roles", () => {
@@ -46,5 +64,20 @@ describe('signInProblem', () => {
       /Can't reach PartsLogic/,
     );
     expect(signInProblem({ message: 'Something else' })).toBe('Something else');
+  });
+});
+
+describe('choosing a password', () => {
+  it('checks the length and that both match', () => {
+    expect(passwordCheck('short', '')).toBe('Use at least 8 characters.');
+    expect(passwordCheck('long enough', 'long enougj')).toBe('The two passwords don’t match.');
+    expect(passwordCheck('long enough', '')).toBeNull();
+    expect(passwordCheck('long enough', 'long enough')).toBeNull();
+  });
+
+  it('words a refused password plainly', () => {
+    expect(passwordProblem({ code: 'weak_password', message: 'weak' })).toMatch(/too easy to guess/);
+    expect(passwordProblem({ code: 'same_password', message: 'same' })).toMatch(/different from your set-up code/);
+    expect(passwordProblem({ name: 'AuthRetryableFetchError', message: 'x', status: 0 })).toMatch(/Can't reach PartsLogic/);
   });
 });
