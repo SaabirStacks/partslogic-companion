@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import Account from '@/app/account';
@@ -54,6 +54,7 @@ import type { ScanCheck } from '@/scan/resolve';
 import { boardFor } from '@/workflows/catalogue';
 import { useBinBrowse } from '@/features/bins/use-bin-browse';
 import type { SharedRun } from '@/vendor/partslogic/shared/floor';
+import { NetworkContext } from '@/lib/network';
 
 import { Fixtures, OIL_FILTER, OIL_FILTER_LOW, OIL_FILTER_OUT, OIL_FILTER_STATUSES, OUTBOX_ITEMS, RECENT } from './fixtures';
 
@@ -89,76 +90,87 @@ const HELD_PART: PendingScan<ScanCheck> = {
 };
 const HELD_UNKNOWN: PendingScan<ScanCheck> = { key: 'u', code: '5010415305187', qty: 2, hit: { type: 'unknown', code: '5010415305187', offline: false } };
 
-function SampleJob({ confirming = false, held }: { confirming?: boolean; held?: PendingScan<ScanCheck> }) {
+function Reconnecting() {
+  const [online, setOnline] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setOnline(true), 900);
+    return () => clearTimeout(timer);
+  }, []);
+  return <SampleJob online={online} />;
+}
+
+function SampleJob({ confirming = false, held, online = true }: { confirming?: boolean; held?: PendingScan<ScanCheck>; online?: boolean }) {
   const lines = [
     { name: 'Bosch 0 986 494 119', code: '4047025186913', qty: 4, status: statusText('booked', null) },
     { name: '5010415305187', code: null, qty: 1, status: statusText('unknown', null), unknown: true },
     { name: 'Mann HU 816 x', code: '4011558726304', qty: 6, status: statusText('waiting', null) },
   ];
   return (
-    <View className="flex-1">
-      <StackHeader title="Receive goods" />
-      <JobScreen
-        placeholder="Barcode or part number"
-        onScan={noop}
-        scanEnabled={!held}
-        banner={<JobBanner size="headline" family="inbound" title="BGA" detail="GR-0042 · DN 448210 · into Unbinned" />}
-        result={
-          held ? (
-            <ConfirmScanCard
-              pending={held}
-              verb="Add"
-              onConfirm={noop}
-              onSkip={noop}
-              onStep={noop}
-              onSet={noop}
-              onRetry={noop}
-              addPart={<AddPartLink code={held.code} />}
-            />
-          ) : (
-            <ScanResultCard
-              tone="ok"
-              status={{ icon: 'sent', label: 'Added' }}
-              title="Bosch 0 986 494 119"
-              detail="4047025186913"
-              quantity={{ value: '+1', label: '4 in delivery' }}
-            />
-          )
-        }
-        action={
-          held ? null : <ActionBar label="Finish · 24 units" icon="check" onPress={noop} secondary={{ label: 'Undo', icon: 'undo', onPress: noop }} />
-        }>
-        <Tally
-          items={[
+    <NetworkContext value={online}>
+      <View className="flex-1">
+        <StackHeader title="Receive goods" />
+        <JobScreen
+          placeholder="Barcode or part number"
+          onScan={noop}
+          scanEnabled={!held}
+          banner={<JobBanner size="headline" family="inbound" title="BGA" detail="GR-0042 · DN 448210 · into Unbinned" />}
+          result={
+            held ? (
+              <ConfirmScanCard
+                pending={held}
+                verb="Add"
+                onConfirm={noop}
+                onSkip={noop}
+                onStep={noop}
+                onSet={noop}
+                onRetry={noop}
+                addPart={<AddPartLink code={held.code} />}
+              />
+            ) : (
+              <ScanResultCard
+                tone="ok"
+                status={{ icon: 'sent', label: 'Added' }}
+                title="Bosch 0 986 494 119"
+                detail="4047025186913"
+                quantity={{ value: '+1', label: '4 in delivery' }}
+              />
+            )
+          }
+          action={
+            held ? null : <ActionBar label="Finish · 24 units" icon="check" onPress={noop} secondary={{ label: 'Undo', icon: 'undo', onPress: noop }} />
+          }>
+          <Tally
+            items={[
+              { value: 24, label: 'Units' },
+              { value: 7, label: 'Codes' },
+              { value: 1, label: 'To check', tone: 'warn' },
+            ]}
+          />
+          {lines.map((line) => (
+            <LineRow
+              key={line.name}
+              name={line.name}
+              code={line.code}
+              status={line.status}
+              quantity={<Quantity total={line.qty} name={line.name} onStep={noop} onSet={noop} />}>
+              {line.unknown ? <AddPartLink code={line.name} /> : null}
+            </LineRow>
+          ))}
+        </JobScreen>
+        <ConfirmSheet
+          visible={confirming}
+          title="Finish delivery?"
+          facts={[
             { value: 24, label: 'Units' },
             { value: 7, label: 'Codes' },
-            { value: 1, label: 'To check', tone: 'warn' },
           ]}
+          note="1 unknown code stays for the office to match."
+          confirm={{ label: 'Finish · 24 units', onPress: noop }}
+          cancelLabel="Keep scanning"
+          onCancel={noop}
         />
-        {lines.map((line) => (
-          <LineRow
-            key={line.name}
-            name={line.name}
-            code={line.code}
-            status={line.status}
-            quantity={<Quantity total={line.qty} name={line.name} onStep={noop} onSet={noop} />}>
-            {line.unknown ? <AddPartLink code={line.name} /> : null}
-          </LineRow>
-        ))}
-      </JobScreen>
-      <ConfirmSheet
-        visible={confirming}
-        title="Finish delivery?"
-        facts={[
-          { value: 24, label: 'Units' },
-          { value: 7, label: 'Codes' },
-        ]}
-        note="1 unknown code stays for the office to match."
-        confirm={{ label: 'Finish · 24 units', onPress: noop }}
-        cancelLabel="Keep scanning"
-        onCancel={noop}
-      />
-    </View>
+      </View>
+    </NetworkContext>
   );
 }
 
@@ -425,6 +437,9 @@ const SCREENS: Record<string, () => ReactNode> = {
     />
   ),
   job: () => <SampleJob />,
+  // The offline strip, and the same job coming back online a moment after it opens ("Back online").
+  'job-offline': () => <SampleJob online={false} />,
+  'job-reconnect': () => <Reconnecting />,
   'receive-held': () => <SampleJob held={HELD_PART} />,
   'receive-held-unknown': () => <SampleJob held={HELD_UNKNOWN} />,
   'count-start': () => (
