@@ -125,7 +125,7 @@ on, anything that travels or grows is switched off; fades stay.
 | **Chip sweep** (the app's one authored moment) | PartsLogic answering: a status chip turns to its new state (Sending → Delivery booked, Counting → Counted). The new colour sweeps in from the symbol's side as the old one draws back, and the symbol lands | 300 ms sweep, 220 ms land |
 | `RISE` / `DROP` | The result card or a receipt arriving; the result card leaving once its scan is dealt with | 160 ms in, 120 ms out |
 | `APPEAR` / `FADE` | Something new in place (a line, a resume row, a line's new status, a stock take notice); the camera's dim fading in and lifting when a scan is held | 160 ms in, 120 ms out |
-| `BANNER_IN` / `BANNER_OUT` | The no-signal strip dropping in when signal goes, lifting when it's back (not on a screen opened offline) | 200 ms in, 150 ms out |
+| `BANNER_IN` / `BANNER_OUT` | The no-signal strip dropping in when signal goes (not on a screen opened offline). When signal is back it fades to green "Back online" and lifts away after 2.4 s | 200 ms in, 150 ms out |
 | `TICK_IN` | The tick landing on the one chosen (a location, a supplier, a bin) | 160 ms |
 | Segmented slide | The white selector sliding to the chosen view (Supplier \| Manufacturer, Tab view \| List view) | 200 ms |
 | `SETTLE` | Neighbours making room | 180 ms |

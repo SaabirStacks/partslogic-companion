@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { NetworkContext } from '@/lib/network';
 import { OutboxContext, type OutboxContextValue } from '@/queue/outbox-provider';
 import type { OutboxItem } from '@/queue/types';
 import { ScanIndexContext, type ScanIndexContextValue } from '@/scan/scan-index-provider';
@@ -30,12 +31,15 @@ export function Fixtures({
   waiting = 0,
   needsAttention = 0,
   items = [],
+  online = true,
   children,
 }: {
   session?: SessionState;
   waiting?: number;
   needsAttention?: number;
   items?: OutboxItem[];
+  // Whether PartsLogic can be reached (the offline strip, the board's sync pill).
+  online?: boolean;
   children: ReactNode;
 }) {
   const sessionValue: SessionContextValue = { state: session, checking: false, signIn: async () => null, signOut: later, retry: noop };
@@ -54,13 +58,15 @@ export function Fixtures({
   };
   const scanIndexValue: ScanIndexContextValue = { saved: null, progress: null, failed: false, update: noop };
   return (
-    <SessionContext value={sessionValue}>
-      <LocationContext value={locationValue}>
-        <OutboxContext value={outboxValue}>
-          <ScanIndexContext value={scanIndexValue}>{children}</ScanIndexContext>
-        </OutboxContext>
-      </LocationContext>
-    </SessionContext>
+    <NetworkContext value={online}>
+      <SessionContext value={sessionValue}>
+        <LocationContext value={locationValue}>
+          <OutboxContext value={outboxValue}>
+            <ScanIndexContext value={scanIndexValue}>{children}</ScanIndexContext>
+          </OutboxContext>
+        </LocationContext>
+      </SessionContext>
+    </NetworkContext>
   );
 }
 

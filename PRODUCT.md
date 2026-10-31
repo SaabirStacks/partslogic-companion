@@ -110,6 +110,10 @@ back office, so what the phone does and what the office sees agree.
   Cross-dock, QA hold, Core return, Return to supplier, Recall, Damaged, Scrap; `src/stock/statuses.ts`).
   The part card shows them as three tiles: available, reserved and unavailable. PartsLogic doesn't tag
   stock yet, so everything counts as available until it does. Who may change a status is PartsLogic's rule.
+- **Signal:** one watch on the connection for the whole app (`src/lib/network-provider.tsx`). Besides the phone's
+  own change events, it looks again when the app comes back to the front and every 5 seconds while offline,
+  and asks PartsLogic directly when the phone has a network it hasn't confirmed (Android's check with Google
+  can be blocked on workplace Wi-Fi). So the app never stays offline after signal returns.
 - **Working location:** each phone works in one location at a time, chosen once and remembered. It
   shows once, on the board; job screens never repeat it ("Unbinned", "A-01"). A bin in another location
   is named with that location first.

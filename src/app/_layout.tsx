@@ -9,6 +9,7 @@ import { Gallery } from '@/dev/gallery';
 import { NotSetUp } from '@/features/setup/not-set-up';
 import { prepareFeel } from '@/feel/feel';
 import { publicConfig } from '@/lib/config';
+import { NetworkProvider } from '@/lib/network-provider';
 import { OutboxProvider } from '@/queue/outbox-provider';
 import { ScanIndexProvider } from '@/scan/scan-index-provider';
 import { LocationProvider } from '@/session/location-provider';
@@ -57,15 +58,17 @@ export default function RootLayout() {
     <ThemeProvider value={navigationTheme(scheme)}>
       <View style={themeVars(scheme)} className="flex-1 bg-ground">
         {publicConfig.ok ? (
-          <SessionProvider>
-            <LocationProvider>
-              <OutboxProvider>
-                <ScanIndexProvider>
-                  <RootStack scheme={scheme} />
-                </ScanIndexProvider>
-              </OutboxProvider>
-            </LocationProvider>
-          </SessionProvider>
+          <NetworkProvider>
+            <SessionProvider>
+              <LocationProvider>
+                <OutboxProvider>
+                  <ScanIndexProvider>
+                    <RootStack scheme={scheme} />
+                  </ScanIndexProvider>
+                </OutboxProvider>
+              </LocationProvider>
+            </SessionProvider>
+          </NetworkProvider>
         ) : (
           <NotSetUp problems={publicConfig.problems} />
         )}
