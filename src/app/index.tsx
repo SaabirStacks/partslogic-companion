@@ -14,6 +14,7 @@ import { useOutbox } from '@/queue/outbox-provider';
 import { useWorkingLocation } from '@/session/location-provider';
 import { useSession } from '@/session/session-provider';
 import { roleAtLeast } from '@/vendor/partslogic/shared/members';
+import { PreviewStrip } from '@/features/developer/preview-strip';
 import { unlocatedStockSummary } from '@/vendor/partslogic/shared/floor';
 import { boardFor } from '@/workflows/catalogue';
 
@@ -50,6 +51,7 @@ export default function Board() {
   return (
     <BoardView
       sections={boardFor(role)}
+      notice={<PreviewStrip />}
       openWork={openWork}
       unbinned={unbinned.data?.qty ?? null}
       update={update}

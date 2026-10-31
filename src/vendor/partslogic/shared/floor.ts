@@ -108,6 +108,10 @@ export type FloorActivityRow = {
   // counts: which job it was (null for counts from before this was recorded) and the run it belongs to
   purpose: CountPurpose | null;
   run: CountRun | null;
+  // counts: how many earlier tries at the bin this one restarts (they show only in its log), and when the
+  // first of them started
+  tries: number;
+  firstStartedAt: string | null;
 };
 
 export type FloorLine = {
@@ -132,7 +136,18 @@ export type FloorChange = {
   change: number;
 };
 
-export type FloorDocument = FloorActivityRow & { items: FloorLine[]; changes: FloorChange[] };
+// An earlier try at a bin count, restarted before it finished: set aside, its scans kept for the record.
+export type CountTry = {
+  id: string;
+  startedAt: string;
+  status: string;
+  by: string | null;
+  device: string | null;
+  scans: number;
+  units: number;
+};
+
+export type FloorDocument = FloorActivityRow & { items: FloorLine[]; changes: FloorChange[]; earlierTries: CountTry[] };
 
 export type PendingPutAway = {
   binId: number;
@@ -710,6 +725,8 @@ function activityRow(item: Json | undefined): FloorActivityRow | null {
     reference: readString(row.reference),
     purpose: countPurpose(row.purpose),
     run: countRun(row.run),
+    tries: readNumber(row.tries) ?? 0,
+    firstStartedAt: readString(row.first_started_at),
   };
 }
 
@@ -753,6 +770,22 @@ export async function getFloorDocument(supabase: Client, kind: FloorDocumentKind
           qty: readNumber(line.qty) ?? 0,
           status,
           at: readString(line.at) ?? '',
+        },
+      ];
+    }),
+    earlierTries: readArray(record.earlier_tries).flatMap((item) => {
+      const earlier = readRecord(item);
+      const id = readString(earlier?.id);
+      if (!earlier || !id) return [];
+      return [
+        {
+          id,
+          startedAt: readString(earlier.started_at) ?? '',
+          status: readString(earlier.status) ?? 'cancelled',
+          by: readString(earlier.by),
+          device: readString(earlier.device),
+          scans: readNumber(earlier.scans) ?? 0,
+          units: readNumber(earlier.units) ?? 0,
         },
       ];
     }),

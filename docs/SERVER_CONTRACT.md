@@ -13,7 +13,7 @@ To check a PartsLogic branch, after its generated types and schema snapshot are 
 node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 ```
 
-## Functions (27)
+## Functions (32)
 
 | Function | Arguments the app sends | Used by |
 |---|---|---|
@@ -24,6 +24,7 @@ node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 | `discard_bin_count` | `p_stocktake` | `queue/handlers.ts` |
 | `ensure_bin` | `p_code`, `p_location` | `features/count/use-bin-count.ts`, `queue/handlers.ts` |
 | `finish_count_run` | `p_run` | `features/count/use-count-run.ts` |
+| `finish_setup` | none | `session/session-provider.tsx` |
 | `location_bins` | `p_location` | `features/count/use-bin-choices.ts`, `features/put-away/use-waiting.ts` |
 | `mark_opening_stock_done` | `p_location` | `queue/handlers.ts` |
 | `open_bin_count` | `p_bin`, `p_device`, `p_purpose`, `p_run`, `p_started_at`, `p_stocktake` | `features/count/use-bin-count.ts`, `queue/handlers.ts` |
@@ -31,13 +32,17 @@ node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 | `opening_stock_status` | `p_location` | `features/count/use-opening-stock.ts` |
 | `part_alternatives_with_stock` | `p_part` | `features/part/part-view.tsx` |
 | `part_detail` | `p_part` | `features/move/use-move.ts`, `features/part/load-part.ts` |
+| `people` | none | `features/people/use-people.ts` |
 | `quick_add_part` | `p` | `features/quick-add/use-quick-add.ts`, `queue/handlers.ts` |
 | `record_counts` | `p_bin`, `p_lines`, `p_stocktake` | `queue/handlers.ts` |
 | `record_receipt_lines` | `p_device`, `p_document`, `p_lines`, `p_location` | `queue/handlers.ts` |
+| `remove_person_access` | `p_user_id` | `app/people/[id].tsx` |
 | `resolve_scan` | `p_code`, `p_location` | `scan/resolve.ts` |
 | `scan_index` | `p_after`, `p_limit` | `scan/scan-index.ts` |
 | `scan_index_version` | none | `scan/scan-index.ts` |
 | `search_parts` | `max_results`, `q` | `features/lookup/use-look-up.ts` |
+| `set_person_name` | `p_name`, `p_user_id` | `app/people/[id].tsx`, `features/account/account-section.tsx` |
+| `set_person_role` | `p_role`, `p_user_id` | `app/people/[id].tsx` |
 | `set_receipt_details` | `p_brand`, `p_document`, `p_reference`, `p_source` | `queue/handlers.ts` |
 | `start_count_run` | `p_bins`, `p_location`, `p_purpose`, `p_run` | `features/count/use-count-run.ts` |
 | `supplier_options` | none | `features/receive/use-senders.ts` |
@@ -50,7 +55,7 @@ node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 | Table or view | Columns the app reads or filters on | Used by |
 |---|---|---|
 | `bin_places` | `bin_code`, `bin_id`, `is_active`, `is_system`, `location_code`, `location_id`, `location_name`, `place` | `session/location-provider.tsx` |
-| `members` | `role`, `user_id` | `session/session-provider.tsx` |
+| `members` | `display_name`, `needs_password`, `role`, `user_id` | `session/session-provider.tsx` |
 | `stock_levels` | `bin_id`, `part_id`, `qty` | `features/put-away/use-waiting.ts` |
 | `stocktakes` | `bin_ids`, `kind`, `location_id`, `posted_at`, `status` | `features/count/use-bin-choices.ts` |
 | `workspace` | `currency`, `name` | `session/session-provider.tsx` |

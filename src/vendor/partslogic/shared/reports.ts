@@ -24,7 +24,8 @@ export type ValuationLine = {
   number: string;
   onHand: number;
   unitCost: number | null;
-  costBasis: 'last_receipt' | 'supplier_price' | 'unknown';
+  // stock_cost: stock cost lots cover some of the stock (the rest at the supplier price).
+  costBasis: 'stock_cost' | 'last_receipt' | 'supplier_price' | 'unknown';
   value: number | null;
 };
 
@@ -45,7 +46,7 @@ export type ReorderSuggestion = {
 
 export type ZeroResultSearch = { query: string; searches: number; lastSearchedAt: string };
 
-const COST_BASES = new Set(['last_receipt', 'supplier_price', 'unknown']);
+const COST_BASES = new Set(['stock_cost', 'last_receipt', 'supplier_price', 'unknown']);
 
 // Range-wide totals for the dashboard.
 export async function getInventorySummary(supabase: Client): Promise<InventorySummary> {

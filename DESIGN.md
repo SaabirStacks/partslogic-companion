@@ -45,7 +45,7 @@ Rules:
 - Never colour alone. A state is a word plus a symbol; a family is also a name and an icon.
 - A chosen row, chip or tile is marked in the colour of **what** is chosen (`pickColours` in `family.ts`): bins
   violet (their colour on the part card), who goods come from teal, a part's brand plum, a location blue (the
-  board's location pin). A 2 pt outline, a soft fill and a tick in that colour, so the outline and tick still
+  board's location pin), a person's role blue too. A 2 pt outline, a soft fill and a tick in that colour, so the outline and tick still
   mark it without colour (`Choice`, `BinChip`, Tab view tiles; `PressableCard`'s `chosen`).
 - The location is shown once, on the board's pill. Job screens never repeat it. A bin in another location is
   named with that location first (`features/bins/bin-name.ts`).

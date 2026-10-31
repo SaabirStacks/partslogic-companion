@@ -19,7 +19,15 @@ function pref<T>(key: string) {
 }
 
 export type WorkingLocation = { id: number; code: string; name: string };
-export type CachedMember = { userId: string; role: string; workspaceName: string; currency: string };
+// name and needsPassword arrived with People (31 Oct 2026); members cached before then have neither.
+export type CachedMember = {
+  userId: string;
+  role: string;
+  name?: string | null;
+  needsPassword?: boolean;
+  workspaceName: string;
+  currency: string;
+};
 
 export const memberPref = pref<CachedMember>('member');
 export const locationsPref = pref<WorkingLocation[]>('locations');

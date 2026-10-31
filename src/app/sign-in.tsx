@@ -46,7 +46,7 @@ export default function SignIn() {
                 <Txt accessibilityRole="header" variant="headline" className="font-extrabold">
                   Sign in
                 </Txt>
-                <Txt variant="caption">Same email and password as the back office.</Txt>
+                <Txt variant="caption">Same email and password as the back office. New here? Use the set-up code you were given as your password.</Txt>
               </View>
               <Field
                 label="Email"

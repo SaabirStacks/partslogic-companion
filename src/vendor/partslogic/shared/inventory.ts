@@ -74,10 +74,16 @@ export type InventoryRow = {
   isStocked: boolean;
   onHand: number;
   belowReorder: boolean;
+  // The cheapest current supplier price.
   bestCost: number | null;
   bestCurrency: string | null;
   bestSupplierId: number | null;
   bestSupplierName: string | null;
+  // What margins, rule prices and stock value use: the stock's cost while stock cost lots cover any of it
+  // (costed units at their cost, the rest at bestCost), otherwise bestCost.
+  unitCost: number | null;
+  // Units the stock cost lots cover; 0 when unitCost is just the supplier price.
+  costedQty: number;
   eans: string[];
   stock: StockLine[];
   updatedAt: string | null;
@@ -493,6 +499,9 @@ export function readInventoryRow(row: JsonRecord | null): InventoryRow | null {
     bestCurrency: readString(row.best_currency),
     bestSupplierId: readNumber(row.best_source_id),
     bestSupplierName: readString(row.best_source_name),
+    // Stock-list pages don't carry unit_cost; there it is the supplier price.
+    unitCost: row.unit_cost === undefined ? readNumber(row.best_cost) : readNumber(row.unit_cost),
+    costedQty: readNumber(row.costed_qty) ?? 0,
     eans: readStrings(row.eans),
     stock: readArray(row.stock).flatMap((item) => {
       const line = readRecord(item);

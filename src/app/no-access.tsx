@@ -16,7 +16,7 @@ export default function NoAccess() {
         icon={notMember ? 'account' : 'offline'}
         tone={notMember ? 'action' : 'warn'}
         title={notMember ? 'No access yet' : 'No signal'}
-        line={notMember ? `${email} isn't a PartsLogic member. An owner adds you in the back office.` : 'PartsLogic can’t be reached.'}>
+        line={notMember ? `${email} has no role in PartsLogic yet. Ask an admin to give you one in People, then check again.` : 'PartsLogic can’t be reached.'}>
         <Button label={notMember ? 'Check again' : 'Try again'} icon="retry" onPress={retry} busy={checking} />
         <Button label="Sign out" variant="secondary" onPress={signOut} disabled={checking} />
       </Notice>

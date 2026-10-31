@@ -2764,6 +2764,126 @@ export type Database = {
           },
         ]
       }
+      document_types: {
+        Row: {
+          code: string
+          description: string | null
+          next_number: number
+          prefix: string
+        }
+        Insert: {
+          code: string
+          description?: string | null
+          next_number?: number
+          prefix: string
+        }
+        Update: {
+          code?: string
+          description?: string | null
+          next_number?: number
+          prefix?: string
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          brand_id: number | null
+          continues_id: string | null
+          created_at: string
+          created_by: string | null
+          device_id: string | null
+          doc_type: string
+          id: string
+          location_id: number | null
+          needs_review: boolean
+          notes: string | null
+          number: string
+          posted_at: string | null
+          posted_by: string | null
+          reference: string | null
+          reverses_document_id: string | null
+          reverses_stocktake_id: string | null
+          source_id: number | null
+          status: string
+        }
+        Insert: {
+          brand_id?: number | null
+          continues_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          doc_type: string
+          id?: string
+          location_id?: number | null
+          needs_review?: boolean
+          notes?: string | null
+          number: string
+          posted_at?: string | null
+          posted_by?: string | null
+          reference?: string | null
+          reverses_document_id?: string | null
+          reverses_stocktake_id?: string | null
+          source_id?: number | null
+          status?: string
+        }
+        Update: {
+          brand_id?: number | null
+          continues_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          doc_type?: string
+          id?: string
+          location_id?: number | null
+          needs_review?: boolean
+          notes?: string | null
+          number?: string
+          posted_at?: string | null
+          posted_by?: string | null
+          reference?: string | null
+          reverses_document_id?: string | null
+          reverses_stocktake_id?: string | null
+          source_id?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_continues_id_fkey"
+            columns: ["continues_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_doc_type_fkey"
+            columns: ["doc_type"]
+            isOneToOne: false
+            referencedRelation: "document_types"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "documents_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_reverses_document_id_fkey"
+            columns: ["reverses_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_reverses_stocktake_id_fkey"
+            columns: ["reverses_stocktake_id"]
+            isOneToOne: false
+            referencedRelation: "stocktakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_jobs: {
         Row: {
           completed_at: string | null
@@ -2849,24 +2969,30 @@ export type Database = {
           best_cost: number | null
           best_price_since: string | null
           best_source_id: number | null
+          costed_qty: number
           on_hand: number
           part_id: number
+          stock_cost: number | null
           updated_at: string
         }
         Insert: {
           best_cost?: number | null
           best_price_since?: string | null
           best_source_id?: number | null
+          costed_qty?: number
           on_hand?: number
           part_id: number
+          stock_cost?: number | null
           updated_at?: string
         }
         Update: {
           best_cost?: number | null
           best_price_since?: string | null
           best_source_id?: number | null
+          costed_qty?: number
           on_hand?: number
           part_id?: number
+          stock_cost?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -3075,21 +3201,181 @@ export type Database = {
       }
       members: {
         Row: {
+          added_by: string | null
           created_at: string
+          display_name: string | null
+          needs_password: boolean
           role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
           user_id: string
         }
         Insert: {
+          added_by?: string | null
           created_at?: string
+          display_name?: string | null
+          needs_password?: boolean
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
           user_id: string
         }
         Update: {
+          added_by?: string | null
           created_at?: string
+          display_name?: string | null
+          needs_password?: boolean
           role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      parties: {
+        Row: {
+          company_number: string | null
+          created_at: string
+          created_by: string | null
+          id: number
+          legal_name: string | null
+          name: string
+          notes: string | null
+          short_code: string | null
+          updated_at: string
+          updated_by: string | null
+          vat_number: string | null
+          website: string | null
+        }
+        Insert: {
+          company_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          legal_name?: string | null
+          name: string
+          notes?: string | null
+          short_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vat_number?: string | null
+          website?: string | null
+        }
+        Update: {
+          company_number?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          legal_name?: string | null
+          name?: string
+          notes?: string | null
+          short_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          vat_number?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      party_addresses: {
+        Row: {
+          county: string | null
+          created_at: string
+          created_by: string | null
+          id: number
+          kind: string
+          lines: string
+          party_id: number
+          postcode: string | null
+          town: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          county?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          kind: string
+          lines: string
+          party_id: number
+          postcode?: string | null
+          town?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          county?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: never
+          kind?: string
+          lines?: string
+          party_id?: number
+          postcode?: string | null
+          town?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "party_addresses_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      party_contacts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: number
+          is_primary: boolean
+          mobile: string | null
+          name: string
+          party_id: number
+          phone: string | null
+          role: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: never
+          is_primary?: boolean
+          mobile?: string | null
+          name: string
+          party_id: number
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: never
+          is_primary?: boolean
+          mobile?: string | null
+          name?: string
+          party_id?: number
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "party_contacts_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pricing_rules: {
         Row: {
@@ -3267,127 +3553,7 @@ export type Database = {
             foreignKeyName: "stock_document_lines_document_id_fkey"
             columns: ["document_id"]
             isOneToOne: false
-            referencedRelation: "stock_documents"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stock_document_types: {
-        Row: {
-          code: string
-          description: string | null
-          next_number: number
-          prefix: string
-        }
-        Insert: {
-          code: string
-          description?: string | null
-          next_number?: number
-          prefix: string
-        }
-        Update: {
-          code?: string
-          description?: string | null
-          next_number?: number
-          prefix?: string
-        }
-        Relationships: []
-      }
-      stock_documents: {
-        Row: {
-          brand_id: number | null
-          continues_id: string | null
-          created_at: string
-          created_by: string | null
-          device_id: string | null
-          doc_type: string
-          id: string
-          location_id: number | null
-          needs_review: boolean
-          notes: string | null
-          number: string
-          posted_at: string | null
-          posted_by: string | null
-          reference: string | null
-          reverses_document_id: string | null
-          reverses_stocktake_id: string | null
-          source_id: number | null
-          status: string
-        }
-        Insert: {
-          brand_id?: number | null
-          continues_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          device_id?: string | null
-          doc_type: string
-          id?: string
-          location_id?: number | null
-          needs_review?: boolean
-          notes?: string | null
-          number: string
-          posted_at?: string | null
-          posted_by?: string | null
-          reference?: string | null
-          reverses_document_id?: string | null
-          reverses_stocktake_id?: string | null
-          source_id?: number | null
-          status?: string
-        }
-        Update: {
-          brand_id?: number | null
-          continues_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          device_id?: string | null
-          doc_type?: string
-          id?: string
-          location_id?: number | null
-          needs_review?: boolean
-          notes?: string | null
-          number?: string
-          posted_at?: string | null
-          posted_by?: string | null
-          reference?: string | null
-          reverses_document_id?: string | null
-          reverses_stocktake_id?: string | null
-          source_id?: number | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stock_documents_continues_id_fkey"
-            columns: ["continues_id"]
-            isOneToOne: false
-            referencedRelation: "stock_documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_documents_doc_type_fkey"
-            columns: ["doc_type"]
-            isOneToOne: false
-            referencedRelation: "stock_document_types"
-            referencedColumns: ["code"]
-          },
-          {
-            foreignKeyName: "stock_documents_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "locations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_documents_reverses_document_id_fkey"
-            columns: ["reverses_document_id"]
-            isOneToOne: false
-            referencedRelation: "stock_documents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stock_documents_reverses_stocktake_id_fkey"
-            columns: ["reverses_stocktake_id"]
-            isOneToOne: false
-            referencedRelation: "stocktakes"
+            referencedRelation: "documents"
             referencedColumns: ["id"]
           },
         ]
@@ -3672,6 +3838,7 @@ export type Database = {
           posted_at: string | null
           posted_by: string | null
           purpose: string | null
+          restart_of: string | null
           run_id: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["stocktake_status"]
@@ -3691,6 +3858,7 @@ export type Database = {
           posted_at?: string | null
           posted_by?: string | null
           purpose?: string | null
+          restart_of?: string | null
           run_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["stocktake_status"]
@@ -3710,6 +3878,7 @@ export type Database = {
           posted_at?: string | null
           posted_by?: string | null
           purpose?: string | null
+          restart_of?: string | null
           run_id?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["stocktake_status"]
@@ -3720,6 +3889,13 @@ export type Database = {
             columns: ["location_id"]
             isOneToOne: false
             referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktakes_restart_of_fkey"
+            columns: ["restart_of"]
+            isOneToOne: false
+            referencedRelation: "stocktakes"
             referencedColumns: ["id"]
           },
         ]
@@ -3923,6 +4099,7 @@ export type Database = {
           brand_name: string | null
           category_id: number | null
           category_name: string | null
+          costed_qty: number | null
           eans: string[] | null
           enriched_at: string | null
           is_stocked: boolean | null
@@ -3936,6 +4113,7 @@ export type Database = {
           sell_price: number | null
           sku: string | null
           stock: Json | null
+          unit_cost: number | null
           updated_at: string | null
         }
         Relationships: []
@@ -4054,6 +4232,15 @@ export type Database = {
       }
       apply_resolved_count: { Args: { p_count: number }; Returns: Json }
       bin_count_is_active: { Args: { p_stocktake: string }; Returns: boolean }
+      blended_stock_cost: {
+        Args: {
+          p_best: number
+          p_lot_qty: number
+          p_lot_value: number
+          p_on_hand: number
+        }
+        Returns: number
+      }
       brand_options: {
         Args: { p_limit?: number; p_query?: string }
         Returns: {
@@ -4231,6 +4418,7 @@ export type Database = {
       }
       finish_count_run: { Args: { p_run: string }; Returns: Json }
       finish_counting: { Args: { p_stocktake: string }; Returns: undefined }
+      finish_setup: { Args: never; Returns: undefined }
       floor_activity: {
         Args: { p_before?: string; p_kind?: string; p_limit?: number }
         Returns: Json
@@ -4407,6 +4595,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      location_bin_tree: {
+        Args: { p_location: number; p_path?: string[] }
+        Returns: {
+          active_bins: number
+          bin_id: number
+          bins: number
+          code: string
+          description: string
+          is_active: boolean
+          is_system: boolean
+          kind: string
+          label: string
+          parts: number
+          path: string[]
+          stocked_bins: number
+          units: number
+        }[]
+      }
       location_bins: {
         Args: { p_location: number }
         Returns: {
@@ -4455,11 +4661,12 @@ export type Database = {
         Args: never
         Returns: {
           email: string
+          name: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }[]
       }
-      next_stock_document_number: { Args: { p_type: string }; Returns: string }
+      next_document_number: { Args: { p_type: string }; Returns: string }
       normalise_name_key: { Args: { value: string }; Returns: string }
       normalise_part_number: { Args: { value: string }; Returns: string }
       open_bin_count: {
@@ -4605,6 +4812,9 @@ export type Database = {
           your_stock: number
         }[]
       }
+      party_address_list: { Args: { p_party: number }; Returns: Json }
+      party_contact_list: { Args: { p_party: number }; Returns: Json }
+      party_update: { Args: { p: Json; p_party: number }; Returns: undefined }
       pending_put_away: {
         Args: never
         Returns: {
@@ -4614,6 +4824,28 @@ export type Database = {
           place: string
           units: number
         }[]
+      }
+      people: {
+        Args: never
+        Returns: {
+          can_change: boolean
+          email: string
+          is_me: boolean
+          last_signed_in_at: string
+          name: string
+          needs_password: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          signed_up_at: string
+          user_id: string
+        }[]
+      }
+      people_rule_problem: {
+        Args: {
+          p_allow_self?: boolean
+          p_new_role?: Database["public"]["Enums"]["app_role"]
+          p_target: string
+        }
+        Returns: string
       }
       person_label: { Args: { p_user: string }; Returns: string }
       post_stocktake: { Args: { p_stocktake: string }; Returns: Json }
@@ -4670,6 +4902,12 @@ export type Database = {
       }
       remove_enrichment_source: { Args: { p_id: number }; Returns: string }
       remove_kit_component: { Args: { p_link: number }; Returns: undefined }
+      remove_party_address: {
+        Args: { p_kind: string; p_party: number }
+        Returns: Json
+      }
+      remove_party_contact: { Args: { p_id: number }; Returns: Json }
+      remove_person_access: { Args: { p_user_id: string }; Returns: undefined }
       remove_stock_cost_lot: { Args: { p_id: number }; Returns: Json }
       remove_supplier_code: {
         Args: { p_code: string; p_source: number }
@@ -4699,6 +4937,14 @@ export type Database = {
       request_export: {
         Args: { p_filters?: Json; p_profile: number }
         Returns: string
+      }
+      require_can_manage: {
+        Args: {
+          p_allow_self?: boolean
+          p_new_role?: Database["public"]["Enums"]["app_role"]
+          p_target: string
+        }
+        Returns: undefined
       }
       require_role: {
         Args: { minimum: Database["public"]["Enums"]["app_role"] }
@@ -4778,6 +5024,8 @@ export type Database = {
         Args: { p_source: number; p_spec: Json }
         Returns: Json
       }
+      save_party_address: { Args: { p: Json }; Returns: Json }
+      save_party_contact: { Args: { p: Json }; Returns: Json }
       save_spec_key: {
         Args: {
           p_aliases?: string[]
@@ -4801,6 +5049,7 @@ export type Database = {
         }
         Returns: Json
       }
+      save_supplier: { Args: { p: Json }; Returns: Json }
       save_web_profile: {
         Args: { p_source: number; p_spec: Json }
         Returns: Json
@@ -4827,6 +5076,17 @@ export type Database = {
       }
       set_api_budget: {
         Args: { p_credit_limit: number; p_provider: string }
+        Returns: undefined
+      }
+      set_person_name: {
+        Args: { p_name: string; p_user_id: string }
+        Returns: undefined
+      }
+      set_person_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
         Returns: undefined
       }
       set_receipt_details: {
@@ -4858,6 +5118,10 @@ export type Database = {
       set_supplier_code: {
         Args: { p_code: string; p_part: number; p_source: number }
         Returns: undefined
+      }
+      set_supplier_status: {
+        Args: { p_reason?: string; p_source: number; p_status: string }
+        Returns: Json
       }
       set_vehicle_text_match: {
         Args: {
@@ -4912,6 +5176,26 @@ export type Database = {
           variance: number
         }[]
       }
+      supplier_detail: { Args: { p_source: number }; Returns: Json }
+      supplier_list: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: {
+          account_number: string
+          last_delivery: Json
+          last_upload: Json
+          lines_listed: number
+          name: string
+          short_code: string
+          source_id: number
+          status: string
+          total_count: number
+        }[]
+      }
       supplier_options: {
         Args: never
         Returns: {
@@ -4920,6 +5204,7 @@ export type Database = {
           last_upload: Json
           name: string
           source_id: number
+          status: string
         }[]
       }
       transfer_stock: {
@@ -4932,6 +5217,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      trim_stock_cost_lots: { Args: { p_part: number }; Returns: number }
       try_uuid: { Args: { value: string }; Returns: string }
       unlocated_stock: {
         Args: { p_limit?: number; p_location?: number }
@@ -5008,7 +5294,13 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "viewer" | "counter" | "editor" | "admin" | "owner"
+      app_role:
+        | "viewer"
+        | "counter"
+        | "editor"
+        | "admin"
+        | "owner"
+        | "developer"
       count_status: "counted" | "unresolved" | "void"
       export_format: "csv" | "tsv" | "xlsx" | "json"
       movement_reason:
@@ -5210,7 +5502,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      app_role: ["viewer", "counter", "editor", "admin", "owner"],
+      app_role: ["viewer", "counter", "editor", "admin", "owner", "developer"],
       count_status: ["counted", "unresolved", "void"],
       export_format: ["csv", "tsv", "xlsx", "json"],
       movement_reason: [

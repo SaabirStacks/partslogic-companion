@@ -45,6 +45,13 @@ export const ICONS = {
   reserved: symbol('bookmark.fill', 'bookmark'),
   held: symbol('pause.circle.fill', 'pause_circle'),
   locked: symbol('lock.fill', 'lock'),
+  // People and the developer tools
+  people: symbol('person.2.fill', 'group'),
+  addPerson: symbol('person.badge.plus', 'person_add'),
+  key: symbol('key.fill', 'key'),
+  share: symbol('square.and.arrow.up', 'share'),
+  developer: symbol('hammer.fill', 'build'),
+  preview: symbol('eye.fill', 'visibility'),
 } satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol; web: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

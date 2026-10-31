@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +29,8 @@ type BoardProps = {
   unbinned?: number | null;
   // A new version is downloaded and Restart switches to it (use-app-update.ts).
   update?: { ready: boolean; restart: () => void };
+  // A strip under the pills that applies to the whole board (a developer previewing another role).
+  notice?: ReactNode;
   location: string | null;
   sync: SyncState;
   onJob: (workflow: LiveWorkflow) => void;
@@ -55,6 +58,7 @@ export function BoardView({
   openWork,
   unbinned = null,
   update,
+  notice,
   location,
   sync,
   onJob,
@@ -93,6 +97,8 @@ export function BoardView({
           <SyncPill state={sync} onPress={onSync} />
         </Animated.View>
       </View>
+
+      {notice}
 
       {update?.ready ? (
         <Animated.View entering={APPEAR}>
