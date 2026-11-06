@@ -69,9 +69,9 @@ export function useDelivery() {
   const label = (current: Delivery, count: number) =>
     `Delivery from ${deliveryName(current.sender)} started\u00a0${time(current.startedAt)} · ${count} ${count === 1 ? 'line' : 'lines'}`;
 
-  async function addLine(current: Delivery, code: string, qty: number, name: string | null) {
+  async function addLine(current: Delivery, code: string, qty: number, name: string | null, partId: number | null) {
     const first = lines.length === 0;
-    const line: DeliveryLine = { clientLineId: Crypto.randomUUID(), code, qty, label: name, createdAt: new Date().toISOString() };
+    const line: DeliveryLine = { clientLineId: Crypto.randomUUID(), code, qty, label: name, partId, createdAt: new Date().toISOString() };
     await store.addLine(current.documentId, line);
     const payload: QueueItem = {
       kind: 'receipt_lines',
@@ -159,16 +159,22 @@ export function useDelivery() {
       const scan = held.pending;
       if (!delivery || !scan?.hit || scan.hit.type === 'bin' || scan.hit.type === 'error') return;
       held.clear();
-      await addLine(delivery, scan.code, scan.qty, scan.hit.type === 'part' ? partLabel(scan.hit) : null);
+      await addLine(
+        delivery,
+        scan.code,
+        scan.qty,
+        scan.hit.type === 'part' ? partLabel(scan.hit) : null,
+        scan.hit.type === 'part' ? scan.hit.partId : null,
+      );
     },
 
-    async change(code: string, qty: number, name: string | null) {
-      if (delivery) await addLine(delivery, code, qty, name);
+    async change(code: string, qty: number, name: string | null, partId: number | null) {
+      if (delivery) await addLine(delivery, code, qty, name, partId);
     },
 
-    async setTotal(code: string, target: number, total: number, name: string | null) {
+    async setTotal(code: string, target: number, total: number, name: string | null, partId: number | null) {
       const change = adjustmentTo(target, total);
-      if (delivery && change !== null) await addLine(delivery, code, change, name);
+      if (delivery && change !== null) await addLine(delivery, code, change, name, partId);
     },
 
     async finish() {

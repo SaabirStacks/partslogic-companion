@@ -4,7 +4,7 @@ import type { Delivery } from '../delivery-store';
 import type { GroupStatus, LineGroup } from '../lines';
 import { receiptLine, receiptSummary } from '../receipt';
 
-const group = (code: string, status: GroupStatus): LineGroup => ({ code, label: null, total: 1, status, reason: null, lastAt: '' });
+const group = (code: string, status: GroupStatus): LineGroup => ({ code, label: null, partId: null, total: 1, status, reason: null, lastAt: '' });
 
 describe('receiptSummary', () => {
   it('is booked once PartsLogic has every line, counting codes and unknowns', () => {

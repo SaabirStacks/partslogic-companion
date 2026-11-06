@@ -14,8 +14,12 @@ import { StatusStrip } from '@/ui/status-strip';
 import { Txt } from '@/ui/text';
 import { PlaceholderRows } from '@/ui/placeholder';
 
+import { useWorkingLocation } from '@/session/location-provider';
+
+import { expectedText, type ExpectedSupplier } from './open-orders';
 import { cleanReference, REFERENCE_MAX, SENDER_KINDS, type Sender } from './sender';
-import type { SenderOption } from './sender-options';
+import { withExpected, type SenderOption } from './sender-options';
+import { useExpectedToday } from './use-goods-in';
 import { useSenders } from './use-senders';
 
 type ListState = { options: SenderOption[]; loading: boolean; failed: boolean; savedAt: string | null; reload: () => void };
@@ -28,12 +32,19 @@ export function WhoIsItFrom({ onStart }: { onStart: (sender: Sender, reference: 
   const [chosen, setChosen] = useState<Sender | null>(null);
   const [reference, setReference] = useState('');
   const senders = useSenders(kind, query);
+  const { location } = useWorkingLocation();
+  const expected = useExpectedToday(location?.id ?? null);
+  const options =
+    kind === 'supplier'
+      ? withExpected(senders.options, expected.map((item) => ({ supplierId: item.supplierId, text: expectedText(item) })), query)
+      : senders.options;
 
   return (
     <WhoIsItFromView
       kind={kind}
       query={query}
-      list={senders}
+      list={{ ...senders, options }}
+      expected={kind === 'supplier' ? expected : []}
       chosen={chosen}
       reference={reference}
       onKind={(next) => {
@@ -56,6 +67,7 @@ export function WhoIsItFromView({
   kind,
   query,
   list,
+  expected = [],
   chosen,
   reference,
   onKind,
@@ -67,6 +79,8 @@ export function WhoIsItFromView({
   kind: Sender['kind'];
   query: string;
   list: ListState;
+  // Suppliers with orders due today or overdue at this location (they come first in the list).
+  expected?: ExpectedSupplier[];
   chosen: Sender | null;
   reference: string;
   onKind: (kind: Sender['kind']) => void;
@@ -88,6 +102,13 @@ export function WhoIsItFromView({
         <SearchInput placeholder={`Search ${noun}`} value={query} onChangeText={onQuery} autoCapitalize={kind === 'supplier' ? 'words' : 'characters'} />
 
         {list.savedAt ? <StatusStrip tone="warn" icon="offline" text={`No signal · list saved ${clock(list.savedAt)}`} /> : null}
+        {expected.length > 0 && query.trim() === '' ? (
+          <StatusStrip
+            tone={expected.some((item) => item.overdue) ? 'warn' : 'neutral'}
+            icon="receive"
+            text={`Expected today: ${expected.map((item) => item.name).join(', ')}`}
+          />
+        ) : null}
         {list.failed && list.options.length === 0 ? (
           <>
             <StatusStrip tone="stop" icon="offline" text={kind === 'supplier' ? 'Suppliers didn’t load' : 'Search needs signal'} />

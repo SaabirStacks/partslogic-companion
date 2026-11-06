@@ -2,7 +2,8 @@ import type { ReceiptLineResult, ReceiptResult } from '@/vendor/partslogic/share
 
 import type { OutboxItem } from '@/queue/types';
 
-export type DeliveryLine = { clientLineId: string; code: string; qty: number; label: string | null; createdAt: string };
+// partId: the catalogue part the scan named; null for an unknown code (or a line saved before parts were kept).
+export type DeliveryLine = { clientLineId: string; code: string; qty: number; label: string | null; partId: number | null; createdAt: string };
 
 // Where one scanned line stands: still on the phone, refused as a whole call (attention), or what
 // PartsLogic said about it.
@@ -46,6 +47,7 @@ export type GroupStatus = 'attention' | 'refused' | 'unknown' | 'void' | 'waitin
 export type LineGroup = {
   code: string;
   label: string | null;
+  partId: number | null;
   total: number;
   status: GroupStatus;
   reason: string | null;
@@ -83,11 +85,12 @@ export function groupLines(lines: DeliveryLine[], states: Map<string, LineState>
     const status = groupStatus(state);
     const group = groups.get(line.code);
     if (!group) {
-      groups.set(line.code, { code: line.code, label: line.label, total: line.qty, status, reason: state?.reason ?? null, lastAt: line.createdAt });
+      groups.set(line.code, { code: line.code, label: line.label, partId: line.partId, total: line.qty, status, reason: state?.reason ?? null, lastAt: line.createdAt });
       continue;
     }
     group.total += line.qty;
     group.label = group.label ?? line.label;
+    group.partId = group.partId ?? line.partId;
     if (line.createdAt > group.lastAt) group.lastAt = line.createdAt;
     if (PRECEDENCE.indexOf(status) < PRECEDENCE.indexOf(group.status)) {
       group.status = status;

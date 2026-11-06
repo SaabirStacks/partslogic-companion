@@ -99,6 +99,11 @@ created: `SaabirStacks/partslogic-companion`.
    resumes. Or type → results → Part card.
 2. **Receive a delivery:** Receive → Start → scan each box (adjust a box quantity with −/+ or type) →
    unknown barcode: Add part now or leave it for the office → Finish → **Put away now**.
+   Against a supplier's orders (PartsLogic `docs/GOODS_IN.md`, slice G3): Who's it from? lists the suppliers
+   expected today first ("2 orders due today · 13:00–15:00"); scanning is count first, so ordered quantities are
+   never shown, but a part on none of that supplier's open orders says "Not on an FPS order · keep it?"; Finish
+   opens **Check the delivery** (OK, short, over, not ordered, not here, and "For AB12 CDE · put aside"), then
+   Recount or Finish. The open orders are saved on the phone when the delivery starts, so this works offline.
 3. **Put away / count a bin:** Count → scan bin → scan every part on the shelf (blind) → Finish →
    result shows what came from Unbinned, what went back and what was found.
 4. **Unknown barcode anywhere:** sheet → Add as new part → matched scans heal automatically.
