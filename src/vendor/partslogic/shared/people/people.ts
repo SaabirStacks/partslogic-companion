@@ -1,10 +1,8 @@
-import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@partslogic/db-types';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
-import { DataError, dataError } from './errors';
+import type { Client } from '../core/client';
+import { DataError, dataError } from '../core/errors';
 import { APP_ROLES, roleAtLeast, type AppRole } from './members';
-
-type Client = SupabaseClient<Database>;
 
 // Managing people. Admins and above give roles, names and access; they never change themselves, never
 // someone above their own role, and never give a role above their own (public.people_rule_problem holds

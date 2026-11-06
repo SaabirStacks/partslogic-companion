@@ -1,13 +1,11 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@partslogic/db-types';
+import type { Json } from '@partslogic/db-types';
 
-import { dataError } from './errors';
-import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from './read';
+import type { Client } from '../core/client';
+import { dataError } from '../core/errors';
+import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from '../core/read';
 
 // The enrichment source list (Organisation › Enrichment): where parts are enriched from, in order, each
 // website's extraction profile, the spec vocabulary, page reads and the backfill. See docs/web-enrichment.md.
-
-type Client = SupabaseClient<Database>;
 
 export type SourceKind = 'autodoc' | 'brand_catalogue' | 'retailer';
 

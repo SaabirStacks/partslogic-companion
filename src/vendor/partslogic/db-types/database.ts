@@ -156,6 +156,7 @@ export type Database = {
           manual_by: string | null
           observed_at: string
           row_number: number | null
+          run_id: number | null
           source_id: number | null
         }
         Insert: {
@@ -168,6 +169,7 @@ export type Database = {
           manual_by?: string | null
           observed_at?: string
           row_number?: number | null
+          run_id?: number | null
           source_id?: number | null
         }
         Update: {
@@ -180,6 +182,7 @@ export type Database = {
           manual_by?: string | null
           observed_at?: string
           row_number?: number | null
+          run_id?: number | null
           source_id?: number | null
         }
         Relationships: [
@@ -209,6 +212,39 @@ export type Database = {
             columns: ["link_id"]
             isOneToOne: false
             referencedRelation: "part_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_withdrawals: {
+        Row: {
+          evidence_id: number
+          run_id: number | null
+          withdrawn_at: string
+        }
+        Insert: {
+          evidence_id: number
+          run_id?: number | null
+          withdrawn_at?: string
+        }
+        Update: {
+          evidence_id?: number
+          run_id?: number | null
+          withdrawn_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_withdrawals_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: true
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_withdrawals_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: true
+            referencedRelation: "live_evidence"
             referencedColumns: ["id"]
           },
         ]
@@ -360,6 +396,7 @@ export type Database = {
           part_id: number
           source_count: number
           state: Database["catalogue"]["Enums"]["claim_state"]
+          withdrawn_from: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Insert: {
           evidence_count?: number
@@ -370,6 +407,7 @@ export type Database = {
           part_id: number
           source_count?: number
           state?: Database["catalogue"]["Enums"]["claim_state"]
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Update: {
           evidence_count?: number
@@ -380,6 +418,7 @@ export type Database = {
           part_id?: number
           source_count?: number
           state?: Database["catalogue"]["Enums"]["claim_state"]
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Relationships: [
           {
@@ -403,6 +442,7 @@ export type Database = {
           state: Database["catalogue"]["Enums"]["claim_state"]
           value: Json
           value_hash: string | null
+          withdrawn_from: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Insert: {
           evidence_count?: number
@@ -415,6 +455,7 @@ export type Database = {
           state?: Database["catalogue"]["Enums"]["claim_state"]
           value: Json
           value_hash?: string | null
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Update: {
           evidence_count?: number
@@ -427,6 +468,7 @@ export type Database = {
           state?: Database["catalogue"]["Enums"]["claim_state"]
           value?: Json
           value_hash?: string | null
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Relationships: [
           {
@@ -451,6 +493,7 @@ export type Database = {
           vehicle_id: number | null
           vehicle_text: string | null
           vehicle_text_key: string | null
+          withdrawn_from: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Insert: {
           evidence_count?: number
@@ -464,6 +507,7 @@ export type Database = {
           vehicle_id?: number | null
           vehicle_text?: string | null
           vehicle_text_key?: string | null
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Update: {
           evidence_count?: number
@@ -477,6 +521,7 @@ export type Database = {
           vehicle_id?: number | null
           vehicle_text?: string | null
           vehicle_text_key?: string | null
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Relationships: [
           {
@@ -556,6 +601,7 @@ export type Database = {
           state: Database["catalogue"]["Enums"]["claim_state"]
           to_part_id: number
           updated_at: string
+          withdrawn_from: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Insert: {
           confidence?: number
@@ -570,6 +616,7 @@ export type Database = {
           state?: Database["catalogue"]["Enums"]["claim_state"]
           to_part_id: number
           updated_at?: string
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Update: {
           confidence?: number
@@ -584,6 +631,7 @@ export type Database = {
           state?: Database["catalogue"]["Enums"]["claim_state"]
           to_part_id?: number
           updated_at?: string
+          withdrawn_from?: Database["catalogue"]["Enums"]["claim_state"] | null
         }
         Relationships: [
           {
@@ -1129,6 +1177,74 @@ export type Database = {
         }
         Relationships: []
       }
+      live_evidence: {
+        Row: {
+          barcode_id: number | null
+          batch_id: string | null
+          fact_id: number | null
+          fitment_id: number | null
+          id: number | null
+          link_id: number | null
+          manual_by: string | null
+          observed_at: string | null
+          row_number: number | null
+          source_id: number | null
+        }
+        Insert: {
+          barcode_id?: number | null
+          batch_id?: string | null
+          fact_id?: number | null
+          fitment_id?: number | null
+          id?: number | null
+          link_id?: number | null
+          manual_by?: string | null
+          observed_at?: string | null
+          row_number?: number | null
+          source_id?: number | null
+        }
+        Update: {
+          barcode_id?: number | null
+          batch_id?: string | null
+          fact_id?: number | null
+          fitment_id?: number | null
+          id?: number | null
+          link_id?: number | null
+          manual_by?: string | null
+          observed_at?: string | null
+          row_number?: number | null
+          source_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_barcode_id_fkey"
+            columns: ["barcode_id"]
+            isOneToOne: false
+            referencedRelation: "part_barcodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_fact_id_fkey"
+            columns: ["fact_id"]
+            isOneToOne: false
+            referencedRelation: "part_facts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_fitment_id_fkey"
+            columns: ["fitment_id"]
+            isOneToOne: false
+            referencedRelation: "part_fitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "part_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_brand_alias: {
@@ -1215,6 +1331,15 @@ export type Database = {
         Args: { p_manual_by: string; p_source: number }
         Returns: string
       }
+      evidence_tally: {
+        Args: { p_id: number; p_kind: string }
+        Returns: {
+          last_seen: string
+          live: number
+          sources: number
+          total: number
+        }[]
+      }
       find_brand: { Args: { p_name: string }; Returns: number }
       find_or_create_brand: {
         Args: {
@@ -1277,6 +1402,10 @@ export type Database = {
         Returns: number
       }
       name_keys: { Args: { p: string[] }; Returns: string[] }
+      number_near_match: {
+        Args: { p_ours: string; p_theirs: string }
+        Returns: string
+      }
       oe_format_check: {
         Args: { p_make: string; p_number: string }
         Returns: Json
@@ -1288,8 +1417,27 @@ export type Database = {
       promote_placeholder: { Args: { p_placeholder: number }; Returns: number }
       recalculate_link: { Args: { p_link: number }; Returns: undefined }
       reconcile_anchor: { Args: { p_part: number }; Returns: number }
+      record_evidence: {
+        Args: {
+          p_batch: string
+          p_id: number
+          p_kind: string
+          p_manual_by: string
+          p_row: number
+          p_source: number
+        }
+        Returns: undefined
+      }
+      refresh_claim: {
+        Args: { p_id: number; p_kind: string; p_seen?: string }
+        Returns: undefined
+      }
       refresh_golden_record: {
         Args: { p_field: string; p_part: number }
+        Returns: undefined
+      }
+      refresh_row_claims: {
+        Args: { p_batch: string; p_row: number; p_run?: number }
         Returns: undefined
       }
       register_number_alias: {
@@ -1306,6 +1454,15 @@ export type Database = {
       relink_shared_oe_numbers: { Args: { p_group?: string }; Returns: number }
       rematch_vehicle_texts: { Args: { p_limit?: number }; Returns: number }
       resolve_part: { Args: { p_part: number }; Returns: number }
+      restore_row: {
+        Args: {
+          p_batch: string
+          p_row: number
+          p_run: number
+          p_snapshot: Json
+        }
+        Returns: undefined
+      }
       run_integrity_check: { Args: never; Returns: Json }
       set_link_state: {
         Args: {
@@ -1316,6 +1473,25 @@ export type Database = {
         Returns: undefined
       }
       setting: { Args: { p_key: string }; Returns: number }
+      settle_inferred: { Args: { p_link: number }; Returns: undefined }
+      settled_state: {
+        Args: {
+          p_live: number
+          p_state: Database["catalogue"]["Enums"]["claim_state"]
+          p_total: number
+          p_withdrawn_from: Database["catalogue"]["Enums"]["claim_state"]
+        }
+        Returns: Database["catalogue"]["Enums"]["claim_state"]
+      }
+      settled_withdrawn_from: {
+        Args: {
+          p_live: number
+          p_state: Database["catalogue"]["Enums"]["claim_state"]
+          p_total: number
+          p_withdrawn_from: Database["catalogue"]["Enums"]["claim_state"]
+        }
+        Returns: Database["catalogue"]["Enums"]["claim_state"]
+      }
       text_tokens: { Args: { p_text: string }; Returns: string[] }
       upsert_vehicle: { Args: { p: Json }; Returns: number }
       vehicle_fitments: {
@@ -1329,6 +1505,14 @@ export type Database = {
       vehicle_satisfies: {
         Args: { q: Json; v: Database["catalogue"]["Tables"]["vehicles"]["Row"] }
         Returns: boolean
+      }
+      withdraw_row: {
+        Args: { p_batch: string; p_row: number; p_run?: number }
+        Returns: number
+      }
+      withdraw_row_evidence: {
+        Args: { p_batch: string; p_row: number; p_run?: number }
+        Returns: number
       }
     }
     Enums: {
@@ -1411,6 +1595,119 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "api_budgets"
             referencedColumns: ["provider"]
+          },
+        ]
+      }
+      batch_runs: {
+        Row: {
+          batch_id: string
+          confirmed_at: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          field_changes: Json
+          finished_at: string | null
+          id: number
+          mapped_through: number
+          mode: string
+          n_changed: number
+          n_new: number
+          n_retry: number
+          n_unchanged: number
+          n_unreadable: number
+          outcome: Json
+          prior_profile_id: number | null
+          profile_id: number
+          row_count: number
+          rows_done: number
+          rows_total: number
+          status: string
+          undo_outcome: Json
+          undone_at: string | null
+          undone_by: string | null
+        }
+        Insert: {
+          batch_id: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          field_changes?: Json
+          finished_at?: string | null
+          id?: never
+          mapped_through?: number
+          mode: string
+          n_changed?: number
+          n_new?: number
+          n_retry?: number
+          n_unchanged?: number
+          n_unreadable?: number
+          outcome?: Json
+          prior_profile_id?: number | null
+          profile_id: number
+          row_count: number
+          rows_done?: number
+          rows_total?: number
+          status?: string
+          undo_outcome?: Json
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Update: {
+          batch_id?: string
+          confirmed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          field_changes?: Json
+          finished_at?: string | null
+          id?: never
+          mapped_through?: number
+          mode?: string
+          n_changed?: number
+          n_new?: number
+          n_retry?: number
+          n_unchanged?: number
+          n_unreadable?: number
+          outcome?: Json
+          prior_profile_id?: number | null
+          profile_id?: number
+          row_count?: number
+          rows_done?: number
+          rows_total?: number
+          status?: string
+          undo_outcome?: Json
+          undone_at?: string | null
+          undone_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_runs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_runs_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_progress"
+            referencedColumns: ["batch_id"]
+          },
+          {
+            foreignKeyName: "batch_runs_prior_profile_id_fkey"
+            columns: ["prior_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batch_runs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2212,6 +2509,53 @@ export type Database = {
           },
         ]
       }
+      run_rows: {
+        Row: {
+          done: boolean
+          error: string | null
+          kind: string
+          new_issues: Json
+          new_mapped: Json
+          old: Json | null
+          row_number: number
+          run_id: number
+          undo: Json | null
+          undone: boolean
+        }
+        Insert: {
+          done?: boolean
+          error?: string | null
+          kind: string
+          new_issues?: Json
+          new_mapped: Json
+          old?: Json | null
+          row_number: number
+          run_id: number
+          undo?: Json | null
+          undone?: boolean
+        }
+        Update: {
+          done?: boolean
+          error?: string | null
+          kind?: string
+          new_issues?: Json
+          new_mapped?: Json
+          old?: Json | null
+          row_number?: number
+          run_id?: number
+          undo?: Json | null
+          undone?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_rows_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "batch_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sources: {
         Row: {
           created_at: string
@@ -2383,6 +2727,7 @@ export type Database = {
       }
     }
     Functions: {
+      add_counts: { Args: { p_a: Json; p_b: Json }; Returns: Json }
       add_landing_columns: {
         Args: { p_headers: string[]; p_landing: unknown }
         Returns: string[]
@@ -2471,7 +2816,9 @@ export type Database = {
         }
       }
       complete_job: { Args: { p_job: number }; Returns: undefined }
+      current_run: { Args: never; Returns: number }
       default_web_profile: { Args: never; Returns: Json }
+      ean_verdict: { Args: { c: Json; p_part: number }; Returns: string }
       enqueue_job: {
         Args: { p_kind: string; p_payload?: Json; p_run_after?: string }
         Returns: number
@@ -2506,6 +2853,16 @@ export type Database = {
         }
         Returns: Json
       }
+      mapped_diff: { Args: { p_new: Json; p_old: Json }; Returns: Json }
+      match_verdict: { Args: { c: Json; p_part: number }; Returns: string }
+      names_match_part: { Args: { c: Json; p_part: number }; Returns: boolean }
+      near_number_in_text: {
+        Args: { p_keys: string[]; p_text: string }
+        Returns: {
+          reason: string
+          token: string
+        }[]
+      }
       oe_sibling_enriched: {
         Args: { p_part: number; p_provider: string }
         Returns: boolean
@@ -2523,21 +2880,32 @@ export type Database = {
         }
         Returns: number
       }
+      page_confirmed: {
+        Args: { p_part: number; p_url: string }
+        Returns: boolean
+      }
+      page_eans: { Args: { c: Json }; Returns: string[] }
       parse_image_list: { Args: { p_images: Json }; Returns: Json }
+      part_eans: { Args: { p_part: number }; Returns: string[] }
       part_enrichment_gaps: { Args: { p_part: number }; Returns: Json }
+      part_number_keys: { Args: { p_part: number }; Returns: string[] }
       publish_price: {
         Args: {
           p_anomaly_pct?: number
           p_batch?: string
+          p_box_qty?: number
+          p_central_min_qty?: number
           p_cost: number
           p_currency?: string
           p_list?: number
+          p_min_qty?: number
           p_pack?: number
           p_part: number
           p_row?: number
           p_source: number
           p_surcharge?: number
           p_surcharge_code?: string
+          p_unit?: string
         }
         Returns: number
       }
@@ -2569,7 +2937,22 @@ export type Database = {
         }
         Returns: number
       }
+      refresh_batch_counts: { Args: { p_batch: string }; Returns: undefined }
       requeue_stale_jobs: { Args: { p_older_than?: string }; Returns: number }
+      rerun_blocker: { Args: { p_batch: string }; Returns: string }
+      rerun_finish_apply: { Args: { p_run: number }; Returns: undefined }
+      rerun_finish_undo: { Args: { p_run: number }; Returns: undefined }
+      rerun_map: { Args: { p_budget?: string; p_run: number }; Returns: Json }
+      rerun_next_chunk: {
+        Args: { p_budget?: string; p_run?: number }
+        Returns: Json
+      }
+      rerun_row: { Args: { p_row: number; p_run: number }; Returns: Json }
+      rerun_rows: {
+        Args: { p_budget?: string; p_run: number; p_undo: boolean }
+        Returns: Json
+      }
+      rerun_undo_row: { Args: { p_row: number; p_run: number }; Returns: Json }
       resolve_issues: {
         Args: {
           p_kind: Database["ingest"]["Enums"]["issue_kind"]
@@ -2578,7 +2961,23 @@ export type Database = {
         }
         Returns: number
       }
+      review_listings: {
+        Args: { p_listings: Json; p_part: number; p_provider: string }
+        Returns: number
+      }
+      review_page: {
+        Args: {
+          c: Json
+          p_part: number
+          p_provider: string
+          p_source: number
+          p_why: string
+        }
+        Returns: number
+      }
       rule_value: { Args: { p_cells: Json; p_rule: Json }; Returns: string }
+      run_can_undo: { Args: { p_run: number }; Returns: boolean }
+      run_json: { Args: { p_run: number }; Returns: Json }
       save_web_profile_version: {
         Args: { p_by: string; p_source: number; p_spec: Json }
         Returns: Json
@@ -2618,6 +3017,10 @@ export type Database = {
       transform_value: {
         Args: { p_step: Json; p_value: string }
         Returns: string
+      }
+      upload_is_newer: {
+        Args: { p_other: string; p_than: string }
+        Returns: boolean
       }
       validate_web_profile: { Args: { p_spec: Json }; Returns: Json }
       web_contract_fields: { Args: never; Returns: string[] }
@@ -2805,6 +3208,8 @@ export type Database = {
           reverses_stocktake_id: string | null
           source_id: number | null
           status: string
+          updated_at: string | null
+          updated_by: string | null
         }
         Insert: {
           brand_id?: number | null
@@ -2825,6 +3230,8 @@ export type Database = {
           reverses_stocktake_id?: string | null
           source_id?: number | null
           status?: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Update: {
           brand_id?: number | null
@@ -2845,6 +3252,8 @@ export type Database = {
           reverses_stocktake_id?: string | null
           source_id?: number | null
           status?: string
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -3174,6 +3583,7 @@ export type Database = {
       }
       locations: {
         Row: {
+          address_id: number | null
           code: string
           created_at: string
           id: number
@@ -3182,6 +3592,7 @@ export type Database = {
           opening_stock_done_by: string | null
         }
         Insert: {
+          address_id?: number | null
           code: string
           created_at?: string
           id?: never
@@ -3190,6 +3601,7 @@ export type Database = {
           opening_stock_done_by?: string | null
         }
         Update: {
+          address_id?: number | null
           code?: string
           created_at?: string
           id?: never
@@ -3282,6 +3694,7 @@ export type Database = {
           id: number
           kind: string
           lines: string
+          name: string | null
           party_id: number
           postcode: string | null
           town: string | null
@@ -3295,6 +3708,7 @@ export type Database = {
           id?: never
           kind: string
           lines: string
+          name?: string | null
           party_id: number
           postcode?: string | null
           town?: string | null
@@ -3308,6 +3722,7 @@ export type Database = {
           id?: never
           kind?: string
           lines?: string
+          name?: string | null
           party_id?: number
           postcode?: string | null
           town?: string | null
@@ -3939,43 +4354,61 @@ export type Database = {
       supplier_prices: {
         Row: {
           batch_id: string | null
+          box_qty: number | null
+          central_min_qty: number | null
           cost: number
           currency: string
+          ended_by_run: number | null
           id: number
           list_price: number | null
+          min_qty: number | null
           pack_qty: number | null
           part_id: number
+          run_id: number | null
           source_id: number
           surcharge: number | null
           surcharge_code: string | null
+          unit: string | null
           valid_from: string
           valid_to: string | null
         }
         Insert: {
           batch_id?: string | null
+          box_qty?: number | null
+          central_min_qty?: number | null
           cost: number
           currency?: string
+          ended_by_run?: number | null
           id?: never
           list_price?: number | null
+          min_qty?: number | null
           pack_qty?: number | null
           part_id: number
+          run_id?: number | null
           source_id: number
           surcharge?: number | null
           surcharge_code?: string | null
+          unit?: string | null
           valid_from?: string
           valid_to?: string | null
         }
         Update: {
           batch_id?: string | null
+          box_qty?: number | null
+          central_min_qty?: number | null
           cost?: number
           currency?: string
+          ended_by_run?: number | null
           id?: never
           list_price?: number | null
+          min_qty?: number | null
           pack_qty?: number | null
           part_id?: number
+          run_id?: number | null
           source_id?: number
           surcharge?: number | null
           surcharge_code?: string | null
+          unit?: string | null
           valid_from?: string
           valid_to?: string | null
         }
@@ -4037,30 +4470,48 @@ export type Database = {
           created_at: string
           currency: string
           id: boolean
+          logo_path: string | null
           name: string
+          order_terms: string | null
+          party_id: number | null
+          price_check_pct: number
           price_rounding: string
+          registered_in: string | null
           retail_includes_vat: boolean
           surcharge_uplift: number
+          time_zone: string
           vat_rate: number
         }
         Insert: {
           created_at?: string
           currency?: string
           id?: boolean
+          logo_path?: string | null
           name: string
+          order_terms?: string | null
+          party_id?: number | null
+          price_check_pct?: number
           price_rounding?: string
+          registered_in?: string | null
           retail_includes_vat?: boolean
           surcharge_uplift?: number
+          time_zone?: string
           vat_rate?: number
         }
         Update: {
           created_at?: string
           currency?: string
           id?: boolean
+          logo_path?: string | null
           name?: string
+          order_terms?: string | null
+          party_id?: number | null
+          price_check_pct?: number
           price_rounding?: string
+          registered_in?: string | null
           retail_includes_vat?: boolean
           surcharge_uplift?: number
+          time_zone?: string
           vat_rate?: number
         }
         Relationships: []
@@ -4215,6 +4666,19 @@ export type Database = {
         Returns: number
       }
       add_part_core: { Args: { p: Json; p_by: string }; Returns: Json }
+      add_purchase_order_lines: {
+        Args: { p_lines: Json; p_order: string }
+        Returns: Json
+      }
+      add_to_orders: {
+        Args: {
+          p_lines: Json
+          p_location: number
+          p_new?: boolean
+          p_our_reference?: string
+        }
+        Returns: Json
+      }
       adjust_stock: {
         Args: {
           p_bin: number
@@ -4254,6 +4718,10 @@ export type Database = {
         }[]
       }
       cancel_enrichment_backfill: { Args: never; Returns: number }
+      cancel_purchase_order: {
+        Args: { p_order: string; p_reason: string }
+        Returns: Json
+      }
       cancel_stale_bin_counts: { Args: never; Returns: number }
       cancel_stocktake: { Args: { p_stocktake: string }; Returns: undefined }
       catalogue_settings: {
@@ -4302,12 +4770,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      close_purchase_order_short: { Args: { p_order: string; p_reason: string }; Returns: Json }
       close_stale_receipts: { Args: never; Returns: number }
       close_stock_document: { Args: { p_document: string }; Returns: Json }
       commit_bin_count: {
         Args: { p_confirm_empty?: boolean; p_stocktake: string }
         Returns: Json
       }
+      company_details: { Args: never; Returns: Json }
       count_run_status: { Args: { p_run: string }; Returns: Json }
       create_bins: {
         Args: { p_codes: string[]; p_location: number }
@@ -4318,6 +4788,15 @@ export type Database = {
         Returns: number
       }
       create_category_path: { Args: { p_names: string[] }; Returns: number }
+      create_purchase_order: {
+        Args: {
+          p_location: number
+          p_origin?: string
+          p_our_reference?: string
+          p_supplier: number
+        }
+        Returns: string
+      }
       create_supplier: { Args: { p_name: string }; Returns: number }
       current_sell_price: {
         Args: {
@@ -4327,6 +4806,10 @@ export type Database = {
           p_tier?: Database["public"]["Enums"]["price_tier"]
         }
         Returns: number
+      }
+      delete_draft_purchase_order: {
+        Args: { p_order: string }
+        Returns: undefined
       }
       discard_bin_count: { Args: { p_stocktake: string }; Returns: Json }
       effective_sell_price: {
@@ -4379,10 +4862,18 @@ export type Database = {
         Args: { p_cards: Json; p_target: number }
         Returns: string
       }
+      enrichment_pick_ean_card: {
+        Args: { p_cards: Json; p_target: number }
+        Returns: string
+      }
       enrichment_preview: { Args: { p_part: number }; Returns: Json }
       enrichment_refund: {
         Args: { p_credits: number; p_reason: string; p_target: number }
         Returns: undefined
+      }
+      enrichment_resolve_listing: {
+        Args: { p_choice: string; p_issue: number; p_url: string }
+        Returns: Json
       }
       enrichment_source_pages: {
         Args: { p_limit?: number; p_source: number }
@@ -4396,6 +4887,27 @@ export type Database = {
       ensure_bin: {
         Args: { p_code: string; p_location: number }
         Returns: Json
+      }
+      expected_deliveries: {
+        Args: { p_location?: number }
+        Returns: {
+          document_id: string
+          due: string
+          expected_by: string
+          expected_from: string
+          expected_on: string
+          expected_run: string
+          lines_due: number
+          location_code: string
+          location_id: number
+          number: string
+          our_reference: string
+          placed_at: string
+          source_id: number
+          status: string
+          supplier: string
+          units_due: number
+        }[]
       }
       find_parts_to_add: {
         Args: { max_results?: number; q: string }
@@ -4681,6 +5193,28 @@ export type Database = {
         Returns: Json
       }
       open_count_runs: { Args: { p_location: number }; Returns: Json }
+      open_order_lines: {
+        Args: { p_location: number; p_source: number }
+        Returns: {
+          brand: string
+          description: string
+          document_id: string
+          due: number
+          expected_by: string
+          expected_from: string
+          expected_on: string
+          expected_run: string
+          line_id: number
+          number: string
+          our_reference: string
+          pack_qty: number
+          part_id: number
+          part_number: string
+          reference: string
+          supplier_code: string
+          unit: string
+        }[]
+      }
       opening_stock_status: {
         Args: { p_location?: number }
         Returns: {
@@ -4753,6 +5287,28 @@ export type Database = {
           retail_margin: number
           trade_from: string
           trade_margin: number
+        }[]
+      }
+      part_price_comparison: {
+        Args: { p_part: number }
+        Returns: {
+          best_cost: number
+          best_source_id: number
+          brand: string
+          cheapest: boolean
+          confidence: number
+          description: string
+          in_range: boolean
+          is_stocked: boolean
+          kind: Database["catalogue"]["Enums"]["part_kind"]
+          margin: number
+          number: string
+          offers: Json
+          on_hand: number
+          part_id: number
+          relation: string
+          sell_price: number
+          via: string
         }[]
       }
       part_pricing_rules: { Args: { p_part: number }; Returns: Json }
@@ -4848,7 +5404,58 @@ export type Database = {
         Returns: string
       }
       person_label: { Args: { p_user: string }; Returns: string }
+      place_purchase_order: {
+        Args: { p: Json; p_order: string }
+        Returns: Json
+      }
       post_stocktake: { Args: { p_stocktake: string }; Returns: Json }
+      price_check_detail: { Args: { p_receipt: string }; Returns: Json }
+      price_check_list: {
+        Args: { p_checked?: boolean; p_limit?: number }
+        Returns: {
+          checked_at: string
+          checked_by: string
+          delivery_note: string
+          document_id: string
+          flagged: number
+          location_code: string
+          number: string
+          parts: number
+          received_at: string
+          source_id: number
+          supplier: string
+          units: number
+          value: number
+        }[]
+      }
+      purchase_order_counts: { Args: never; Returns: Json }
+      purchase_order_detail: { Args: { p_order: string }; Returns: Json }
+      purchase_order_list: {
+        Args: {
+          p_limit?: number
+          p_location?: number
+          p_offset?: number
+          p_search?: string
+          p_source?: number
+          p_status?: string
+        }
+        Returns: {
+          created_at: string
+          document_id: string
+          lines: number
+          location_code: string
+          net_total: number
+          number: string
+          our_reference: string
+          placed_at: string
+          reference: string
+          registrations: string[]
+          source_id: number
+          status: string
+          supplier: string
+          total_count: number
+        }[]
+      }
       put_away: {
         Args: {
           p_bin: number
@@ -4866,6 +5473,19 @@ export type Database = {
       }
       quick_add_part: { Args: { p: Json }; Returns: Json }
       reapply_web_page: { Args: { p_page: number }; Returns: Json }
+      receipt_order_matches: {
+        Args: { p_receipts: string[] }
+        Returns: {
+          document_id: string
+          extra_parts: number
+          extra_units: number
+          matched_at: string
+          orders: Json
+          stuck: boolean
+          waiting: boolean
+        }[]
+      }
+      receive_purchase_order: { Args: { p: Json; p_order: string }; Returns: Json }
       record_count: {
         Args: {
           p_bin: number
@@ -4880,6 +5500,10 @@ export type Database = {
       record_counts: {
         Args: { p_bin: number; p_lines: Json; p_stocktake: string }
         Returns: Json
+      }
+      record_purchase_order_export: {
+        Args: { p_format: string; p_order: string }
+        Returns: undefined
       }
       record_receipt_lines: {
         Args: {
@@ -4900,6 +5524,7 @@ export type Database = {
         Args: { p_code: string; p_label_type?: string; p_part: number }
         Returns: undefined
       }
+      rematch_receipt: { Args: { p_receipt: string }; Returns: Json }
       remove_enrichment_source: { Args: { p_id: number }; Returns: string }
       remove_kit_component: { Args: { p_link: number }; Returns: undefined }
       remove_party_address: {
@@ -4907,7 +5532,13 @@ export type Database = {
         Returns: Json
       }
       remove_party_contact: { Args: { p_id: number }; Returns: Json }
+      remove_party_site: { Args: { p_site: number }; Returns: Json }
       remove_person_access: { Args: { p_user_id: string }; Returns: undefined }
+      remove_purchase_order_line: { Args: { p_line: number }; Returns: Json }
+      remove_purchase_order_vehicle: {
+        Args: { p_vehicle: number }
+        Returns: Json
+      }
       remove_stock_cost_lot: { Args: { p_id: number }; Returns: Json }
       remove_supplier_code: {
         Args: { p_code: string; p_source: number }
@@ -4949,6 +5580,13 @@ export type Database = {
       require_role: {
         Args: { minimum: Database["public"]["Enums"]["app_role"] }
         Returns: undefined
+      }
+      rerun_cancel: { Args: { p_run: number }; Returns: Json }
+      rerun_confirm: { Args: { p_run: number }; Returns: Json }
+      rerun_undo: { Args: { p_run: number }; Returns: Json }
+      rerun_upload: {
+        Args: { p_batch: string; p_mode?: string }
+        Returns: Json
       }
       reset_api_budget_period: {
         Args: { p_provider?: string }
@@ -5024,8 +5662,22 @@ export type Database = {
         Args: { p_source: number; p_spec: Json }
         Returns: Json
       }
+      save_company_details: { Args: { p: Json }; Returns: Json }
       save_party_address: { Args: { p: Json }; Returns: Json }
       save_party_contact: { Args: { p: Json }; Returns: Json }
+      save_price_check: { Args: { p: Json; p_receipt: string }; Returns: Json }
+      save_purchase_order: {
+        Args: { p: Json; p_order: string }
+        Returns: Json
+      }
+      save_purchase_order_line: {
+        Args: { p: Json; p_line: number }
+        Returns: Json
+      }
+      save_purchase_order_vehicle: {
+        Args: { p: Json; p_order: string }
+        Returns: Json
+      }
       save_spec_key: {
         Args: {
           p_aliases?: string[]
@@ -5050,6 +5702,7 @@ export type Database = {
         Returns: Json
       }
       save_supplier: { Args: { p: Json }; Returns: Json }
+      save_supplier_delivery_terms: { Args: { p: Json; p_source: number }; Returns: Json }
       save_web_profile: {
         Args: { p_source: number; p_spec: Json }
         Returns: Json
@@ -5176,6 +5829,38 @@ export type Database = {
           variance: number
         }[]
       }
+      supplier_catalogue: {
+        Args: {
+          p_brand?: number
+          p_in_range?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_source?: number
+        }
+        Returns: {
+          best_cost: number
+          best_source_id: number
+          brand: string
+          brand_id: number
+          category: string
+          cheaper: Json
+          description: string
+          equivalents: number
+          in_range: boolean
+          is_stocked: boolean
+          kind: Database["catalogue"]["Enums"]["part_kind"]
+          margin: number
+          match_type: string
+          number: string
+          offers: Json
+          on_hand: number
+          part_id: number
+          sell_price: number
+          total_count: number
+          via: string
+        }[]
+      }
       supplier_detail: { Args: { p_source: number }; Returns: Json }
       supplier_list: {
         Args: {
@@ -5195,6 +5880,10 @@ export type Database = {
           status: string
           total_count: number
         }[]
+      }
+      supplier_next_delivery: {
+        Args: { p_at?: string; p_source: number }
+        Returns: Json
       }
       supplier_options: {
         Args: never
@@ -5232,10 +5921,20 @@ export type Database = {
       }
       unlocated_stock_summary: { Args: { p_location?: number }; Returns: Json }
       unmapped_spec_labels: { Args: { p_source?: number }; Returns: Json }
+      upload_runs: { Args: { p_batch: string }; Returns: Json }
       vehicle_candidates_for_vrm: {
         Args: { p_lookup: number }
         Returns: {
           chosen: boolean
+          ktype: number
+          label: string
+          score: number
+          vehicle_id: number
+        }[]
+      }
+      vehicle_options: {
+        Args: { p_limit?: number; p_text: string }
+        Returns: {
           ktype: number
           label: string
           score: number
@@ -5258,6 +5957,10 @@ export type Database = {
       }
       web_enrichment_begin: {
         Args: { p_by?: string; p_part: number; p_preview?: boolean }
+        Returns: Json
+      }
+      web_enrichment_review: {
+        Args: { p_leads: Json; p_target: number }
         Returns: Json
       }
       web_enrichment_search: {

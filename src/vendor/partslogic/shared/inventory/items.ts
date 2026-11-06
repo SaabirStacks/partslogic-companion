@@ -1,10 +1,9 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@partslogic/db-types';
 
-import { DataError, dataError } from './errors';
-import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from './read';
-
-type Client = SupabaseClient<Database>;
+import type { Client } from '../core/client';
+import { DataError, dataError } from '../core/errors';
+import type { Page } from '../core/page';
+import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from '../core/read';
 
 export const INVENTORY_PAGE_SIZES = [10, 25, 50, 100] as const;
 export type InventoryPageSize = (typeof INVENTORY_PAGE_SIZES)[number];
@@ -17,7 +16,6 @@ export type InventorySort = (typeof INVENTORY_SORTS)[number];
 export const UNCATEGORISED = -1;
 
 export type PartKind = Database['catalogue']['Enums']['part_kind'];
-export type MovementReason = Database['public']['Enums']['movement_reason'];
 
 export type InventoryQuery = {
   search?: string | null;
@@ -91,9 +89,6 @@ export type InventoryRow = {
   enrichedAt: string | null;
 };
 
-export type PageInfo = { limit: number; offset: number; total: number };
-export type Page<T> = { rows: T[]; page: PageInfo };
-
 export type FilterOption = { id: number; label: string; count: number };
 export type InventoryFilterOptions = {
   brands: FilterOption[];
@@ -112,57 +107,6 @@ export type InventoryItemChanges = {
   isStocked?: boolean;
   // Your own exchange surcharge (ex VAT): 0 for none, null to follow the supplier's.
   surcharge?: number | null;
-};
-
-export type StockAdjustment = {
-  binId: number;
-  partId: number;
-  qty: number;
-  reason: Exclude<MovementReason, 'stocktake' | 'transfer_in' | 'transfer_out'>;
-  reference?: string | null;
-  unitCost?: number | null;
-};
-
-export type StockTransfer = {
-  fromBinId: number;
-  toBinId: number;
-  partId: number;
-  qty: number;
-  reference?: string | null;
-};
-
-export type StockMovement = {
-  id: number;
-  createdAt: string;
-  qtyDelta: number;
-  reason: MovementReason;
-  reference: string | null;
-  unitCost: number | null;
-  binId: number | null;
-  place: string | null;
-  // Stock on hand after this movement: across all bins, and in this bin.
-  partTotal: number | null;
-  binTotal: number | null;
-  createdBy: string | null;
-};
-
-export type MovementFilter = { binId?: number | null; reason?: MovementReason | null };
-
-export type LocationLevel = {
-  locationId: number;
-  locationCode: string;
-  locationName: string;
-  minQty: number;
-  maxQty: number | null;
-  onHand: number;
-  belowMin: boolean;
-};
-
-export type Location = {
-  id: number;
-  code: string;
-  name: string;
-  bins: { id: number; code: string; place: string; isActive: boolean; isSystem: boolean }[];
 };
 
 const PART_KINDS = new Set<string>(['oe', 'aftermarket', 'oe_placeholder']);
@@ -257,214 +201,6 @@ async function explainNoRow(supabase: Client, partId: number, onlyIfMissing = fa
   if (error) throw dataError(error);
   if (!count) throw new DataError('That part is not in your inventory.', 'PGRST116');
   if (!onlyIfMissing) throw new DataError('You need the editor role to change inventory.', '42501');
-}
-
-// Records "there are qty of this part in this bin" as one adjustment. Returns the new quantity.
-export async function setStockCount(
-  supabase: Client,
-  input: { binId: number; partId: number; qty: number; reference?: string | null },
-): Promise<number> {
-  const { data, error } = await supabase.rpc('set_stock_count', {
-    p_bin: input.binId,
-    p_part: input.partId,
-    p_qty: input.qty,
-    p_reference: input.reference ?? undefined,
-  });
-  if (error) throw dataError(error);
-  return readNumber(data) ?? input.qty;
-}
-
-// Books stock in or out of a bin (receipt, sale, adjustment, returns). Returns the movement id.
-export async function adjustStock(supabase: Client, input: StockAdjustment): Promise<number> {
-  const { data, error } = await supabase.rpc('adjust_stock', {
-    p_bin: input.binId,
-    p_part: input.partId,
-    p_qty_delta: input.qty,
-    p_reason: input.reason,
-    p_reference: input.reference ?? undefined,
-    p_unit_cost: input.unitCost ?? undefined,
-  });
-  if (error) throw dataError(error);
-  return data;
-}
-
-// Moves stock from one bin to another.
-export async function transferStock(supabase: Client, input: StockTransfer): Promise<void> {
-  const { error } = await supabase.rpc('transfer_stock', {
-    p_from_bin: input.fromBinId,
-    p_to_bin: input.toBinId,
-    p_part: input.partId,
-    p_qty: input.qty,
-    p_reference: input.reference ?? undefined,
-  });
-  if (error) throw dataError(error);
-}
-
-// A part's stock ledger, newest first. Sales and returns are movements until orders exist.
-export async function listMovements(
-  supabase: Client,
-  partId: number,
-  paging: { limit: number; offset: number },
-  filter: MovementFilter = {},
-): Promise<Page<StockMovement>> {
-  const limit = inventoryPageSize(paging.limit);
-  const offset = Math.max(0, Math.floor(paging.offset));
-  let query = supabase
-    .from('stock_movement_history')
-    .select('id, created_at, qty_delta, reason, reference, unit_cost, bin_id, place, part_total, bin_total, created_by', {
-      count: 'exact',
-    })
-    .eq('part_id', partId);
-  if (filter.binId != null) query = query.eq('bin_id', filter.binId);
-  if (filter.reason) query = query.eq('reason', filter.reason);
-  const { data, error, count } = await query
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range(offset, offset + limit - 1);
-  if (error) throw dataError(error);
-
-  return {
-    rows: (data ?? []).flatMap((row) =>
-      row.id == null || row.created_at == null || row.reason == null
-        ? []
-        : [
-            {
-              id: row.id,
-              createdAt: row.created_at,
-              qtyDelta: readNumber(row.qty_delta) ?? 0,
-              reason: row.reason,
-              reference: row.reference,
-              unitCost: readNumber(row.unit_cost),
-              binId: row.bin_id,
-              place: row.place,
-              partTotal: readNumber(row.part_total),
-              binTotal: readNumber(row.bin_total),
-              createdBy: row.created_by,
-            },
-          ],
-    ),
-    page: { limit, offset, total: count ?? 0 },
-  };
-}
-
-// Every location with its bins, for stock forms. The unassigned bin comes back as its own location.
-export async function listLocations(supabase: Client): Promise<Location[]> {
-  const { data, error } = await supabase
-    .from('bin_places')
-    .select('bin_id, bin_code, location_id, location_code, location_name, place, is_active, is_system')
-    .order('location_code', { ascending: true, nullsFirst: true })
-    .order('bin_code', { ascending: true });
-  if (error) throw dataError(error);
-
-  const locations = new Map<number, Location>();
-  for (const row of data ?? []) {
-    if (row.bin_id == null || row.bin_code == null || row.place == null) continue;
-    const id = row.location_id ?? 0;
-    const location = locations.get(id) ?? {
-      id,
-      code: row.location_code ?? 'UNASSIGNED',
-      name: row.location_name ?? 'Unassigned',
-      bins: [],
-    };
-    location.bins.push({
-      id: row.bin_id,
-      code: row.bin_code,
-      place: row.place,
-      isActive: row.is_active ?? true,
-      isSystem: row.is_system ?? false,
-    });
-    locations.set(id, location);
-  }
-  return [...locations.values()];
-}
-
-// Minimum and maximum stock per location for one part, with what each location holds now.
-export async function listLocationLevels(supabase: Client, partId: number): Promise<LocationLevel[]> {
-  const [levels, stock] = await Promise.all([
-    supabase
-      .from('inventory_location_levels')
-      .select('location_id, min_qty, max_qty, locations(code, name)')
-      .eq('part_id', partId),
-    supabase.from('stock_levels').select('qty, bins(location_id)').eq('part_id', partId),
-  ]);
-  if (levels.error) throw dataError(levels.error);
-  if (stock.error) throw dataError(stock.error);
-
-  const onHand = new Map<number, number>();
-  for (const line of stock.data ?? []) {
-    const locationId = line.bins?.location_id;
-    if (locationId == null) continue;
-    onHand.set(locationId, (onHand.get(locationId) ?? 0) + (readNumber(line.qty) ?? 0));
-  }
-
-  return (levels.data ?? [])
-    .flatMap((row) => {
-      if (!row.locations) return [];
-      const minQty = readNumber(row.min_qty) ?? 0;
-      const held = onHand.get(row.location_id) ?? 0;
-      return [
-        {
-          locationId: row.location_id,
-          locationCode: row.locations.code,
-          locationName: row.locations.name,
-          minQty,
-          maxQty: readNumber(row.max_qty),
-          onHand: held,
-          belowMin: held <= minQty,
-        },
-      ];
-    })
-    .sort((a, b) => a.locationCode.localeCompare(b.locationCode));
-}
-
-// Sets one location's minimum and maximum for a part; null for both removes the row.
-export async function setLocationLevel(
-  supabase: Client,
-  input: { partId: number; locationId: number; minQty: number | null; maxQty: number | null },
-): Promise<void> {
-  if (input.minQty == null && input.maxQty == null) {
-    const { error } = await supabase
-      .from('inventory_location_levels')
-      .delete()
-      .eq('part_id', input.partId)
-      .eq('location_id', input.locationId);
-    if (error) throw dataError(error);
-    return;
-  }
-  const { data, error } = await supabase
-    .from('inventory_location_levels')
-    .upsert(
-      { part_id: input.partId, location_id: input.locationId, min_qty: input.minQty ?? 0, max_qty: input.maxQty },
-      { onConflict: 'part_id,location_id' },
-    )
-    .select('part_id');
-  if (error) throw dataError(error);
-  if (!data?.length) throw new DataError('You need the editor role to change stock levels.', '42501');
-}
-
-// Adds a location. Postgres gives every new location an unbinned bin to put stock in straight away.
-export async function createLocation(supabase: Client, input: { code: string; name: string }): Promise<number> {
-  const { data, error } = await supabase
-    .from('locations')
-    .insert({ code: input.code.trim().toUpperCase(), name: input.name.trim() })
-    .select('id')
-    .single();
-  if (error) throw dataError(error);
-  return data.id;
-}
-
-// Adds a bin to a location. Returns the bin id.
-export async function createBin(
-  supabase: Client,
-  input: { locationId: number; code: string; description?: string | null },
-): Promise<number> {
-  const { data, error } = await supabase
-    .from('bins')
-    .insert({ location_id: input.locationId, code: input.code.trim().toUpperCase(), description: input.description ?? null })
-    .select('id')
-    .single();
-  if (error) throw dataError(error);
-  return data.id;
 }
 
 // Maps one inventory_rows record (from list_inventory or part_detail) to the app's shape.

@@ -1,5 +1,7 @@
 import type { Json } from '@partslogic/db-types';
 
+import { DataError } from './errors';
+
 // Narrow untyped JSON from the database into the shapes the app uses. Anything malformed
 // becomes null or an empty list rather than a crash in the UI.
 
@@ -36,4 +38,10 @@ export function readNumber(value: Json | number | string | null | undefined): nu
 
 export function readBoolean(value: Json | undefined): boolean | null {
   return typeof value === 'boolean' ? value : null;
+}
+
+export function requireRecord(data: unknown, message: string): JsonRecord {
+  const record = readRecord(data as Json);
+  if (!record) throw new DataError(message, 'P0001');
+  return record;
 }

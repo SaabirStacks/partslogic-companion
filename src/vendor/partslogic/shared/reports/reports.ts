@@ -1,10 +1,6 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@partslogic/db-types';
-
-import { dataError } from './errors';
-import { readNumber } from './read';
-
-type Client = SupabaseClient<Database>;
+import type { Client } from '../core/client';
+import { dataError } from '../core/errors';
+import { readNumber } from '../core/read';
 
 export type InventorySummary = {
   items: number;

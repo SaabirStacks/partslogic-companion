@@ -1,10 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@partslogic/db-types';
 
-import { DataError, dataError } from './errors';
-import { readNumber } from './read';
-
-type Client = SupabaseClient<Database>;
+import type { Client } from '../core/client';
+import { DataError, dataError } from '../core/errors';
+import { readNumber } from '../core/read';
 
 export type PriceTierName = Database['public']['Enums']['price_tier'];
 export const PRICE_TIERS: readonly PriceTierName[] = ['retail', 'trade'];

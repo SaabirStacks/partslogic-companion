@@ -1,10 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@partslogic/db-types';
+import type { Json } from '@partslogic/db-types';
 
-import { dataError } from './errors';
-import { readArray, readNumber, readRecord, readString } from './read';
-
-type Client = SupabaseClient<Database>;
+import type { Client } from '../core/client';
+import { dataError } from '../core/errors';
+import { readArray, readNumber, readRecord, readString } from '../core/read';
 
 // Some of the units in stock, from one supplier at one unit cost, entered by hand. Price lists keep setting each
 // supplier's current price; lots say what the stock on the shelf actually cost.

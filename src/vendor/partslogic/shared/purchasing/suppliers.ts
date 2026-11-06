@@ -1,12 +1,12 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@partslogic/db-types';
+import type { Json } from '@partslogic/db-types';
 
-import { dataError } from '../errors';
-import type { Page } from '../inventory';
-import { readAddresses, readContacts, type PartyAddress, type PartyContact } from '../parties';
-import { readNumber, readRecord, readString } from '../read';
-
-type Client = SupabaseClient<Database>;
+import type { Client } from '../core/client';
+import { dataError } from '../core/errors';
+import type { Page } from '../core/page';
+import { readNumber, readRecord, readString, type JsonRecord } from '../core/read';
+import { readAddresses, readContacts, type PartyAddress, type PartyContact } from '../parties/parties';
+import { readDeliveryTerms, type DeliveryTerms } from './delivery-terms';
+import { readSupplierUpload, type SupplierUpload } from './supplier-options';
 
 export const SUPPLIER_STATUSES = ['active', 'on_hold', 'archived'] as const;
 export type SupplierStatus = (typeof SUPPLIER_STATUSES)[number];
@@ -15,8 +15,6 @@ export function isSupplierStatus(value: unknown): value is SupplierStatus {
   return typeof value === 'string' && (SUPPLIER_STATUSES as readonly string[]).includes(value);
 }
 
-// The newest price sheet uploaded for a supplier.
-export type SupplierSheet = { batchId: string; file: string; status: string; createdAt: string };
 // The newest goods receipt that names a supplier.
 export type SupplierDelivery = { documentId: string; number: string; reference: string | null; createdAt: string };
 
@@ -28,13 +26,15 @@ export type SupplierRow = {
   status: SupplierStatus;
   accountNumber: string | null;
   linesListed: number;
-  lastSheet: SupplierSheet | null;
+  lastSheet: SupplierUpload | null;
   lastDelivery: SupplierDelivery | null;
 };
 
 // One supplier's page: who they are, the supplier role, its activity, and the party's contacts and addresses.
 export type SupplierDetail = SupplierRow & {
   partyId: number;
+  // Carriage, free delivery, minimum order, how to order and delivery runs.
+  delivery: DeliveryTerms;
   contacts: PartyContact[];
   addresses: PartyAddress[];
   legalName: string | null;
@@ -80,17 +80,12 @@ const CHANGE_KEYS: Record<keyof SupplierChanges, string> = {
   accountNumber: 'account_number',
 };
 
-function readStatus(value: Json | undefined): SupplierStatus {
-  return isSupplierStatus(value) ? value : 'active';
+export function isSupplierChangeKey(key: string): key is keyof SupplierChanges {
+  return (Object.keys(CHANGE_KEYS) as string[]).includes(key);
 }
 
-function readSheet(value: Json | undefined): SupplierSheet | null {
-  const sheet = readRecord(value);
-  const batchId = readString(sheet?.batch_id);
-  const file = readString(sheet?.file);
-  const createdAt = readString(sheet?.created_at);
-  if (!batchId || !file || !createdAt) return null;
-  return { batchId, file, status: readString(sheet?.status) ?? 'uploaded', createdAt };
+function readStatus(value: Json | undefined): SupplierStatus {
+  return isSupplierStatus(value) ? value : 'active';
 }
 
 function readDelivery(value: Json | undefined): SupplierDelivery | null {
@@ -102,23 +97,32 @@ function readDelivery(value: Json | undefined): SupplierDelivery | null {
   return { documentId, number, reference: readString(delivery?.reference), createdAt };
 }
 
-function readDetail(value: Json): SupplierDetail | null {
-  const row = readRecord(value);
+// The fields supplier_list and supplier_detail share.
+function readRow(row: JsonRecord | null): SupplierRow | null {
   const supplierId = readNumber(row?.source_id);
-  const partyId = readNumber(row?.party_id);
   const name = readString(row?.name);
-  const createdAt = readString(row?.created_at);
-  if (!row || supplierId == null || partyId == null || !name || !createdAt) return null;
+  if (!row || supplierId == null || !name) return null;
   return {
     supplierId,
-    partyId,
     name,
     shortCode: readString(row.short_code),
     status: readStatus(row.status),
     accountNumber: readString(row.account_number),
     linesListed: readNumber(row.lines_listed) ?? 0,
-    lastSheet: readSheet(row.last_upload),
+    lastSheet: readSupplierUpload(row.last_upload),
     lastDelivery: readDelivery(row.last_delivery),
+  };
+}
+
+function readDetail(value: Json): SupplierDetail | null {
+  const row = readRecord(value);
+  const base = readRow(row);
+  const partyId = readNumber(row?.party_id);
+  const createdAt = readString(row?.created_at);
+  if (!row || !base || partyId == null || !createdAt) return null;
+  return {
+    ...base,
+    partyId,
     legalName: readString(row.legal_name),
     companyNumber: readString(row.company_number),
     vatNumber: readString(row.vat_number),
@@ -128,6 +132,7 @@ function readDetail(value: Json): SupplierDetail | null {
     statusChangedAt: readString(row.status_changed_at),
     statusChangedBy: readString(row.status_changed_by),
     linesInRange: readNumber(row.lines_in_range) ?? 0,
+    delivery: readDeliveryTerms(row.delivery),
     contacts: readContacts(row.contacts),
     addresses: readAddresses(row.addresses),
     createdAt,
@@ -146,22 +151,7 @@ export async function listSuppliers(supabase: Client, query: SupplierQuery = {})
     p_offset: offset,
   });
   if (error) throw dataError(error);
-  const rows = (data ?? []).flatMap((row) =>
-    row.source_id == null || row.name == null
-      ? []
-      : [
-          {
-            supplierId: row.source_id,
-            name: row.name,
-            shortCode: readString(row.short_code),
-            status: readStatus(row.status),
-            accountNumber: readString(row.account_number),
-            linesListed: readNumber(row.lines_listed) ?? 0,
-            lastSheet: readSheet(row.last_upload),
-            lastDelivery: readDelivery(row.last_delivery),
-          },
-        ],
-  );
+  const rows = (data ?? []).flatMap((row) => readRow(row) ?? []);
   return { rows, page: { limit, offset, total: readNumber(data?.[0]?.total_count) ?? 0 } };
 }
 

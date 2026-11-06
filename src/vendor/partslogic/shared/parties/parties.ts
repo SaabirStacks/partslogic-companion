@@ -1,10 +1,8 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@partslogic/db-types';
+import type { Json } from '@partslogic/db-types';
 
-import { dataError } from './errors';
-import { readArray, readBoolean, readNumber, readRecord, readString } from './read';
-
-type Client = SupabaseClient<Database>;
+import type { Client } from '../core/client';
+import { dataError } from '../core/errors';
+import { readArray, readBoolean, readNumber, readRecord, readString, type JsonRecord } from '../core/read';
 
 // A party's contacts and addresses: shared core, used by suppliers now and customers later. The database
 // tidies and checks every field; these only shape what is sent and read back.
@@ -38,13 +36,19 @@ export function isPartyAddressKind(value: unknown): value is PartyAddressKind {
 }
 
 // Lines are separated by newlines, up to 4 of them.
-export type PartyAddress = {
-  kind: PartyAddressKind;
+type AddressFields = {
   lines: string;
   town: string | null;
   county: string | null;
   postcode: string | null;
 };
+
+export type PartyAddress = AddressFields & { kind: PartyAddressKind };
+
+// A named address where deliveries go (the company's warehouse and shop now; a supplier's branches later). A party
+// can have any number, each name once.
+export type PartySite = AddressFields & { id: number; name: string };
+export type PartySiteInput = AddressFields & { id?: number; name: string };
 
 const CONTACT_KEYS: Record<Exclude<keyof ContactInput, 'id'>, string> = {
   name: 'name',
@@ -54,6 +58,9 @@ const CONTACT_KEYS: Record<Exclude<keyof ContactInput, 'id'>, string> = {
   mobile: 'mobile',
   isPrimary: 'is_primary',
 };
+
+// Every field a ContactInput can carry.
+export const CONTACT_INPUT_KEYS: readonly (keyof ContactInput)[] = ['id', ...(Object.keys(CONTACT_KEYS) as (keyof typeof CONTACT_KEYS)[])];
 
 export function readContacts(value: Json | undefined): PartyContact[] {
   return readArray(value).flatMap((item) => {
@@ -75,13 +82,31 @@ export function readContacts(value: Json | undefined): PartyContact[] {
   });
 }
 
+function readAddressFields(row: JsonRecord): AddressFields | null {
+  const lines = readString(row.lines);
+  if (!lines) return null;
+  return { lines, town: readString(row.town), county: readString(row.county), postcode: readString(row.postcode) };
+}
+
+// A party's main, returns and remittance addresses (party_address_list); its sites are read by readSites.
 export function readAddresses(value: Json | undefined): PartyAddress[] {
   return readArray(value).flatMap((item) => {
     const row = readRecord(item);
     const kind = row?.kind;
-    const lines = readString(row?.lines);
-    if (!row || !isPartyAddressKind(kind) || !lines) return [];
-    return [{ kind, lines, town: readString(row.town), county: readString(row.county), postcode: readString(row.postcode) }];
+    const fields = row ? readAddressFields(row) : null;
+    if (!fields || !isPartyAddressKind(kind)) return [];
+    return [{ kind, ...fields }];
+  });
+}
+
+export function readSites(value: Json | undefined): PartySite[] {
+  return readArray(value).flatMap((item) => {
+    const row = readRecord(item);
+    const id = readNumber(row?.id);
+    const name = readString(row?.name);
+    const fields = row ? readAddressFields(row) : null;
+    if (!fields || row?.kind !== 'site' || id == null || !name) return [];
+    return [{ id, name, ...fields }];
   });
 }
 
@@ -126,4 +151,28 @@ export async function removePartyAddress(supabase: Client, partyId: number, kind
   const { data, error } = await supabase.rpc('remove_party_address', { p_party: partyId, p_kind: kind });
   if (error) throw dataError(error);
   return readAddresses(data);
+}
+
+// Adds a site to a party, or changes one by its id (editors; the company's sites too). Returns the party's sites.
+export async function savePartySite(supabase: Client, partyId: number, site: PartySiteInput): Promise<PartySite[]> {
+  const p: Record<string, Json> = {
+    party_id: partyId,
+    kind: 'site',
+    name: site.name,
+    lines: site.lines,
+    town: site.town,
+    county: site.county,
+    postcode: site.postcode,
+  };
+  if (site.id != null) p.id = site.id;
+  const { data, error } = await supabase.rpc('save_party_address', { p });
+  if (error) throw dataError(error);
+  return readSites(data);
+}
+
+// Removes a site (editors). A location delivered there falls back to the registered office. Returns the sites left.
+export async function removePartySite(supabase: Client, siteId: number): Promise<PartySite[]> {
+  const { data, error } = await supabase.rpc('remove_party_site', { p_site: siteId });
+  if (error) throw dataError(error);
+  return readSites(data);
 }

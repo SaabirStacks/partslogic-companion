@@ -1,14 +1,9 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@partslogic/db-types';
+import type { Json } from '@partslogic/db-types';
 
-import { dataError, DataError } from './errors';
-import { readArray, readNumber, readRecord, readString, readStrings, type JsonRecord } from './read';
+import { readArray, readRecord, readString, readStrings, type JsonRecord } from '../core/read';
 
-type Client = SupabaseClient<Database>;
-
-// ---------------------------------------------------------------------------------------------------------
-// Profiles: how a supplier's columns map onto the catalogue (ingest.profiles.spec, read by ingest.map_row)
-// ---------------------------------------------------------------------------------------------------------
+// Profiles: how a supplier's columns map onto the catalogue (ingest.profiles.spec, read by ingest.map_row).
+// Pure functions: no database calls.
 
 export type ImportTransform = string | { name: string; args?: string[] };
 export type ImportRule = {
@@ -26,9 +21,19 @@ export type ImportFields = {
   list_price?: ImportRule;
   surcharge?: ImportRule;
   surcharge_code?: ImportRule;
+  // How the part is ordered: sold in multiples of (pack_qty), the fewest that can be ordered, the fewest from the
+  // supplier's central warehouse, units in their box (information only), and the unit of issue when it isn't each.
   pack_qty?: ImportRule;
+  min_qty?: ImportRule;
+  central_min_qty?: ImportRule;
+  box_qty?: ImportRule;
+  unit?: ImportRule;
   supplier_code?: ImportRule;
   category?: ImportRule;
+  // The vehicles a part fits, as the sheet writes them ("Ford Fiesta 01->08 Fusion 02->09"); read into vehicle lines.
+  vehicles?: ImportRule;
+  // An example vehicle (BGA's "Example of Brand" and "Example of Model", joined): kept as a hint, never a fit alone.
+  vehicle_example?: ImportRule;
   facts?: { [key: string]: ImportRule };
   oe?: { mode: 'oe'; number: string[]; make?: string[]; makeMeaning?: 'explicit' | 'example' };
   // mode 'brandColumns': columns headed with a brand name hold that brand's numbers; columns: ones chosen by hand.
@@ -57,7 +62,11 @@ export const IMPORT_TARGETS = [
   { id: 'list_price', label: 'List price', group: 'Price' },
   { id: 'surcharge', label: 'Exchange surcharge', group: 'Price' },
   { id: 'surcharge_code', label: 'Surcharge part number', group: 'Price' },
-  { id: 'pack_qty', label: 'Pack quantity', group: 'Price' },
+  { id: 'pack_qty', label: 'Sold in multiples of', group: 'Ordering' },
+  { id: 'min_qty', label: 'Minimum order (MOQ)', group: 'Ordering' },
+  { id: 'central_min_qty', label: 'Minimum order, central warehouse', group: 'Ordering' },
+  { id: 'box_qty', label: 'Box quantity', group: 'Ordering' },
+  { id: 'unit', label: 'Unit of issue', group: 'Ordering' },
   { id: 'oe_number', label: 'OE number', group: 'References' },
   { id: 'oe_make', label: 'OE make', group: 'References' },
   { id: 'category', label: 'Category', group: 'Details' },
@@ -65,6 +74,8 @@ export const IMPORT_TARGETS = [
   { id: 'fact:weight_kg', label: 'Weight (kg)', group: 'Details' },
   { id: 'fact:country_of_origin', label: 'Country of origin', group: 'Details' },
   { id: 'fact:supplier_rank', label: 'Supplier rank', group: 'Details' },
+  { id: 'vehicles', label: 'Vehicle applications', group: 'Vehicles' },
+  { id: 'vehicle_example', label: 'Example vehicle (a hint)', group: 'Vehicles' },
   { id: 'ignore', label: 'Ignore', group: 'Other' },
 ] as const;
 
@@ -100,9 +111,10 @@ export type SuggestedMapping = {
 
 type CopyField =
   | 'part_number' | 'description' | 'ean' | 'cost' | 'list_price' | 'surcharge' | 'surcharge_code' | 'pack_qty'
-  | 'supplier_code';
+  | 'min_qty' | 'central_min_qty' | 'box_qty' | 'unit' | 'supplier_code';
 const COPY_FIELDS: readonly CopyField[] = [
-  'part_number', 'description', 'ean', 'cost', 'list_price', 'surcharge', 'surcharge_code', 'pack_qty', 'supplier_code',
+  'part_number', 'description', 'ean', 'cost', 'list_price', 'surcharge', 'surcharge_code', 'pack_qty', 'min_qty',
+  'central_min_qty', 'box_qty', 'unit', 'supplier_code',
 ];
 const FACT_KEYS = ['commodity_code', 'weight_kg', 'country_of_origin', 'supplier_rank'] as const;
 type FactKey = (typeof FACT_KEYS)[number];
@@ -116,6 +128,10 @@ const DEFAULT_TRANSFORMS: { [K in CopyField | FactKey]: ImportTransform[] } = {
   surcharge: ['money'],
   surcharge_code: ['tidySpaces'],
   pack_qty: ['digitsOnly'],
+  min_qty: ['digitsOnly'],
+  central_min_qty: ['digitsOnly'],
+  box_qty: ['digitsOnly'],
+  unit: ['tidySpaces', 'upperCase'],
   supplier_code: ['tidySpaces'],
   commodity_code: ['digitsOnly'],
   weight_kg: [],
@@ -138,10 +154,20 @@ const SYNONYMS: { [K in Exclude<ImportTarget, 'ignore'>]: string[] } = {
   surcharge: ['surcharge price', 'surcharge', 'exchange surcharge', 'surcharge value', 'exchange charge', 'core charge',
     'old unit surcharge', 'deposit'],
   surcharge_code: ['surcharge part', 'surcharge code', 'surcharge part number', 'surcharge part no'],
-  pack_qty: ['pack qty', 'pack quantity', 'pack size', 'price unit', 'qty per pack', 'unit qty'],
+  // "Price Unit" is the multiple a part is sold in (FPS "SEAL RING (PACK OF 1000)": 1,000 at a time, priced each).
+  // A box or carton quantity is not: Comline's BoxQty of 5 on a water pump still sells one at a time.
+  pack_qty: ['price unit', 'priceunit', 'pack qty', 'pack quantity', 'pack size', 'qty per pack', 'unit qty',
+    'sold in multiples of', 'order multiple'],
+  min_qty: ['moq', 'min order', 'minimum order', 'min order qty', 'minimum order quantity', 'min qty', 'minimum qty'],
+  central_min_qty: ['min order ndc', 'minimum order ndc', 'ndc min order', 'min order central', 'central min order'],
+  box_qty: ['box qty', 'boxqty', 'box quantity', 'carton qty', 'outer qty', 'qty per box', 'qty per carton'],
+  unit: ['unit of issue', 'uoi', 'uom', 'unit of measure', 'unit'],
   oe_number: ['oe', 'oe number', 'oe no', 'oe ref', 'oem', 'oem number', 'oe part number'],
   oe_make: ['oe make', 'vehicle make', 'oem make'],
   category: ['category', 'product group', 'sub category', 'subcategory', 'product category', 'group'],
+  vehicles: ['application', 'applications', 'brief application', 'vehicle application', 'vehicle applications',
+    'fitment', 'fitments', 'car application', 'vehicle fitment'],
+  vehicle_example: ['example of brand', 'example of model', 'example vehicle', 'example of make'],
   'fact:commodity_code': ['commodity code', 'tariff code', 'hs code', 'intrastat code'],
   'fact:weight_kg': ['weight', 'weight kg', 'gross weight', 'net weight'],
   'fact:country_of_origin': ['country of origin', 'origin', 'coo'],
@@ -168,6 +194,9 @@ function headerKey(header: string): string {
   return header.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+// Targets more than one column can fill: categories by level, applications, an example vehicle's make and model.
+const MULTI_COLUMN = new Set<ImportTarget>(['category', 'vehicles', 'vehicle_example']);
+
 function copySources(rule: ImportRule | undefined): string[] {
   return rule && (rule.mode ?? 'copy') === 'copy' ? (rule.sources ?? []) : [];
 }
@@ -191,6 +220,8 @@ export function specToMapping(spec: ImportSpec, headers: string[]): SuggestedMap
 
   for (const field of COPY_FIELDS) assign(copySources(spec.fields[field]), field);
   if (spec.fields.category && spec.fields.category.mode === 'list') assign(spec.fields.category.sources, 'category');
+  assign(spec.fields.vehicles?.sources, 'vehicles');
+  assign(spec.fields.vehicle_example?.sources, 'vehicle_example');
   assign(spec.fields.oe?.number, 'oe_number');
   assign(spec.fields.oe?.make, 'oe_make');
   assign(spec.source?.brandHeaders, 'brand');
@@ -243,13 +274,13 @@ export function suggestMapping(headers: string[], saved: ImportSpec | null): Sug
   const lockedHeaders = new Set([...base.preserved.flatMap((rule) => rule.headers), ...Object.keys(base.xrefColumns)]);
 
   for (const [target, spellings] of Object.entries(SYNONYMS) as [Exclude<ImportTarget, 'ignore'>, string[]][]) {
-    if (taken.has(target) && target !== 'category') continue;
+    if (taken.has(target) && !MULTI_COLUMN.has(target)) continue;
     for (const spelling of spellings) {
       const header = headers.find((h) => mapping[h] == null && !lockedHeaders.has(h) && headerKey(h) === spelling);
       if (header) {
         mapping[header] = target;
         taken.add(target);
-        if (target !== 'category') break;
+        if (!MULTI_COLUMN.has(target)) break;
       }
     }
   }
@@ -305,6 +336,11 @@ export function buildSpec(
   const categories = sourcesFor('category', baseCategory?.mode === 'list' ? baseCategory.sources : undefined);
   if (categories.length > 0) fields.category = { mode: 'list', sources: categories };
   else if (baseCategory && baseCategory.mode !== 'list') fields.category = baseCategory;
+
+  for (const target of ['vehicles', 'vehicle_example'] as const) {
+    const headers = sourcesFor(target, base?.fields[target]?.sources);
+    if (headers.length > 0) fields[target] = { mode: 'list', sources: headers };
+  }
 
   const facts: { [key: string]: ImportRule } = {};
   for (const key of FACT_KEYS) {
@@ -427,7 +463,7 @@ export function readImportSpec(value: Json | undefined): ImportSpec | null {
   if (!spec || !fieldsRecord) return null;
 
   const fields: ImportFields = {};
-  for (const field of [...COPY_FIELDS, 'category'] as const) {
+  for (const field of [...COPY_FIELDS, 'category', 'vehicles', 'vehicle_example'] as const) {
     const rule = readRule(fieldsRecord[field]);
     if (rule) fields[field] = rule;
   }
@@ -480,352 +516,4 @@ export function readImportSpec(value: Json | undefined): ImportSpec | null {
   if (readString(spec.label)) result.label = readString(spec.label) ?? undefined;
   if (Array.isArray(spec.numberAliases)) result.numberAliases = spec.numberAliases;
   return result;
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// Database calls
-// ---------------------------------------------------------------------------------------------------------
-
-export type ImportProfile = { id: number; code: string; version: number; spec: ImportSpec; createdAt: string | null };
-
-export async function getImportProfile(supabase: Client, supplierId: number): Promise<ImportProfile | null> {
-  const { data, error } = await supabase.rpc('import_profile', { p_source: supplierId });
-  if (error) throw dataError(error);
-  const profile = readRecord(data);
-  const id = readNumber(profile?.id);
-  const code = readString(profile?.code);
-  const version = readNumber(profile?.version);
-  const spec = readImportSpec(profile?.spec);
-  if (id == null || !code || version == null || !spec) return null;
-  return { id, code, version, spec, createdAt: readString(profile?.created_at) };
-}
-
-export async function saveImportProfile(
-  supabase: Client,
-  supplierId: number,
-  spec: ImportSpec,
-): Promise<{ id: number; code: string; version: number; unchanged: boolean }> {
-  const { data, error } = await supabase.rpc('save_import_profile', { p_source: supplierId, p_spec: spec });
-  if (error) throw dataError(error);
-  const saved = readRecord(data);
-  const id = readNumber(saved?.id);
-  const code = readString(saved?.code);
-  const version = readNumber(saved?.version);
-  if (id == null || !code || version == null) throw new DataError('The mapping was not saved.', 'P0001');
-  return { id, code, version, unchanged: saved?.unchanged === true };
-}
-
-export type BrandSuggestion = { brandId: number; name: string; match: string; parts: number };
-export type BrandCheck = {
-  name: string;
-  brandId: number | null;
-  brand: string | null;
-  viaAlias: boolean;
-  suggestions: BrandSuggestion[];
-};
-
-// Which of these names (a file's brand values, or its headers) are brands already, with near matches for
-// the rest.
-export async function checkBrands(supabase: Client, names: string[]): Promise<BrandCheck[]> {
-  const unique = [...new Set(names.map((name) => name.trim()).filter(Boolean))].slice(0, 1000);
-  if (unique.length === 0) return [];
-  const { data, error } = await supabase.rpc('check_brands', { p_names: unique });
-  if (error) throw dataError(error);
-  return (data ?? []).flatMap((row) =>
-    row.name == null
-      ? []
-      : [
-          {
-            name: row.name,
-            brandId: row.brand_id,
-            brand: row.brand,
-            viaAlias: row.via_alias === true,
-            suggestions: readArray(row.suggestions).flatMap((value) => {
-              const item = readRecord(value);
-              const brandId = readNumber(item?.brand_id);
-              const name = readString(item?.name);
-              return brandId == null || !name
-                ? []
-                : [{ brandId, name, match: readString(item?.match) ?? 'similar', parts: readNumber(item?.parts) ?? 0 }];
-            }),
-          },
-        ],
-  );
-}
-
-export async function createBrand(supabase: Client, name: string, confirm = false): Promise<number> {
-  const { data, error } = await supabase.rpc('create_brand', { p_name: name.trim(), p_confirm: confirm });
-  if (error) throw dataError(error);
-  return data;
-}
-
-export async function aliasBrandName(supabase: Client, alias: string, brandId: number): Promise<void> {
-  const { error } = await supabase.rpc('alias_brand_name', { p_alias: alias.trim(), p_brand: brandId });
-  if (error) throw dataError(error);
-}
-
-export type ImportIssue = {
-  level: 'error' | 'warning' | 'skipped';
-  field: string | null;
-  message: string;
-  value: string | null;
-};
-export type PreviewRow = { row: number; mapped: JsonRecord; issues: ImportIssue[] };
-export type ImportPreview = { brandColumns: { [header: string]: string }; missingOptionalFields: string[]; rows: PreviewRow[] };
-
-function readIssues(value: Json | undefined): ImportIssue[] {
-  return readArray(value).flatMap((item) => {
-    const issue = readRecord(item);
-    const level = readString(issue?.level);
-    const message = readString(issue?.message) ?? readString(issue?.error);
-    if (!message) return [];
-    return [
-      {
-        level: level === 'warning' || level === 'skipped' ? level : 'error',
-        field: readString(issue?.field),
-        message,
-        value: readString(issue?.value),
-      },
-    ];
-  });
-}
-
-function readStringMap(value: Json | undefined): { [key: string]: string } {
-  const record = readRecord(value);
-  if (!record) return {};
-  return Object.fromEntries(Object.entries(record).flatMap(([key, item]) => (typeof item === 'string' ? [[key, item]] : [])));
-}
-
-// Runs the real mapper (ingest.map_row) over sample rows, so the preview is exactly what the import does.
-export async function previewImport(
-  supabase: Client,
-  spec: ImportSpec,
-  rows: { [header: string]: string }[],
-): Promise<ImportPreview> {
-  const { data, error } = await supabase.rpc('import_preview', { p_spec: spec, p_rows: rows.slice(0, 50) });
-  if (error) throw dataError(error);
-  const preview = readRecord(data);
-  return {
-    brandColumns: readStringMap(preview?.brand_columns),
-    missingOptionalFields: readStrings(preview?.missing_optional_fields),
-    rows: readArray(preview?.rows).flatMap((value) => {
-      const row = readRecord(value);
-      const index = readNumber(row?.row);
-      return index == null ? [] : [{ row: index, mapped: readRecord(row?.mapped) ?? {}, issues: readIssues(row?.issues) }];
-    }),
-  };
-}
-
-export type ImportStatus = Database['ingest']['Enums']['batch_status'];
-export type ImportBatch = {
-  id: string;
-  supplierId: number;
-  supplier: string;
-  fileName: string;
-  kind: 'upload' | 'landing';
-  status: ImportStatus;
-  rowCount: number;
-  mappedThrough: number;
-  appliedThrough: number;
-  rowsApplied: number;
-  rowsQuarantined: number;
-  createdBy: string | null;
-  createdAt: string;
-  completedAt: string | null;
-  error: string | null;
-};
-export type ImportDetails = {
-  oe: { linked: number; likely: number; unattributed: number };
-  supplierCodes: number;
-  // rows that carried an exchange surcharge
-  surcharges: number;
-  skippedValuesTotal: number;
-  skippedValuesTop: { value: string; rows: number }[];
-};
-export type ImportReport = ImportBatch & {
-  received: number | null;
-  staged: number;
-  rowsWarning: number;
-  brandColumns: { [header: string]: string };
-  unrecognisedColumns: string[];
-  missingOptionalFields: string[];
-  profile: { code: string; version: number } | null;
-  startedAt: string | null;
-  details: ImportDetails | null;
-};
-export type QuarantinedRow = { rowNumber: number; stage: 'mapping' | 'applying'; reasons: ImportIssue[]; cells: { [header: string]: string } };
-
-const IMPORT_STATUSES: readonly ImportStatus[] = [
-  'uploaded', 'parsing', 'mapping', 'resolving', 'linking', 'publishing', 'completed', 'failed',
-];
-
-function readStatus(value: Json | undefined): ImportStatus {
-  return IMPORT_STATUSES.find((status) => status === value) ?? 'uploaded';
-}
-
-function readBatch(row: JsonRecord | null): ImportBatch | null {
-  const id = readString(row?.id);
-  const supplierId = readNumber(row?.source_id);
-  const supplier = readString(row?.source);
-  const fileName = readString(row?.file_name);
-  const createdAt = readString(row?.created_at);
-  if (!id || supplierId == null || !supplier || !fileName || !createdAt) return null;
-  return {
-    id,
-    supplierId,
-    supplier,
-    fileName,
-    kind: row?.kind === 'upload' ? 'upload' : 'landing',
-    status: readStatus(row?.status),
-    rowCount: readNumber(row?.row_count) ?? 0,
-    mappedThrough: readNumber(row?.mapped_through) ?? 0,
-    appliedThrough: readNumber(row?.applied_through) ?? 0,
-    rowsApplied: readNumber(row?.rows_applied) ?? 0,
-    rowsQuarantined: readNumber(row?.rows_quarantined) ?? 0,
-    createdBy: readString(row?.created_by),
-    createdAt,
-    completedAt: readString(row?.completed_at),
-    error: readString(row?.error),
-  };
-}
-
-export function readImportReport(value: Json | undefined): ImportReport | null {
-  const report = readRecord(value);
-  const batch = readBatch(report);
-  if (!report || !batch) return null;
-  const details = readRecord(report.details);
-  const oe = readRecord(details?.oe);
-  const profile = readRecord(report.profile);
-  const profileCode = readString(profile?.code);
-  const profileVersion = readNumber(profile?.version);
-  const unrecognised = report.unrecognised_columns;
-  return {
-    ...batch,
-    received: readNumber(report.received),
-    staged: readNumber(report.staged) ?? 0,
-    rowsWarning: readNumber(report.rows_warning) ?? 0,
-    brandColumns: readStringMap(report.brand_columns),
-    // uploads store a list; landing imports a {column: filled rows} object
-    unrecognisedColumns: Array.isArray(unrecognised) ? readStrings(unrecognised) : Object.keys(readRecord(unrecognised) ?? {}),
-    missingOptionalFields: readStrings(report.missing_optional_fields),
-    profile: profileCode && profileVersion != null ? { code: profileCode, version: profileVersion } : null,
-    startedAt: readString(report.started_at),
-    details: details
-      ? {
-          oe: {
-            linked: readNumber(oe?.linked) ?? 0,
-            likely: readNumber(oe?.likely) ?? 0,
-            unattributed: readNumber(oe?.unattributed) ?? 0,
-          },
-          supplierCodes: readNumber(details.supplier_codes) ?? 0,
-          surcharges: readNumber(details.surcharges) ?? 0,
-          skippedValuesTotal: readNumber(details.skipped_values_total) ?? 0,
-          skippedValuesTop: readArray(details.skipped_values_top).flatMap((item) => {
-            const top = readRecord(item);
-            const value = readString(top?.value);
-            return value ? [{ value, rows: readNumber(top?.rows) ?? 0 }] : [];
-          }),
-        }
-      : null,
-  };
-}
-
-export type ImportStart = { supplierId: number; fileName: string; sha256: string; rowCount: number; headers: string[] };
-
-export async function beginImport(supabase: Client, input: ImportStart): Promise<string> {
-  const { data, error } = await supabase.rpc('import_begin', {
-    p_source: input.supplierId,
-    p_file_name: input.fileName,
-    p_sha256: input.sha256,
-    p_row_count: input.rowCount,
-    p_headers: input.headers,
-  });
-  if (error) throw dataError(error);
-  return data;
-}
-
-// Sends rows firstRow.. of an open upload (at most 2,000). Returns how many were new.
-export async function appendImportRows(
-  supabase: Client,
-  batchId: string,
-  firstRow: number,
-  rows: { [header: string]: string }[],
-): Promise<number> {
-  const { data, error } = await supabase.rpc('import_append_rows', { p_batch: batchId, p_first_row: firstRow, p_rows: rows });
-  if (error) throw dataError(error);
-  return data;
-}
-
-export async function finishImport(supabase: Client, batchId: string): Promise<ImportReport | null> {
-  const { data, error } = await supabase.rpc('import_finish', { p_batch: batchId });
-  if (error) throw dataError(error);
-  return readImportReport(data);
-}
-
-export async function cancelImport(supabase: Client, batchId: string): Promise<void> {
-  const { error } = await supabase.rpc('import_cancel', { p_batch: batchId });
-  if (error) throw dataError(error);
-}
-
-export async function getImportReport(supabase: Client, batchId: string, details = false): Promise<ImportReport | null> {
-  const { data, error } = await supabase.rpc('import_report', { p_batch: batchId, p_details: details });
-  if (error) throw dataError(error);
-  return readImportReport(data);
-}
-
-export async function listImportBatches(supabase: Client, limit = 50): Promise<ImportBatch[]> {
-  const { data, error } = await supabase.rpc('import_batches', { p_limit: limit });
-  if (error) throw dataError(error);
-  return (data ?? []).flatMap((row) => {
-    const batch = readBatch(readRecord(row));
-    return batch ? [batch] : [];
-  });
-}
-
-export async function listQuarantinedRows(
-  supabase: Client,
-  batchId: string,
-  limit = 25,
-  offset = 0,
-): Promise<{ rows: QuarantinedRow[]; total: number }> {
-  const { data, error } = await supabase.rpc('import_quarantined', { p_batch: batchId, p_limit: limit, p_offset: offset });
-  if (error) throw dataError(error);
-  const list = data ?? [];
-  return {
-    total: readNumber(list[0]?.total) ?? 0,
-    rows: list.flatMap((row) =>
-      row.row_number == null
-        ? []
-        : [
-            {
-              rowNumber: row.row_number,
-              stage: row.stage === 'applying' ? 'applying' : 'mapping',
-              reasons: readIssues(row.reasons),
-              cells: readStringMap(row.cells),
-            },
-          ],
-    ),
-  };
-}
-
-// Where a batch is, as one number from 0 to 1. Mapping is about a sixth of the work (1 ms a row against
-// 5 ms to apply one).
-export function importProgress(batch: Pick<ImportBatch, 'status' | 'rowCount' | 'mappedThrough' | 'appliedThrough'> & {
-  received?: number | null;
-}): { stage: 'receiving' | 'mapping' | 'applying' | 'done' | 'failed'; fraction: number } {
-  const rows = Math.max(batch.rowCount, 1);
-  switch (batch.status) {
-    case 'completed':
-      return { stage: 'done', fraction: 1 };
-    case 'failed':
-      return { stage: 'failed', fraction: Math.min(batch.appliedThrough / rows, 1) };
-    case 'uploaded':
-    case 'parsing':
-      return { stage: 'receiving', fraction: 0 };
-    case 'mapping':
-    case 'resolving':
-      return { stage: 'mapping', fraction: 0.15 * Math.min(batch.mappedThrough / rows, 1) };
-    default:
-      return { stage: 'applying', fraction: 0.15 + 0.85 * Math.min(batch.appliedThrough / rows, 1) };
-  }
 }
