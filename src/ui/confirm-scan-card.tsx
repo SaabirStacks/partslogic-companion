@@ -5,8 +5,11 @@ import type { PendingScan } from '@/scan/pending-scan';
 import { partLabel, type ScanCheck } from '@/scan/resolve';
 
 import { Button } from './button';
+import type { IconName } from './icons';
+import type { Tone } from './palette';
 import { Quantity } from './quantity';
 import { ScanResultCard } from './scan-result-card';
+import { StatusStrip } from './status-strip';
 
 // The scan a job is holding, with the camera paused behind it: what it is, how many (− / + or tap to
 // type), and the one button that records it. Skip lets it go. Nothing is recorded until the person
@@ -20,6 +23,7 @@ export function ConfirmScanCard({
   onSet,
   onRetry,
   addPart,
+  notice,
 }: {
   pending: PendingScan<ScanCheck>;
   // The job's word for recording it: Add, Count.
@@ -30,6 +34,8 @@ export function ConfirmScanCard({
   onSet: (qty: number) => void;
   onRetry: () => void;
   addPart?: ReactNode;
+  // One line about the scanned part the job wants seen before it's recorded ("Not on an FPS order").
+  notice?: { tone: Tone; icon: IconName; text: string } | null;
 }) {
   const { hit, code, qty } = pending;
 
@@ -71,6 +77,7 @@ export function ConfirmScanCard({
 
   return (
     <ScanResultCard key={pending.key} tone={known ? 'neutral' : 'warn'} status={status} title={title} detail={known ? code : null}>
+      {notice ? <StatusStrip tone={notice.tone} icon={notice.icon} text={notice.text} /> : null}
       <View className="flex-row items-center gap-3">
         <Quantity total={qty} name={title} onStep={onStep} onSet={onSet} />
         <View className="flex-1">

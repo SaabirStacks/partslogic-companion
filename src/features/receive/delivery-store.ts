@@ -74,12 +74,13 @@ export class DeliveryStore {
 
   async addLine(documentId: string, line: DeliveryLine): Promise<void> {
     await this.db.runAsync(
-      'INSERT INTO delivery_lines (client_line_id, document_id, code, qty, label, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO delivery_lines (client_line_id, document_id, code, qty, label, part_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       line.clientLineId,
       documentId,
       line.code,
       line.qty,
       line.label,
+      line.partId,
       line.createdAt,
     );
   }
@@ -90,6 +91,7 @@ export class DeliveryStore {
       code: string;
       qty: number;
       label: string | null;
+      part_id: number | null;
       created_at: string;
     }>('SELECT * FROM delivery_lines WHERE document_id = ? ORDER BY seq', documentId);
     return rows.map((row) => ({
@@ -97,6 +99,7 @@ export class DeliveryStore {
       code: row.code,
       qty: row.qty,
       label: row.label,
+      partId: row.part_id ?? null,
       createdAt: row.created_at,
     }));
   }

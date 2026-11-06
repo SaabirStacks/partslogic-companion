@@ -100,4 +100,9 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE count_runs ADD COLUMN status TEXT;
   ALTER TABLE count_runs ADD COLUMN status_at TEXT;
   `,
+  // 8: the part a delivery line is (a catalogue part id), when the scan named one, so a delivery can be compared
+  // with what its supplier's open orders still have due. Lines from before this, and unknown codes, have none.
+  `
+  ALTER TABLE delivery_lines ADD COLUMN part_id INTEGER;
+  `,
 ];

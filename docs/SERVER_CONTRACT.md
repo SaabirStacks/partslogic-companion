@@ -13,7 +13,7 @@ To check a PartsLogic branch, after its generated types and schema snapshot are 
 node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 ```
 
-## Functions (32)
+## Functions (34)
 
 | Function | Arguments the app sends | Used by |
 |---|---|---|
@@ -23,12 +23,14 @@ node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 | `count_run_status` | `p_run` | `features/count/use-count-run.ts` |
 | `discard_bin_count` | `p_stocktake` | `queue/handlers.ts` |
 | `ensure_bin` | `p_code`, `p_location` | `features/count/use-bin-count.ts`, `queue/handlers.ts` |
+| `expected_deliveries` | `p_location` | `features/receive/use-goods-in.ts` |
 | `finish_count_run` | `p_run` | `features/count/use-count-run.ts` |
 | `finish_setup` | none | `session/session-provider.tsx` |
 | `location_bins` | `p_location` | `features/count/use-bin-choices.ts`, `features/put-away/use-waiting.ts` |
 | `mark_opening_stock_done` | `p_location` | `queue/handlers.ts` |
 | `open_bin_count` | `p_bin`, `p_device`, `p_purpose`, `p_run`, `p_started_at`, `p_stocktake` | `features/count/use-bin-count.ts`, `queue/handlers.ts` |
 | `open_count_runs` | `p_location` | `features/count/use-count-run.ts` |
+| `open_order_lines` | `p_location`, `p_source` | `features/receive/use-goods-in.ts` |
 | `opening_stock_status` | `p_location` | `features/count/use-opening-stock.ts` |
 | `part_alternatives_with_stock` | `p_part` | `features/part/part-view.tsx` |
 | `part_detail` | `p_part` | `features/move/use-move.ts`, `features/part/load-part.ts` |

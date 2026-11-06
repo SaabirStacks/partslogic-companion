@@ -1,4 +1,4 @@
-import { filterSenders, rememberSender, senderList, type SenderOption } from '../sender-options';
+import { filterSenders, rememberSender, senderList, withExpected, type SenderOption } from '../sender-options';
 
 const supplier = (id: number, name: string): SenderOption => ({ kind: 'supplier', id, name, detail: null });
 const SUPPLIERS = [supplier(1, 'APEC'), supplier(2, 'BGA'), supplier(3, 'Euro Car Parts'), supplier(4, 'FPS')];
@@ -42,5 +42,23 @@ describe('senderList', () => {
   it('only searches once something is typed', () => {
     const recent = [{ kind: 'supplier' as const, id: 4, name: 'FPS' }];
     expect(senderList('supplier', SUPPLIERS, recent, 'bga').map((s) => s.name)).toEqual(['BGA']);
+  });
+});
+
+describe('withExpected', () => {
+  const expected = [
+    { supplierId: 4, text: '2 orders due today · 13:00–15:00' },
+    { supplierId: 2, text: '1 order overdue' },
+  ];
+
+  it('puts suppliers expected today first, in the order they are due, saying what is due', () => {
+    const list = withExpected(SUPPLIERS, expected, '');
+    expect(list.map((s) => s.name)).toEqual(['FPS', 'BGA', 'APEC', 'Euro Car Parts']);
+    expect(list[0]?.detail).toBe('2 orders due today · 13:00–15:00');
+  });
+
+  it('keeps the order while something is typed, and changes nothing when none are expected', () => {
+    expect(withExpected(SUPPLIERS, expected, 'a').map((s) => s.name)).toEqual(['APEC', 'BGA', 'Euro Car Parts', 'FPS']);
+    expect(withExpected(SUPPLIERS, [], '')).toBe(SUPPLIERS);
   });
 });

@@ -158,27 +158,70 @@ function addRelation(surface, rel, file) {
   surface.relations.set(rel.name, r);
 }
 
+// Every .ts file under a folder, as paths relative to it without the extension ("floor/activity").
+function vendorFiles(dir, prefix = '') {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const file = path.join(dir, name);
+    if (statSync(file).isDirectory()) out.push(...vendorFiles(file, `${prefix}${name}/`));
+    else if (name.endsWith('.ts')) out.push(`${prefix}${name.replace(/\.ts$/, '')}`);
+  }
+  return out;
+}
+
+// What a vendored module passes on from others: `export { a, b as c } from './x'` (name -> [module, its name])
+// and `export * from './x'` (modules).
+function reExports(sf, mod) {
+  const named = new Map();
+  const all = [];
+  for (const st of sf.statements) {
+    if (!ts.isExportDeclaration(st) || st.isTypeOnly || !st.moduleSpecifier) continue;
+    const target = path.posix.normalize(path.posix.join(path.posix.dirname(mod), st.moduleSpecifier.text));
+    if (!st.exportClause) all.push(target);
+    else if (ts.isNamedExports(st.exportClause)) {
+      for (const el of st.exportClause.elements) {
+        if (!el.isTypeOnly) named.set(el.name.text, [target, (el.propertyName ?? el.name).text]);
+      }
+    }
+  }
+  return { named, all };
+}
+
 // The server surface the app uses: functions (args it sends) and tables or views (columns it reads or
 // filters on), each with the app files that reach them.
 export function appSurface(srcDir = path.join(root, 'src')) {
   const vendorDir = path.join(srcDir, VENDOR_SHARED);
   const modules = new Map();
+  const passes = new Map();
   if (existsSync(vendorDir)) {
-    for (const f of readdirSync(vendorDir).filter((n) => n.endsWith('.ts'))) {
-      const file = path.join(vendorDir, f);
-      modules.set(f.replace(/\.ts$/, ''), topLevelFunctions(parse(file, readFileSync(file, 'utf8'))));
+    for (const mod of vendorFiles(vendorDir)) {
+      const file = path.join(vendorDir, `${mod}.ts`);
+      const sf = parse(file, readFileSync(file, 'utf8'));
+      modules.set(mod, topLevelFunctions(sf));
+      passes.set(mod, reExports(sf, mod));
     }
   }
+  // "floor" is floor.ts, or floor/index.ts once PartsLogic keeps a module in a folder.
+  const moduleOf = (spec) => (modules.has(spec) ? spec : modules.has(`${spec}/index`) ? `${spec}/index` : spec);
   const surface = { functions: new Map(), relations: new Map() };
 
-  // A vendored function and everything it calls in its module, closed over.
-  const reach = (mod, name, seen = new Set()) => {
-    const fns = modules.get(mod);
+  // A vendored function and everything it calls in its module, closed over, following re-exports to the module
+  // that defines it.
+  const reach = (spec, name, seen = new Set()) => {
+    const mod = moduleOf(spec);
     const key = `${mod}.${name}`;
-    if (!fns?.has(name) || seen.has(key)) return [];
+    if (seen.has(key)) return [];
     seen.add(key);
-    const entry = fns.get(name);
-    return [entry.calls, ...[...entry.refs].flatMap((r) => reach(mod, r, seen))];
+    const fns = modules.get(mod);
+    if (fns?.has(name)) {
+      const entry = fns.get(name);
+      return [entry.calls, ...[...entry.refs].flatMap((r) => reach(mod, r, seen))];
+    }
+    const passed = passes.get(mod);
+    if (!passed) return [];
+    const via = passed.named.get(name);
+    if (via) return reach(via[0], via[1], seen);
+    return passed.all.flatMap((target) => reach(target, name, seen));
   };
 
   for (const file of sourceFiles(srcDir)) {

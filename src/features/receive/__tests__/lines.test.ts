@@ -20,6 +20,7 @@ const item = (status: OutboxItem['status'], lineIds: string[], result: unknown =
 const line = (clientLineId: string, code: string, qty: number, createdAt: string, label: string | null = null): DeliveryLine => ({
   clientLineId,
   code,
+  partId: null,
   qty,
   label,
   createdAt,
