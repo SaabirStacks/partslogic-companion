@@ -11,7 +11,7 @@ import { Tally } from '@/ui/tally';
 import { Txt } from '@/ui/text';
 import type { DeliveryCheckRow } from '@/vendor/partslogic/shared/purchasing';
 
-import { checkCounts, checkText } from './open-orders';
+import { checkCounts, checkText, customerParts, putAsideLines } from './open-orders';
 
 const VERDICT: Record<DeliveryCheckRow['verdict'], ChipState> = {
   matched: { tone: 'ok', icon: 'check', label: 'OK' },
@@ -22,7 +22,8 @@ const VERDICT: Record<DeliveryCheckRow['verdict'], ChipState> = {
 };
 
 // Done, before Finish: what was counted against what the supplier's open orders still have due. Short, over and
-// not-ordered lines come first. Parts for a job say who they're for, so they're put aside rather than shelved.
+// not-ordered lines come first. Parts for a customer's sales order say how many go to whom, as PartsLogic will put
+// them aside on the collection shelf (S4b), then what goes into Unbinned; other jobs' parts say who they're for.
 // Recount goes back to scanning; Finish books the delivery as counted.
 export function DeliveryCheck({
   supplier,
@@ -44,6 +45,7 @@ export function DeliveryCheck({
 }) {
   const counts = checkCounts(rows);
   const differences = counts.short + counts.over + counts.notOrdered;
+  const forCustomers = customerParts(rows);
   return (
     <View className="flex-1 bg-ground">
       <Scroll toEdge={false} contentContainerClassName="gap-3 px-4 pt-4">
@@ -64,6 +66,13 @@ export function DeliveryCheck({
         />
         {savedAt ? <StatusStrip tone="warn" icon="offline" text="No signal · compared with the orders saved when the delivery started" /> : null}
         {unknown > 0 ? <StatusStrip tone="neutral" icon="warning" text={`${plural(unknown, 'unknown code isn’t', 'unknown codes aren’t')} compared · the office matches them`} /> : null}
+        {forCustomers > 0 ? (
+          <StatusStrip
+            tone="neutral"
+            icon="account"
+            text={`${plural(forCustomers, 'part is', 'parts are')} for customers · put ${forCustomers === 1 ? 'it' : 'them'} on the collection shelf`}
+          />
+        ) : null}
         {rows.map((row) => (
           <Card key={row.partId} className="gap-1.5 px-4 py-3">
             <View className="flex-row items-center gap-3">
@@ -75,11 +84,17 @@ export function DeliveryCheck({
               </View>
               <StatusChip {...VERDICT[row.verdict]} />
             </View>
-            {row.references.length > 0 && row.counted > 0 ? (
-              <Txt variant="caption" ink="text-ink" className="font-semibold">
-                For {row.references.join(', ')} · put aside
-              </Txt>
-            ) : null}
+            {putAsideLines(row).length > 0
+              ? putAsideLines(row).map((line) => (
+                  <Txt key={line.text} variant="caption" ink={line.strong ? 'text-ink' : undefined} className={line.strong ? 'font-semibold' : undefined}>
+                    {line.text}
+                  </Txt>
+                ))
+              : row.references.length > 0 && row.counted > 0 ? (
+                  <Txt variant="caption" ink="text-ink" className="font-semibold">
+                    For {row.references.join(', ')} · put aside
+                  </Txt>
+                ) : null}
           </Card>
         ))}
       </Scroll>

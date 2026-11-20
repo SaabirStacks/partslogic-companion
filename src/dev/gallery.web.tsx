@@ -32,6 +32,7 @@ import { WaitingView } from '@/features/put-away/waiting-view';
 import { BinPicker } from '@/features/bins/bin-picker';
 import { countSummary } from '@/features/count/result-text';
 import { statusText } from '@/features/receive/status-text';
+import { DeliveryCheck } from '@/features/receive/delivery-check';
 import { DeliveryReceipt } from '@/features/receive/delivery-receipt';
 import type { Sender } from '@/features/receive/sender';
 import type { SenderOption } from '@/features/receive/sender-options';
@@ -795,6 +796,54 @@ const SCREENS: Record<string, () => ReactNode> = {
         number="GR-0042"
         units={24}
         summary={{ state: 'booked', codes: 7, unknown: 1 }}
+        onPutAway={noop}
+        onNext={noop}
+      />
+    </View>
+  ),
+  // Goods in for customers (S4b, board 6m): Check says how many to put aside for whom, the receipt splits them.
+  'receive-check-customers': () => (
+    <View className="flex-1 bg-ground">
+      <StackHeader title="Receive goods" />
+      <DeliveryCheck
+        supplier="Pennine Parts"
+        rows={[
+          { partId: 3, brand: 'Apec', partNumber: 'PAD1961', counted: 3, due: 4, verdict: 'short', references: [], orders: ['PO-000007'],
+            putAside: [{ order: 'SO-000051', customer: 'Aire Road Garage', units: 2 }, { order: 'SO-000058', customer: 'Bradford Taxis', units: 1 }] },
+          { partId: 1, brand: 'Brembo', partNumber: '09.C306.11', counted: 5, due: 5, verdict: 'matched', references: [], orders: ['PO-000007'],
+            putAside: [{ order: 'SO-000061', customer: 'Hillside Garage', units: 1 }] },
+          { partId: 4, brand: 'MANN-FILTER', partNumber: 'W 712/95', counted: 4, due: 4, verdict: 'matched', references: [], orders: ['PO-000007'], putAside: [] },
+        ]}
+        units={12}
+        unknown={0}
+        savedAt={null}
+        onRecount={noop}
+        onFinish={noop}
+      />
+    </View>
+  ),
+  'receive-done-customers': () => (
+    <View className="flex-1 bg-ground">
+      <StackHeader title="Receive goods" />
+      <DeliveryReceipt
+        delivery={{
+          documentId: 'R2',
+          userId: 'u',
+          locationId: 1,
+          locationName: 'Main',
+          sender: SUPPLIERS[1],
+          reference: 'DN-5531',
+          startedAt,
+          finishedAt: '2026-11-20T10:42:00.000Z',
+        }}
+        number="GR-0014"
+        units={12}
+        summary={{ state: 'booked', codes: 3, unknown: 0 }}
+        putAside={[
+          { order: 'SO-000051', customer: 'Aire Road Garage', units: 2 },
+          { order: 'SO-000058', customer: 'Bradford Taxis', units: 1 },
+          { order: 'SO-000061', customer: 'Hillside Garage', units: 1 },
+        ]}
         onPutAway={noop}
         onNext={noop}
       />

@@ -13,7 +13,7 @@ To check a PartsLogic branch, after its generated types and schema snapshot are 
 node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 ```
 
-## Functions (34)
+## Functions (35)
 
 | Function | Arguments the app sends | Used by |
 |---|---|---|
@@ -28,6 +28,7 @@ node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 | `finish_setup` | none | `session/session-provider.tsx` |
 | `location_bins` | `p_location` | `features/count/use-bin-choices.ts`, `features/put-away/use-waiting.ts` |
 | `mark_opening_stock_done` | `p_location` | `queue/handlers.ts` |
+| `my_access` | none | `session/session-provider.tsx` |
 | `open_bin_count` | `p_bin`, `p_device`, `p_purpose`, `p_run`, `p_started_at`, `p_stocktake` | `features/count/use-bin-count.ts`, `queue/handlers.ts` |
 | `open_count_runs` | `p_location` | `features/count/use-count-run.ts` |
 | `open_order_lines` | `p_location`, `p_source` | `features/receive/use-goods-in.ts` |

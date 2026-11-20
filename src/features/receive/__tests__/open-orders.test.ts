@@ -1,7 +1,7 @@
 import type { ExpectedDelivery, OpenOrderLine } from '@/vendor/partslogic/shared/purchasing';
 
 import type { LineGroup } from '../lines';
-import { checkCounts, checkText, deliveryCheck, expectedText, expectedToday, onOpenOrder } from '../open-orders';
+import { checkCounts, checkText, customerNotice, customerParts, deliveryCheck, expectedText, expectedToday, onOpenOrder, putAsideLines, receiptShares } from '../open-orders';
 
 const due = (partId: number, qty: number, extra: Partial<OpenOrderLine> = {}): OpenOrderLine => ({
   orderId: 'o1', number: 'PO-000014', ourReference: 'STOCK', expectedOn: '2026-11-09', expectedFrom: null, expectedBy: null,
@@ -49,6 +49,7 @@ describe('deliveryCheck', () => {
   it('words each verdict', () => {
     const rows = deliveryCheck([group('MDB1', 1, 2), group('MDB2', 2, 5)], [due(1, 4), due(2, 2)], NOW);
     expect(rows.map(checkText)).toEqual(['2 counted · 4 due · 2 stay on order', '5 counted · 2 due · 3 extra']);
+    expect(checkText({ ...rows[0]!, counted: 3 })).toBe('3 counted · 4 due · 1 stays on order');
   });
 });
 
@@ -71,5 +72,36 @@ describe('expectedToday', () => {
       ['FPS', 2, false, '08:00–15:00'],
     ]);
     expect(suppliers.map(expectedText)).toEqual(['1 order overdue', '2 orders due today · 08:00–15:00']);
+  });
+});
+
+describe('goods in for customers (S4b)', () => {
+  const open = [
+    due(1, 2, { forOrder: 'SO-000051', forCustomer: 'Aire Road Garage' }),
+    due(1, 1, { forOrder: 'SO-000058', forCustomer: 'Bradford Taxis' }),
+    due(1, 1),
+    due(2, 1, { forOrder: 'SO-000061', forCustomer: 'Hillside Garage' }),
+    due(2, 4),
+  ];
+
+  it('says who a scanned part is for, without a quantity', () => {
+    expect(customerNotice(2, open)).toBe('For SO-000061 · Hillside Garage');
+    expect(customerNotice(1, open)).toBe('For SO-000051 and SO-000058');
+    expect(customerNotice(3, open)).toBeNull();
+    expect(customerNotice(2, null)).toBeNull();
+  });
+
+  it('splits a count at Check, customers first, then Unbinned, and adds it up for the receipt', () => {
+    const rows = deliveryCheck([group('MDB1', 1, 3), group('MDB2', 2, 5)], open, NOW);
+    expect(customerParts(rows)).toBe(2);
+    const short = rows.find((row) => row.partId === 1)!;
+    expect(putAsideLines(short).map((line) => line.text)).toEqual(['Put 2 aside for SO-000051 · Aire Road Garage', 'Put 1 aside for SO-000058 · Bradford Taxis']);
+    const matched = rows.find((row) => row.partId === 2)!;
+    expect(putAsideLines(matched).map((line) => line.text)).toEqual(['Put 1 aside for SO-000061 · Hillside Garage', '4 into Unbinned']);
+    expect(receiptShares(rows)).toEqual([
+      { order: 'SO-000051', customer: 'Aire Road Garage', units: 2 },
+      { order: 'SO-000058', customer: 'Bradford Taxis', units: 1 },
+      { order: 'SO-000061', customer: 'Hillside Garage', units: 1 },
+    ]);
   });
 });

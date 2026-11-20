@@ -20,7 +20,8 @@ export type StockLine = { binId: number; place: string; qty: number; status?: st
 
 const GROUPS: { group: StockGroup; label: string; tone: Tone }[] = [
   { group: 'available', label: 'Available', tone: 'ok' },
-  { group: 'reserved', label: 'Reserved', tone: 'warn' },
+  // "Set aside", as the web says it (owner, 19 November 2026): held for a customer's order.
+  { group: 'reserved', label: 'Set aside', tone: 'warn' },
   { group: 'unavailable', label: 'Unavailable', tone: 'stop' },
 ];
 
@@ -30,11 +31,11 @@ const OUTLINE: Record<Tone, string> = { ok: 'border-ok', warn: 'border-warn', st
 const markOf = (entry: StatusQty): IconName =>
   entry.status.hold === 'locked' ? 'locked' : entry.status.hold === 'held' ? 'held' : 'reserved';
 
-// "QA hold" keeps its capitals; "Reserved" reads "2 reserved".
+// "QA hold" keeps its capitals; "Set aside" reads "2 set aside".
 const inLine = (name: string) => (/^[A-Z]{2}/.test(name) ? name : name.charAt(0).toLowerCase() + name.slice(1));
 
 // A part's stock: where it stands and how much is on hand, split into three tiles (available to sell,
-// reserved for an order, unavailable), then each bin holding it with Move beside it. The tiles always add
+// set aside for an order, unavailable), then each bin holding it with Move beside it. The tiles always add
 // up to on hand. A tile with nothing in it stays grey, so colour only appears where there's stock to act
 // on. Until PartsLogic tags stock with a status, everything on hand is available.
 export function StockCard({
