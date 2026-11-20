@@ -25,7 +25,7 @@ export const LOCATIONS = [
 export const MEMBER: SessionState = {
   status: 'member',
   email: 'counter@example.com',
-  member: { userId: 'fixture', role: 'counter', name: 'Rahman', needsPassword: false, workspaceName: 'Eclipse Auto Parts', currency: 'GBP' },
+  member: { userId: 'fixture', role: 'counter', name: 'Rahman', needsPassword: false, workspaceName: 'Eclipse Auto Parts', currency: 'GBP', permissions: [], orderLimit: null },
 };
 
 export function Fixtures({
@@ -175,5 +175,7 @@ export const DEVELOPER_MEMBER: CurrentMember = {
   needsPassword: false,
   workspaceName: 'Eclipse Auto Parts',
   currency: 'GBP',
+  permissions: [],
+  orderLimit: null,
 };
 export const DEVELOPER: SessionState = { status: 'member', email: 'saabir@eclipseautoparts.com', member: DEVELOPER_MEMBER };

@@ -14,6 +14,8 @@ export type InventorySort = (typeof INVENTORY_SORTS)[number];
 
 // The category filter's id for parts with no category.
 export const UNCATEGORISED = -1;
+// The supplier filter's "No supplier price": parts no supplier lists now (step 3c, after a full list delists them).
+export const NO_SUPPLIER_PRICE = -1;
 
 export type PartKind = Database['catalogue']['Enums']['part_kind'];
 
@@ -61,16 +63,22 @@ export type InventoryRow = {
   partNumber: string;
   kind: PartKind;
   sku: string | null;
+  // The name shown: typed by hand, else the product name enrichment found, else the price-sheet name.
   name: string | null;
+  // The price-sheet name, when the part's detail carries it (lists leave it out).
+  catalogueName?: string | null;
   brandId: number;
   brandName: string;
   categoryId: number | null;
   categoryName: string | null;
   sellPrice: number | null;
   pricing: ItemPricing;
+  // The lowest minimum set for the part at any location (levels are per location); null when none is set.
   reorderLevel: number | null;
   isStocked: boolean;
   onHand: number;
+  // Units set aside for confirmed sales orders: on hand less this is what can be sold.
+  setAside: number;
   belowReorder: boolean;
   // The cheapest current supplier price.
   bestCost: number | null;
@@ -87,7 +95,48 @@ export type InventoryRow = {
   updatedAt: string | null;
   // When Autodoc enrichment was last applied to the part; null when it never was.
   enrichedAt: string | null;
+  // The cheapest supplier marks the line "while stocks last" (the Stock list says so; other lists leave it false).
+  ending: boolean;
+  // Being enriched now, or waiting in the enrichment queue (the Stock list says so; other lists leave it out).
+  enrichment?: PartEnrichmentState | null;
+  // Listed as an alternative to what was searched, and why (the Stock list's search; null for a direct match).
+  match?: StockMatch | null;
 };
+
+// Why a row is an alternative to a searched part: how it relates, the OE number they share (via) and the part it
+// is an alternative of.
+export type StockMatch = {
+  relation: 'same_oe' | 'same_group' | 'cross_reference' | 'replaces' | 'superseded_by';
+  via: string | null;
+  of: string | null;
+};
+
+const STOCK_RELATIONS: readonly StockMatch['relation'][] = ['same_oe', 'same_group', 'cross_reference', 'replaces', 'superseded_by'];
+
+export function readStockMatch(value: JsonRecord | null): StockMatch | null {
+  const relation = STOCK_RELATIONS.find((known) => known === value?.relation);
+  return value && relation ? { relation, via: readString(value.via), of: readString(value.of) } : null;
+}
+
+// Why a row is an alternative, in a few words for the list and in full for a hover.
+export function stockMatchReason(match: StockMatch): { short: string; full: string } {
+  const of = match.of ?? 'the part searched';
+  switch (match.relation) {
+    case 'same_oe':
+      return { short: `Same OE as ${of}`, full: `Made to the same OE number as ${of}${match.via ? `: ${match.via}` : ''}` };
+    case 'same_group':
+      return { short: `Same group as ${of}`, full: `In the same OE group as ${of}` };
+    case 'cross_reference':
+      return { short: `Cross-reference of ${of}`, full: `A cross-reference of ${of}` };
+    case 'replaces':
+      return { short: `Replaced by ${of}`, full: `An older part that ${of} replaces` };
+    case 'superseded_by':
+      return { short: `Replaces ${of}`, full: `The newer part that replaces ${of}` };
+  }
+}
+
+// What a list says about a part and enrichment: a run or a queued job is working on it, or one is waiting.
+export type PartEnrichmentState = 'running' | 'queued';
 
 export type FilterOption = { id: number; label: string; count: number };
 export type InventoryFilterOptions = {
@@ -103,7 +152,6 @@ export type InventoryItemChanges = {
   displayName?: string | null;
   // The everyday retail price (break 1); other tiers are edited in pricing.
   sellPrice?: number | null;
-  reorderLevel?: number | null;
   isStocked?: boolean;
   // Your own exchange surcharge (ex VAT): 0 for none, null to follow the supplier's.
   surcharge?: number | null;
@@ -172,7 +220,6 @@ export async function updateInventoryItem(
   const values: Database['public']['Tables']['inventory_items']['Update'] = {};
   if (changes.sku !== undefined) values.own_sku = changes.sku?.trim() || null;
   if (changes.displayName !== undefined) values.description_override = changes.displayName?.trim() || null;
-  if (changes.reorderLevel !== undefined) values.reorder_level = changes.reorderLevel;
   if (changes.isStocked !== undefined) values.is_stocked = changes.isStocked;
   if (changes.surcharge !== undefined) values.surcharge = changes.surcharge;
 
@@ -230,6 +277,7 @@ export function readInventoryRow(row: JsonRecord | null): InventoryRow | null {
     reorderLevel: readNumber(row.reorder_level),
     isStocked: readBoolean(row.is_stocked) ?? false,
     onHand: readNumber(row.on_hand) ?? 0,
+    setAside: readNumber(row.set_aside) ?? 0,
     belowReorder: readBoolean(row.below_reorder) ?? false,
     bestCost: readNumber(row.best_cost),
     bestCurrency: readString(row.best_currency),
@@ -238,6 +286,7 @@ export function readInventoryRow(row: JsonRecord | null): InventoryRow | null {
     // Stock-list pages don't carry unit_cost; there it is the supplier price.
     unitCost: row.unit_cost === undefined ? readNumber(row.best_cost) : readNumber(row.unit_cost),
     costedQty: readNumber(row.costed_qty) ?? 0,
+    catalogueName: readString(row.catalogue_name),
     eans: readStrings(row.eans),
     stock: readArray(row.stock).flatMap((item) => {
       const line = readRecord(item);
@@ -248,6 +297,9 @@ export function readInventoryRow(row: JsonRecord | null): InventoryRow | null {
     }),
     updatedAt: readString(row.updated_at),
     enrichedAt: readString(row.enriched_at),
+    ending: readBoolean(row.ending) ?? false,
+    enrichment: row.enrichment === 'running' || row.enrichment === 'queued' ? row.enrichment : null,
+    match: readStockMatch(readRecord(row.match)),
   };
 }
 

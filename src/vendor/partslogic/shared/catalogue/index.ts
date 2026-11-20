@@ -67,3 +67,21 @@ export {
   searchParts,
   type PartSearchResult,
 } from './search';
+export {
+  assignableCategories,
+  categoryTrails,
+  createCategory,
+  getCategoryTree,
+  getUnmappedWordings,
+  mapCategoryWording,
+  removeCategory,
+  renameCategory,
+  setPartCategory,
+  type CategoryNode,
+  type CategoryOption,
+  type CategoryTree,
+  type PartCategory,
+  type UnmappedWording,
+  type UnmappedWordings,
+} from './categories';
+export { findVehicles, type VehicleMatch } from './vehicle-find';

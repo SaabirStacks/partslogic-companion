@@ -1,12 +1,10 @@
-// Reports: inventory summary, valuation, reorder and zero-result searches.
+// Reports: inventory summary, valuation and zero-result searches. The reorder list is purchasing's (reorder.ts).
 // The public names; apps import them from '@partslogic/shared'.
 export {
   getInventorySummary,
-  getReorderSuggestions,
   getStockValuation,
   getZeroResultSearches,
   type InventorySummary,
-  type ReorderSuggestion,
   type ValuationLine,
   type ZeroResultSearch,
 } from './reports';

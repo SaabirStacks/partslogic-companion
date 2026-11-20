@@ -5,6 +5,10 @@ import { DataError, dataError } from '../core/errors';
 import type { Page } from '../core/page';
 import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from '../core/read';
 import { readDeliveryTerms, readNextDelivery, type DeliveryTerms, type NextDelivery } from './delivery-terms';
+import { call } from './documents';
+import { readBackOrderReasons, readBackOrderRows, type BackOrderReason, type BackOrderRow } from './back-orders';
+import { readOrderExtras, type OrderExtra } from './order-extras';
+import { readOrderTrail, type OrderTrail } from './order-trail';
 import { isPlacedVia, type PlacedVia } from './placed-via';
 import { isSupplierStatus, type SupplierStatus } from './suppliers';
 
@@ -26,6 +30,8 @@ export function isPurchaseOrderStatus(value: unknown): value is PurchaseOrderSta
 // Why a line or an order needs a look. None of them stops the order.
 export type LineWarning =
   | 'not_on_sheet'
+  // The supplier stopped listing the part (a full price list delisted it, step 3c).
+  | 'delisted'
   | 'not_multiple'
   | 'below_minimum'
   | 'price_differs'
@@ -37,7 +43,8 @@ export type OrderWarning =
   | 'no_delivery_address'
   | 'delivered_to_registered_office'
   | 'company_details_missing'
-  | 'below_minimum_order';
+  | 'below_minimum_order'
+  | 'over_delivered';
 
 export type OrderAddress = { lines: string; town: string | null; county: string | null; postcode: string | null };
 
@@ -67,6 +74,10 @@ export type PurchaseOrderLine = {
   // Against each of the order's vehicles from the catalogue: confirmed, via_oe, via_alternative, does_not_fit, unknown.
   fits: { vehicle: number; verdict: string }[];
   warnings: LineWarning[];
+  // Ordering in: the sales order the line is for (its customer shown on screen only, never printed), with how many
+  // of its units are for stock; and orders that no longer need units already ordered ("SO-000061 cancelled · for stock").
+  forOrder: { id: string; number: string; customer: string | null; customerPo: string | null; qty: number; forStock: number } | null;
+  releasedFor: { id: string; number: string; reason: 'cancelled' | 'lowered'; qty: number }[];
 };
 
 export type PurchaseOrderVehicle = {
@@ -77,6 +88,8 @@ export type PurchaseOrderVehicle = {
   // "VW GOLF VI 1.6 TDI 2009–2012" when it is a vehicle from the catalogue.
   vehicle: string | null;
   label: string | null;
+  // The sales order it came with: fit is checked against that order's lines only.
+  salesOrder: { id: string; number: string } | null;
 };
 
 export type OrderTotals = {
@@ -120,6 +133,8 @@ export type PurchaseOrderDetail = {
   nextDelivery: NextDelivery | null;
   // Per line: ordered, received, closed short and still due.
   progress: LineProgress[];
+  // Per line: units of its part that came over on the deliveries that filled the order (kept in stock as extras).
+  over: { lineId: number; units: number }[];
   createdAt: string;
   createdBy: string;
   placedAt: string | null;
@@ -144,13 +159,126 @@ export type PurchaseOrderDetail = {
   deliverTo: (OrderAddress & { name: string | null; registeredOffice: boolean }) | null;
   vehicles: PurchaseOrderVehicle[];
   lines: PurchaseOrderLine[];
+  // The sales orders with lines on it: "2 lines for customers".
+  customerOrders: { id: string; number: string; customer: string | null; lines: number }[];
   totals: OrderTotals;
   warnings: OrderWarning[];
   history: OrderEvent[];
-  can: { edit: boolean; place: boolean; cancel: boolean; delete: boolean; receive: boolean; closeShort: boolean };
+  // How far it has got and the next step (the order as the hub).
+  trail: OrderTrail;
+  // Extra units its deliveries brought, and what's left to deal with.
+  extras: OrderExtra[];
+  // Every line still due (not only back-orders yet), the reasons a line can be cancelled, and what was cancelled.
+  backOrders: BackOrderRow[];
+  backOrderReasons: BackOrderReason[];
+  cancellations: OrderCancellation[];
+  can: {
+    edit: boolean;
+    place: boolean;
+    cancel: boolean;
+    delete: boolean;
+    receive: boolean;
+    closeShort: boolean;
+    createBill: boolean;
+    dealWithExtras: boolean;
+    chase: boolean;
+    // Send a draft for approval; approve or reject one that is waiting (the "Approve orders" permission).
+    requestApproval: boolean;
+    approve: boolean;
+  };
+  approval: OrderApproval;
 };
 
-export type OrderReceipt = { id: string; number: string; at: string; deliveryNote: string | null; units: number };
+export const ORDER_APPROVAL_STATES = ['requested', 'approved', 'rejected'] as const;
+export type OrderApprovalState = (typeof ORDER_APPROVAL_STATES)[number];
+
+function readApprovalState(value: Json | undefined): OrderApprovalState | null {
+  return (ORDER_APPROVAL_STATES as readonly Json[]).includes(value ?? null) ? (value as OrderApprovalState) : null;
+}
+
+// Where an order stands on approval, for the person looking at it.
+export type OrderApproval = {
+  // Null: never sent for approval.
+  state: OrderApprovalState | null;
+  requestedBy: string | null;
+  requestedAt: string | null;
+  note: string | null;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  reason: string | null;
+  // The highest total (before VAT) signed off, by an approval or by someone within their own limit.
+  clearedTotal: number | null;
+  // This person's order limit before VAT; null is no limit.
+  myLimit: number | null;
+  // Placing it now would be refused: it is over this person's limit and not signed off at this total.
+  needed: boolean;
+};
+
+function readApproval(value: Json | undefined): OrderApproval {
+  const row = readRecord(value);
+  return {
+    state: readApprovalState(row?.state),
+    requestedBy: readString(row?.requested_by),
+    requestedAt: readString(row?.requested_at),
+    note: readString(row?.note),
+    decidedBy: readString(row?.decided_by),
+    decidedAt: readString(row?.decided_at),
+    reason: readString(row?.reason),
+    clearedTotal: readNumber(row?.cleared_total),
+    myLimit: readNumber(row?.my_limit),
+    needed: readBoolean(row?.needed) ?? false,
+  };
+}
+
+// Units of a line cancelled: why (the label), a note, and for a substitute the part that came instead.
+export type OrderCancellation = {
+  lineId: number;
+  qty: number;
+  reason: string;
+  label: string;
+  note: string | null;
+  part: string | null;
+  at: string;
+  by: string | null;
+};
+
+// A delivery that filled the order: the units it put on the order, and its extras of the order's parts.
+// What a delivery put aside for customers (S4b), by sales order and part.
+export type ReceiptPutAside = { orderId: string; number: string; customer: string | null; partId: number; units: number };
+export type OrderReceipt = {
+  id: string;
+  number: string;
+  at: string;
+  deliveryNote: string | null;
+  units: number;
+  extraUnits: number;
+  putAside: ReceiptPutAside[];
+};
+
+export function readReceiptPutAside(value: Json | undefined): ReceiptPutAside[] {
+  return readArray(value).flatMap((item) => {
+    const row = readRecord(item);
+    const orderId = readString(row?.order_id);
+    const number = readString(row?.number);
+    const partId = readNumber(row?.part_id);
+    if (!row || !orderId || !number || partId == null) return [];
+    return [{ orderId, number, customer: readString(row.customer), partId, units: readNumber(row.units) ?? 0 }];
+  });
+}
+
+// Under a delivery on the purchase order: "4 put aside for SO-000051, SO-000058 and SO-000061 · 8 into Unbinned".
+export function receiptPutAsideWords(receipt: Pick<OrderReceipt, 'units' | 'putAside'>): string | null {
+  if (receipt.putAside.length === 0) return null;
+  const put = receipt.putAside.reduce((sum, row) => sum + row.units, 0);
+  const orders = [...new Set(receipt.putAside.map((row) => row.number))];
+  const list = orders.length > 1 ? `${orders.slice(0, -1).join(', ')} and ${orders[orders.length - 1]}` : (orders[0] ?? '');
+  const rest = Math.max(receipt.units - put, 0);
+  return `${formatUnits(put)} put aside for ${list}${rest > 0 ? ` · ${formatUnits(rest)} into Unbinned` : ''}`;
+}
+
+function formatUnits(n: number): string {
+  return String(Number.isInteger(n) ? n : Number(n.toFixed(3)));
+}
 
 export type PurchaseOrderRow = {
   id: string;
@@ -166,10 +294,16 @@ export type PurchaseOrderRow = {
   registrations: string[];
   createdAt: string;
   placedAt: string | null;
+  // Where its latest approval request stands; null when it was never sent for approval.
+  approval: OrderApprovalState | null;
 };
 
+// "awaiting_approval" is a view of the drafts: the ones sent for approval and not yet decided.
+export const AWAITING_APPROVAL = 'awaiting_approval';
+export type PurchaseOrderView = PurchaseOrderStatus | typeof AWAITING_APPROVAL;
+
 export type PurchaseOrderQuery = {
-  status?: PurchaseOrderStatus;
+  status?: PurchaseOrderView;
   supplierId?: number;
   locationId?: number;
   search?: string;
@@ -219,7 +353,7 @@ export type PlaceOrderInput = {
 export type OrdersTouched = { id: string; number: string; supplier: string; lines: number }[];
 export type VehicleOption = { vehicleId: number; ktype: number | null; label: string; score: number };
 
-const LINE_WARNINGS: readonly LineWarning[] = ['not_on_sheet', 'not_multiple', 'below_minimum', 'price_differs', 'sheet_changed', 'does_not_fit'];
+const LINE_WARNINGS: readonly LineWarning[] = ['not_on_sheet', 'delisted', 'not_multiple', 'below_minimum', 'price_differs', 'sheet_changed', 'does_not_fit'];
 const ORDER_WARNINGS: readonly OrderWarning[] = [
   'supplier_on_hold',
   'supplier_archived',
@@ -227,6 +361,7 @@ const ORDER_WARNINGS: readonly OrderWarning[] = [
   'delivered_to_registered_office',
   'company_details_missing',
   'below_minimum_order',
+  'over_delivered',
 ];
 
 function readAddress(value: Json | undefined): OrderAddress | null {
@@ -269,6 +404,27 @@ function readLine(value: Json): PurchaseOrderLine | null {
       return fit && vehicle != null ? [{ vehicle, verdict: readString(fit.verdict) ?? 'unknown' }] : [];
     }),
     warnings: readStrings(row.warnings).filter((item): item is LineWarning => (LINE_WARNINGS as readonly string[]).includes(item)),
+    forOrder: (() => {
+      const order = readRecord(row.for_order);
+      const orderId = readString(order?.id);
+      return order && orderId
+        ? {
+            id: orderId,
+            number: readString(order.number) ?? '',
+            customer: readString(order.customer),
+            customerPo: readString(order.customer_po),
+            qty: readNumber(order.qty) ?? qty,
+            forStock: readNumber(order.for_stock) ?? 0,
+          }
+        : null;
+    })(),
+    releasedFor: readArray(row.released_for).flatMap((item) => {
+      const released = readRecord(item);
+      const releasedId = readString(released?.id);
+      return released && releasedId
+        ? [{ id: releasedId, number: readString(released.number) ?? '', reason: released.reason === 'lowered' ? ('lowered' as const) : ('cancelled' as const), qty: readNumber(released.qty) ?? 0 }]
+        : [];
+    }),
   };
 }
 
@@ -297,6 +453,11 @@ function readVehicle(value: Json): PurchaseOrderVehicle | null {
     vehicleId: readNumber(row.vehicle_id),
     vehicle: readString(row.vehicle),
     label: readString(row.label),
+    salesOrder: (() => {
+      const order = readRecord(row.sales_order);
+      const orderId = readString(order?.id);
+      return order && orderId ? { id: orderId, number: readString(order.number) ?? '' } : null;
+    })(),
   };
 }
 
@@ -353,6 +514,12 @@ export function readPurchaseOrder(value: Json | null | undefined): PurchaseOrder
     delivery: readDeliveryTerms(row.delivery),
     nextDelivery: readNextDelivery(row.next_delivery),
     progress: readArray(row.progress).flatMap((item) => readProgress(item) ?? []),
+    over: readArray(row.over).flatMap((item) => {
+      const over = readRecord(item);
+      const lineId = readNumber(over?.line_id);
+      const units = readNumber(over?.units);
+      return lineId != null && units != null && units > 0 ? [{ lineId, units }] : [];
+    }),
     createdAt: readString(row.created_at) ?? '',
     createdBy: readString(row.created_by) ?? 'Someone',
     placedAt: readString(row.placed_at),
@@ -368,7 +535,17 @@ export function readPurchaseOrder(value: Json | null | undefined): PurchaseOrder
       const receiptId = readString(receipt?.document_id);
       const receiptNumber = readString(receipt?.number);
       if (!receipt || !receiptId || !receiptNumber) return [];
-      return [{ id: receiptId, number: receiptNumber, at: readString(receipt.at) ?? '', deliveryNote: readString(receipt.delivery_note), units: readNumber(receipt.units) ?? 0 }];
+      return [
+        {
+          id: receiptId,
+          number: receiptNumber,
+          at: readString(receipt.at) ?? '',
+          deliveryNote: readString(receipt.delivery_note),
+          units: readNumber(receipt.units) ?? 0,
+          extraUnits: readNumber(receipt.extra_units) ?? 0,
+          putAside: readReceiptPutAside(receipt.put_aside),
+        },
+      ];
     }),
     supplier: {
       id: supplierId,
@@ -388,6 +565,11 @@ export function readPurchaseOrder(value: Json | null | undefined): PurchaseOrder
       : null,
     vehicles: readArray(row.vehicles).flatMap((item) => readVehicle(item) ?? []),
     lines: readArray(row.lines).flatMap((item) => readLine(item) ?? []),
+    customerOrders: readArray(row.customer_orders).flatMap((item) => {
+      const order = readRecord(item);
+      const orderId = readString(order?.id);
+      return order && orderId ? [{ id: orderId, number: readString(order.number) ?? '', customer: readString(order.customer), lines: readNumber(order.lines) ?? 0 }] : [];
+    }),
     totals: readTotals(row.totals),
     warnings: readStrings(row.warnings).filter((item): item is OrderWarning => (ORDER_WARNINGS as readonly string[]).includes(item)),
     history: readArray(row.history).flatMap((item) => {
@@ -403,7 +585,34 @@ export function readPurchaseOrder(value: Json | null | undefined): PurchaseOrder
       delete: readBoolean(can?.delete) ?? false,
       receive: readBoolean(can?.receive) ?? false,
       closeShort: readBoolean(can?.close_short) ?? false,
+      createBill: readBoolean(can?.create_bill) ?? false,
+      dealWithExtras: readBoolean(can?.deal_with_extras) ?? false,
+      chase: readBoolean(can?.chase) ?? false,
+      requestApproval: readBoolean(can?.request_approval) ?? false,
+      approve: readBoolean(can?.approve) ?? false,
     },
+    approval: readApproval(row.approval),
+    trail: readOrderTrail(row.trail),
+    extras: readOrderExtras(row.extras),
+    backOrders: readBackOrderRows(row.back_orders),
+    backOrderReasons: readBackOrderReasons(row.back_order_reasons),
+    cancellations: readArray(row.cancellations).flatMap((item) => {
+      const c = readRecord(item);
+      const lineId = readNumber(c?.line_id);
+      if (!c || lineId == null) return [];
+      return [
+        {
+          lineId,
+          qty: readNumber(c.qty) ?? 0,
+          reason: readString(c.reason) ?? '',
+          label: readString(c.label) ?? '',
+          note: readString(c.note),
+          part: readString(c.part),
+          at: readString(c.at) ?? '',
+          by: readString(c.by),
+        },
+      ];
+    }),
   };
 }
 
@@ -414,12 +623,6 @@ function lineJson(line: NewOrderLine & { supplierId?: number }): Record<string, 
   if (line.unitCost != null) out.unit_cost = line.unitCost;
   if (line.reference != null) out.reference = line.reference;
   return out;
-}
-
-async function call<T>(work: PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>, read: (data: Json) => T): Promise<T> {
-  const { data, error } = await work;
-  if (error) throw dataError(error);
-  return read(data as Json);
 }
 
 export async function listPurchaseOrders(supabase: Client, query: PurchaseOrderQuery = {}): Promise<Page<PurchaseOrderRow>> {
@@ -451,6 +654,7 @@ export async function listPurchaseOrders(supabase: Client, query: PurchaseOrderQ
             registrations: row.registrations ?? [],
             createdAt: row.created_at,
             placedAt: row.placed_at ?? null,
+            approval: readApprovalState(row.approval),
           },
         ]
       : [],
@@ -458,10 +662,16 @@ export async function listPurchaseOrders(supabase: Client, query: PurchaseOrderQ
   return { rows, page: { limit, offset, total: readNumber(data?.[0]?.total_count) ?? 0 } };
 }
 
-export async function purchaseOrderCounts(supabase: Client): Promise<Record<PurchaseOrderStatus, number>> {
+// Orders by status, and the drafts waiting for approval (a view of the drafts, not a status).
+export type PurchaseOrderCounts = Record<PurchaseOrderStatus, number> & { awaitingApproval: number };
+
+export async function purchaseOrderCounts(supabase: Client): Promise<PurchaseOrderCounts> {
   return call(supabase.rpc('purchase_order_counts'), (data) => {
     const row = readRecord(data);
-    return Object.fromEntries(PURCHASE_ORDER_STATUSES.map((status) => [status, readNumber(row?.[status]) ?? 0])) as Record<PurchaseOrderStatus, number>;
+    return {
+      ...(Object.fromEntries(PURCHASE_ORDER_STATUSES.map((status) => [status, readNumber(row?.[status]) ?? 0])) as Record<PurchaseOrderStatus, number>),
+      awaitingApproval: readNumber(row?.awaiting_approval) ?? 0,
+    };
   });
 }
 
@@ -503,15 +713,19 @@ export async function addToOrders(
       p_new: input.intoNew ?? false,
       p_our_reference: input.ourReference ?? undefined,
     }),
-    (data) =>
-      readArray(data).flatMap((item) => {
-        const row = readRecord(item);
-        const id = readString(row?.document_id);
-        const number = readString(row?.number);
-        if (!row || !id || !number) return [];
-        return [{ id, number, supplier: readString(row.supplier) ?? '', lines: readNumber(row.lines) ?? 0 }];
-      }),
+    readOrdersTouched,
   );
+}
+
+// The drafts a batch of lines went onto (add_to_orders, add_reorder_lines).
+export function readOrdersTouched(data: Json): OrdersTouched {
+  return readArray(data).flatMap((item) => {
+    const row = readRecord(item);
+    const id = readString(row?.document_id);
+    const number = readString(row?.number);
+    if (!row || !id || !number) return [];
+    return [{ id, number, supplier: readString(row.supplier) ?? '', lines: readNumber(row.lines) ?? 0 }];
+  });
 }
 
 export async function savePurchaseOrderLine(supabase: Client, lineId: number, changes: OrderLineChanges): Promise<PurchaseOrderDetail> {
@@ -526,6 +740,25 @@ export async function savePurchaseOrderLine(supabase: Client, lineId: number, ch
 
 export async function removePurchaseOrderLine(supabase: Client, lineId: number): Promise<PurchaseOrderDetail> {
   return call(supabase.rpc('remove_purchase_order_line', { p_line: lineId }), readPurchaseOrder);
+}
+
+// Editors: moves a draft's line to another supplier's draft for the same location (a new draft when there is none), at
+// that supplier's price. Returns where it went and this order as it is now.
+export async function movePurchaseOrderLine(
+  supabase: Client,
+  lineId: number,
+  supplierId: number,
+): Promise<{ movedTo: { id: string; number: string; supplier: string } | null; order: PurchaseOrderDetail }> {
+  return call(supabase.rpc('move_purchase_order_line', { p_line: lineId, p_source: supplierId }), (data) => {
+    const record = readRecord(data);
+    const moved = readRecord(record?.moved_to);
+    const id = readString(moved?.document_id);
+    const number = readString(moved?.number);
+    return {
+      movedTo: id && number ? { id, number, supplier: readString(moved?.supplier) ?? 'Another supplier' } : null,
+      order: readPurchaseOrder(record?.order ?? null),
+    };
+  });
 }
 
 export async function savePurchaseOrder(supabase: Client, orderId: string, changes: OrderChanges): Promise<PurchaseOrderDetail> {
@@ -570,6 +803,24 @@ export async function placePurchaseOrder(supabase: Client, orderId: string, inpu
   return call(supabase.rpc('place_purchase_order', { p_order: orderId, p }), readPurchaseOrder);
 }
 
+// Sends a draft that is over the placer's limit for approval, with an optional note for the approver.
+export async function requestOrderApproval(supabase: Client, orderId: string, note?: string): Promise<PurchaseOrderDetail> {
+  return call(supabase.rpc('request_order_approval', { p_order: orderId, p_note: note?.trim() || undefined }), readPurchaseOrder);
+}
+
+// Approves an order waiting for approval, or rejects it with a reason.
+export async function decideOrderApproval(
+  supabase: Client,
+  orderId: string,
+  approve: boolean,
+  reason?: string,
+): Promise<PurchaseOrderDetail> {
+  return call(
+    supabase.rpc('decide_order_approval', { p_order: orderId, p_approve: approve, p_reason: reason?.trim() || undefined }),
+    readPurchaseOrder,
+  );
+}
+
 export async function cancelPurchaseOrder(supabase: Client, orderId: string, reason: string): Promise<PurchaseOrderDetail> {
   return call(supabase.rpc('cancel_purchase_order', { p_order: orderId, p_reason: reason }), readPurchaseOrder);
 }
@@ -585,4 +836,16 @@ export async function vehicleOptions(supabase: Client, text: string): Promise<Ve
   const { data, error } = await supabase.rpc('vehicle_options', { p_text: text.trim() });
   if (error) throw dataError(error);
   return (data ?? []).map((row) => ({ vehicleId: row.vehicle_id, ktype: row.ktype ?? null, label: row.label, score: row.score }));
+}
+
+// Ordering in (board 6l): the lines held for customers' sales orders. "2 lines for customers" in the header, and
+// "Includes 2 lines for customers: SO-000061." when the order is placed or sent for approval.
+export function customerLineCount(order: Pick<PurchaseOrderDetail, 'customerOrders'>): number {
+  return order.customerOrders.reduce((sum, row) => sum + row.lines, 0);
+}
+
+export function customerLinesWords(order: Pick<PurchaseOrderDetail, 'customerOrders'>, lead = 'Includes '): string {
+  const lines = customerLineCount(order);
+  if (lines === 0) return '';
+  return `${lead}${lines} ${lines === 1 ? 'line' : 'lines'} for customers: ${order.customerOrders.map((row) => row.number).join(', ')}.`;
 }

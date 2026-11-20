@@ -6,6 +6,7 @@ import type { Page } from '../core/page';
 import { readNumber, readRecord, readString, type JsonRecord } from '../core/read';
 import { readAddresses, readContacts, type PartyAddress, type PartyContact } from '../parties/parties';
 import { readDeliveryTerms, type DeliveryTerms } from './delivery-terms';
+import { readSupplierMerge, readSupplierMerges, type SupplierMerge } from './supplier-merge';
 import { readSupplierUpload, type SupplierUpload } from './supplier-options';
 
 export const SUPPLIER_STATUSES = ['active', 'on_hold', 'archived'] as const;
@@ -46,6 +47,10 @@ export type SupplierDetail = SupplierRow & {
   statusChangedAt: string | null;
   statusChangedBy: string | null;
   linesInRange: number;
+  // Set on a duplicate that was merged away: the supplier that now holds its records. It stays archived.
+  mergedInto: SupplierMerge | null;
+  // The duplicates merged into this supplier, newest first.
+  merges: SupplierMerge[];
   createdAt: string;
   updatedAt: string;
 };
@@ -135,6 +140,8 @@ function readDetail(value: Json): SupplierDetail | null {
     delivery: readDeliveryTerms(row.delivery),
     contacts: readContacts(row.contacts),
     addresses: readAddresses(row.addresses),
+    mergedInto: readSupplierMerge(row.merged_into),
+    merges: readSupplierMerges(row.merges),
     createdAt,
     updatedAt: readString(row.updated_at) ?? createdAt,
   };

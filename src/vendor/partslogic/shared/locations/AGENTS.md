@@ -23,4 +23,7 @@ and system bins.
 ## Rules
 - Deleting a bin or location moves its stock to the unassigned or unbinned bin; nothing is lost. System bins
   can't be changed or removed.
+- Every location has two system bins, made with it: `UNBINNED` and `COLLECTION` (the collection and delivery shelf,
+  S4b; goods in puts customers' parts there). The shelf is listed after Unbinned, can be counted, is not on Put away,
+  and its stock is not unlocated stock to write off.
 - Opening stock per location belongs to `floor`.

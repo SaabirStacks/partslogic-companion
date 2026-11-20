@@ -7,6 +7,8 @@ const member = {
   needsPassword: false,
   workspaceName: 'Eclipse Auto Parts',
   currency: 'GBP',
+  permissions: [],
+  orderLimit: null,
 };
 
 describe('stateAfterLookup', () => {

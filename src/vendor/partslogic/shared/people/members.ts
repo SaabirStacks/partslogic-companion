@@ -2,6 +2,7 @@ import type { Database } from '@partslogic/db-types';
 
 import type { Client } from '../core/client';
 import { dataError } from '../core/errors';
+import { readMyAccess, type PermissionKey } from './permissions';
 
 export type AppRole = Database['public']['Enums']['app_role'];
 
@@ -17,6 +18,10 @@ export type CurrentMember = {
   needsPassword: boolean;
   workspaceName: string;
   currency: string;
+  // What they may do where a permission decides it (purchasing and money), and the most they may place an order
+  // for before VAT (null: no limit). `can(member, 'orders.place')` asks.
+  permissions: PermissionKey[];
+  orderLimit: number | null;
 };
 
 // True when `role` is at least `minimum` (viewer < counter < editor < admin < owner < developer).
@@ -26,13 +31,16 @@ export function roleAtLeast(role: AppRole, minimum: AppRole): boolean {
 
 // The signed-in person's role in this deployment, or null when they are not a member yet.
 export async function getCurrentMember(supabase: Client, userId: string): Promise<CurrentMember | null> {
-  const [member, workspace] = await Promise.all([
+  const [member, workspace, access] = await Promise.all([
     supabase.from('members').select('user_id, role, display_name, needs_password').eq('user_id', userId).maybeSingle(),
     supabase.from('workspace').select('name, currency').maybeSingle(),
+    supabase.rpc('my_access'),
   ]);
   if (member.error) throw dataError(member.error);
   if (workspace.error) throw dataError(workspace.error);
+  if (access.error) throw dataError(access.error);
   if (!member.data) return null;
+  const mine = readMyAccess(access.data);
 
   return {
     userId: member.data.user_id,
@@ -41,6 +49,8 @@ export async function getCurrentMember(supabase: Client, userId: string): Promis
     needsPassword: member.data.needs_password,
     workspaceName: workspace.data?.name ?? 'PartsLogic',
     currency: workspace.data?.currency ?? 'GBP',
+    permissions: mine.permissions,
+    orderLimit: mine.orderLimit,
   };
 }
 

@@ -4,11 +4,19 @@ The parts you hold: the inventory table, stock levels by bin, movements, adjustm
 location, stock cost lots, adding a part to your range and a supplier's code for a part.
 
 ## Files here
+- `stock-list.ts`: the fast Stock list (docs/TABLES_AND_PERFORMANCE.md): `listStock`, `getStockListOptions`, the filter
+  model (`StockListFilters`, `tidyStockFilters`, `stockListParams`), filters in a page address
+  (`stockFiltersToParams`, `stockFiltersFromParams`) and the active-filter badges (`stockFilterBadges`).
+- Set aside (sales orders, docs/SALES.md 13.8): an inventory row carries `setAside`, units confirmed sales orders hold
+  (`stock_list` reads it through `stock_set_aside_of`); the Stock column leads with what is available, the In stock
+  filter and reorder (`purchasing.reorder_lines`) work from it, and the part window's Stock tab lists the orders
+  holding the part (`getPartSetAside`, in the sales domain).
 - `items.ts`: `listInventory`, `inventoryFilterOptions`, `updateInventoryItem`, `readInventoryRow`, the page
   sizes and sorts, `PartKind`.
 - `stock.ts`: `setStockCount`, `adjustStock`, `transferStock`, `listMovements`.
 - `levels.ts`: `listLocationLevels`, `setLocationLevel` (min/max per location).
-- `stock-costs.ts`: `getStockCosts`, `saveStockCostLot`, `removeStockCostLot`.
+- `stock-costs.ts`: `getStockCosts`, `saveStockCostLot`, `removeStockCostLot`. Lots are typed in by hand or put there
+  by a delivery (purchasing's `refresh_receipt_lots`, step 8); a delivery's lot is corrected in Price checks.
 - `add-part.ts`: `findPartsToAdd`, `skuAvailable`, `addInventoryPart`.
 - `supplier-codes.ts`: `setSupplierCode`, `removeSupplierCode`.
 
@@ -24,15 +32,29 @@ location, stock cost lots, adding a part to your range and a supplier's code for
   `removeStockCost`.
 - API: `app/api/v1/inventory/` (list, filters, item, levels, movements), `app/api/v1/stock/` (adjustments,
   counts, transfers).
+- Screen: `components/shadcn-studio/blocks/inventory-table/` (`inventory-table.tsx` the Stock list screen,
+  `stock-columns.tsx`, `stock-filter-dialog.tsx`, `scope-switch.tsx`) on the shared data table
+  (`components/shadcn-studio/blocks/data-table/`); server actions `loadStockList`, `loadStockListOptions`
+  (`app/inventory/actions.ts`); tests `tests/shell/stock-list-screen.test.ts`.
 - Helpers: `lib/api/inventory-query.ts`, `lib/api/add-part-input.ts`, `lib/inventory-display.ts` (formatters
   the companion also copies), `lib/sku.ts`.
-- Database: `list_inventory`, `inventory_filter_options`, `set_sell_price`, `set_stock_count`, `adjust_stock`,
-  `transfer_stock`, `find_parts_to_add`, `sku_available`, `add_inventory_part`, `part_stock_costs`,
+- Database: `stock_list`, `stock_list_options` (the web's Stock list; `public.inventory_index` is its index table,
+  written only by triggers on `inventory_items`, `catalogue.parts` and `catalogue.brands`; SQL tests
+  `145_stock_list.sql`; unit tests `tests/shared/stock-list.test.ts`). A search for a number also answers with
+  alternatives (slice 7 of `docs/ENRICHMENT_OVERHAUL.md`): `catalogue.search_seeds`, `catalogue.search_alternatives`,
+  rows' `match` and the page's `alternatives` (`StockListPage`, `StockMatch`, `stockMatchReason`, `logEmptySearch`;
+  SQL test `155_stock_search_alternatives.sql`, unit test `tests/shared/stock-match.test.ts`). `list_inventory`, `inventory_filter_options`
+  (the phone and the API still read these two), `set_sell_price`, `set_stock_count`, `adjust_stock`,
+  `transfer_stock`, `find_parts_to_add`, `sku_available`, `add_inventory_part` (its core, `add_part_core`, also
+  makes a catalogue part with a supplier price and leaves the stock list alone when `stock_list` is false: Sales
+  uses that for a supplier's quote), `part_stock_costs`,
   `save_stock_cost_lot`, `remove_stock_cost_lot`, `set_supplier_code`, `remove_supplier_code`; tables and views
   `inventory_items`, `inventory_rows`, `stock_levels`, `stock_movements`, `stock_movement_history`,
   `inventory_location_levels`, `inventory_item_stats` (trigger-written only).
-  SQL tests: `supabase/tests/70_add_and_upload.sql`, `95_stock_cost_lots.sql`, `96_stock_cost_pricing.sql`.
-- Tests: `tests/shared/stock-cost.test.ts`, `tests/api/routes.test.ts`, `tests/api/add-and-upload.test.ts`.
+  SQL tests: `supabase/tests/70_add_and_upload.sql`, `95_stock_cost_lots.sql`, `96_stock_cost_pricing.sql`,
+  `125_delivery_cost_lots.sql` (a delivery's lots).
+- Tests: `tests/shared/stock-cost.test.ts`, `tests/shared/stock-costs.test.ts`, `tests/api/routes.test.ts`,
+  `tests/api/add-and-upload.test.ts`.
 
 ## Rules
 - Stock changes go through `stock_levels` and the functions above; `stock_movements` is append-only.

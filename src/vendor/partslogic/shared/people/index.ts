@@ -28,3 +28,29 @@ export {
   type Person,
   type SetupCode,
 } from './people';
+export {
+  can,
+  isPermissionKey,
+  NO_ACCESS,
+  PERMISSION_AREA_LABELS,
+  PERMISSION_AREAS,
+  PERMISSION_KEYS,
+  readMyAccess,
+  type MyAccess,
+  type PermissionArea,
+  type PermissionKey,
+} from './permissions';
+export {
+  changedPermissions,
+  getPeopleAccess,
+  ORDER_LIMIT_KINDS,
+  readPeopleAccess,
+  saveOrderLimit,
+  setPersonOrderLimit,
+  setPersonPermission,
+  type OrderLimitKind,
+  type PeopleAccess,
+  type Permission,
+  type PersonAccess,
+  type PersonPermission,
+} from './access';

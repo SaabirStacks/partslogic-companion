@@ -27,6 +27,9 @@ export type CachedMember = {
   needsPassword?: boolean;
   workspaceName: string;
   currency: string;
+  // Saved since permissions came to PartsLogic; a member saved before reads as none and no limit until next loaded.
+  permissions?: string[];
+  orderLimit?: number | null;
 };
 
 export const memberPref = pref<CachedMember>('member');

@@ -8,11 +8,22 @@ import { inventoryPageSize } from './items';
 
 export type MovementReason = Database['public']['Enums']['movement_reason'];
 
+// Why stock can be booked in or out of a bin by hand. Deliveries come in through goods receipts, so they can be
+// matched to orders; returns to a supplier go out on returns (purchasing/returns.ts); stock takes and moves have
+// their own functions.
+export const adjustmentReasons = [
+  'opening',
+  'sale',
+  'adjustment',
+  'customer_return',
+] as const satisfies readonly MovementReason[];
+export type AdjustmentReason = (typeof adjustmentReasons)[number];
+
 export type StockAdjustment = {
   binId: number;
   partId: number;
   qty: number;
-  reason: Exclude<MovementReason, 'stocktake' | 'transfer_in' | 'transfer_out'>;
+  reason: AdjustmentReason;
   reference?: string | null;
   unitCost?: number | null;
 };
@@ -57,7 +68,7 @@ export async function setStockCount(
   return readNumber(data) ?? input.qty;
 }
 
-// Books stock in or out of a bin (receipt, sale, adjustment, returns). Returns the movement id.
+// Books stock in or out of a bin for one of adjustmentReasons. Returns the movement id.
 export async function adjustStock(supabase: Client, input: StockAdjustment): Promise<number> {
   const { data, error } = await supabase.rpc('adjust_stock', {
     p_bin: input.binId,

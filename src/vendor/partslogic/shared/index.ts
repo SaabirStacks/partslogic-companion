@@ -13,4 +13,7 @@ export * from './floor';
 export * from './imports';
 export * from './enrichment';
 export * from './purchasing';
+export * from './customers';
+export * from './sales';
 export * from './reports';
+export * from './developer';

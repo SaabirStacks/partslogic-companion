@@ -10,9 +10,11 @@ schema, because several modules use it.
 
 ## Elsewhere
 - Components: `components/shadcn-studio/blocks/parties/` (`party-contacts.tsx`, `party-addresses.tsx`, `party-bits.tsx`), shown on the
-  supplier page.
+  supplier page and the trade account page.
 - Server actions: `saveSupplierContact`, `removeSupplierContact`, `saveSupplierAddress`,
-  `removeSupplierAddress` in `app/suppliers/actions.ts`; input readers in `lib/api/party-input.ts`.
+  `removeSupplierAddress` in `app/suppliers/actions.ts`; `saveCustomerContact`, `removeCustomerContact`,
+  `saveCustomerAddress`, `removeCustomerAddress`, `saveCustomerSite`, `removeCustomerSite` in
+  `app/customers/actions.ts`; input readers in `lib/api/party-input.ts`.
 - Database: `parties`, `party_contacts`, `party_addresses`; `save_party_contact`, `remove_party_contact`,
   `save_party_address`, `remove_party_address`, `remove_party_site`; internal `party_update`, `party_contact_list`,
   `party_address_list`, `require_party_role`. SQL tests: `supabase/tests/107_party_contacts_addresses.sql`,
@@ -26,3 +28,6 @@ schema, because several modules use it.
   sites are where its locations' deliveries go.
 - The company is a party too (`workspace.party_id`): its main address, contacts and identity need the owner
   (`require_party_role`); its sites need an editor.
+- `parties.contacts_role` is the lowest role that may change a party's contacts and sites: `editor` by default,
+  `counter` for trade accounts (set by `create_customer_account`). Main, returns and remittance addresses always
+  need an editor.

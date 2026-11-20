@@ -14,6 +14,11 @@ takes, opening stock, quick add, the offline scan index, and review and reversal
 - `unresolved.ts`: `listUnresolvedCodes`, `linkFloorCode`, `voidFloorCode`, `listPendingPutAway`,
   `listUnlocatedStock`, `unlocatedStockSummary`, `writeOffUnlocated`.
 - `bin-session.ts`: the phone's count session and offline queue items (pure, no database calls).
+- `count-requests.ts`: parts to count because a stock figure was found to be wrong (a sales order line confirmed as
+  in stock here): `listCountRequests`, `removeCountRequest`, `countRequestReason`. Table `public.count_requests`,
+  functions `count_request_list` (a request is met once the part is counted at that branch since) and
+  `count_request_remove` (editors). Web only: the To count list on `/stock-counts`
+  (`blocks/stock-documents/count-request-list.tsx`, action `removeCountRequestRow`). The phone does not read it yet.
 
 ## Elsewhere
 - Pages: `app/goods-receipts/page.tsx`, `app/stock-counts/page.tsx`.
