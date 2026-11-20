@@ -3,6 +3,7 @@ import type { Json } from '@partslogic/db-types';
 import type { Client } from '../core/client';
 import { dataError } from '../core/errors';
 import { readArray, readNumber, readRecord, readString } from '../core/read';
+import type { ExtrasAction } from './order-extras';
 import { readPurchaseOrder, type PurchaseOrderDetail } from './orders';
 
 // Goods in against orders: what is expected, and (slice G2) receiving against orders. Every rule lives in SQL
@@ -108,6 +109,10 @@ export type OpenOrderLine = {
   due: number;
   packQty: number;
   unit: string | null;
+  // The sales order and customer the line is for (S4b), when it is a customer's line; those come first.
+  // Optional, so code that builds lines by hand (the web's Receive, the phone's tests) keeps working.
+  forOrder?: string | null;
+  forCustomer?: string | null;
 };
 
 export async function receivePurchaseOrder(supabase: Client, orderId: string, input: ReceiveInput): Promise<PurchaseOrderDetail> {
@@ -120,6 +125,34 @@ export async function receivePurchaseOrder(supabase: Client, orderId: string, in
 
 export async function closePurchaseOrderShort(supabase: Client, orderId: string, reason: string): Promise<PurchaseOrderDetail> {
   const { data, error } = await supabase.rpc('close_purchase_order_short', { p_order: orderId, p_reason: reason });
+  if (error) throw dataError(error);
+  return readPurchaseOrder(data as Json);
+}
+
+// Keep and pay, or send back, some of one part's extras on one of the order's deliveries. Editors.
+export async function dealWithOrderExtras(
+  supabase: Client,
+  orderId: string,
+  choice: { receiptId: string; partId: number; units: number; action: ExtrasAction },
+): Promise<PurchaseOrderDetail> {
+  const { data, error } = await supabase.rpc('deal_with_extras', {
+    p_order: orderId,
+    p: { receipt_id: choice.receiptId, part_id: choice.partId, units: choice.units, action: choice.action },
+  });
+  if (error) throw dataError(error);
+  return readPurchaseOrder(data as Json);
+}
+
+// An extra of another part from one of the order's deliveries fills a short line. Editors.
+export async function acceptSubstitute(
+  supabase: Client,
+  orderId: string,
+  choice: { lineId: number; receiptId: string; partId: number; units: number },
+): Promise<PurchaseOrderDetail> {
+  const { data, error } = await supabase.rpc('accept_substitute', {
+    p_order: orderId,
+    p: { line_id: choice.lineId, receipt_id: choice.receiptId, part_id: choice.partId, units: choice.units },
+  });
   if (error) throw dataError(error);
   return readPurchaseOrder(data as Json);
 }
@@ -178,6 +211,8 @@ export async function listOpenOrderLines(supabase: Client, supplierId: number, l
     due: readNumber(row.due) ?? 0,
     packQty: Math.max(readNumber(row.pack_qty) ?? 1, 1),
     unit: row.unit ?? null,
+    forOrder: row.for_order ?? null,
+    forCustomer: row.for_customer ?? null,
   }));
 }
 
@@ -199,7 +234,49 @@ export type DeliveryCheckRow = {
   // The references of the orders it fills (a registration or a customer), so job parts are put aside.
   references: string[];
   orders: string[];
+  // What of the count would go to customers' sales orders (S4b), customers' lines first as the database fills them:
+  // a preview for the phone's Check screen; the database decides when the delivery is matched.
+  putAside?: CustomerShare[];
 };
+
+// A customer's sales order a part is for, and (in a count) how many units it would take.
+export type CustomerShare = { order: string; customer: string | null; units: number };
+
+// The customers' orders a part is due for, customer lines first, without quantities (the count stays blind).
+export function customerOrdersFor(partId: number, open: readonly OpenOrderLine[]): Omit<CustomerShare, 'units'>[] {
+  const seen = new Map<string, string | null>();
+  for (const line of open) {
+    if (line.partId !== partId || !line.forOrder || line.due <= 0) continue;
+    if (!seen.has(line.forOrder)) seen.set(line.forOrder, line.forCustomer ?? null);
+  }
+  return [...seen].map(([order, customer]) => ({ order, customer }));
+}
+
+// "For SO-000061 · Hillside Garage", or "For SO-000051 and SO-000058" when it is for more than one order.
+export function customerOrdersWords(orders: readonly Omit<CustomerShare, 'units'>[]): string | null {
+  const [first] = orders;
+  if (!first) return null;
+  if (orders.length === 1) return `For ${first.order}${first.customer ? ` · ${first.customer}` : ''}`;
+  const numbers = orders.map((row) => row.order);
+  return `For ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]}`;
+}
+
+// How a count of one part splits: what each customer's order would take, in the order the lines are listed
+// (customers' lines first, the earliest linked first), up to what each still has due.
+export function customerShares(qty: number, lines: readonly OpenOrderLine[]): CustomerShare[] {
+  const shares = new Map<string, CustomerShare>();
+  let left = qty;
+  for (const line of lines) {
+    if (left <= 0) break;
+    if (!line.forOrder || line.due <= 0) continue;
+    const take = Math.min(left, line.due);
+    const share = shares.get(line.forOrder) ?? { order: line.forOrder, customer: line.forCustomer ?? null, units: 0 };
+    share.units += take;
+    shares.set(line.forOrder, share);
+    left -= take;
+  }
+  return [...shares.values()];
+}
 
 // Compares what was counted with what is still due from that supplier. Parts on no open order are "not ordered";
 // lines due with nothing counted are "not arrived" only when they were due by today (others weren't expected yet).
@@ -237,6 +314,7 @@ export function compareDelivery(
       verdict: due === 0 ? 'not_ordered' : qty < due ? 'short' : qty > due ? 'over' : 'matched',
       references: [...new Set(filled.flatMap((line) => [line.reference, line.ourReference]).filter((ref): ref is string => !!ref && ref !== 'STOCK'))],
       orders: [...new Set(filled.map((line) => line.number))],
+      putAside: customerShares(qty, lines),
     });
   }
   for (const [partId, lines] of dueBy) {
@@ -253,6 +331,7 @@ export function compareDelivery(
       verdict: 'not_arrived',
       references: [],
       orders: [...new Set(lines.map((line) => line.number))],
+      putAside: [],
     });
   }
   const rank: Record<DeliveryCheckRow['verdict'], number> = { short: 0, over: 1, not_ordered: 2, not_arrived: 3, matched: 4 };

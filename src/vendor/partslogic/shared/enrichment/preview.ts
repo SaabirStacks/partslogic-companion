@@ -26,7 +26,7 @@ export type EnrichmentPreview = {
   // The enabled sources a run goes down, in order, with each one's last result for this part.
   sources: EnrichmentSourceStep[];
   budgets: Partial<Record<'piloterr' | 'firecrawl', { limit: number; spent: number; remaining: number }>>;
-  gaps: Partial<Record<'photo' | 'oe' | 'barcode' | 'category' | 'specs' | 'xrefs' | 'vehicles', boolean>>;
+  gaps: Partial<Record<EnrichmentGap, boolean>>;
   // When the websites were last searched for this part (a search is reused for 30 days).
   webSearchedOn: string | null;
   webCredits: { search: number; aiPage: number; siteSearch: number; markdownPage: number; maxPages: number };
@@ -37,6 +37,9 @@ export type EnrichmentPreview = {
   hasEan: boolean;
 };
 
+// The kinds of data a part can be missing and a source can fill.
+export type EnrichmentGap = 'photo' | 'oe' | 'barcode' | 'category' | 'specs' | 'xrefs' | 'vehicles' | 'name' | 'description';
+
 export type EnrichmentReview = {
   issueId: number;
   status: 'open' | 'in_review';
@@ -45,7 +48,8 @@ export type EnrichmentReview = {
   listings: EnrichmentListing[];
 };
 
-export type EnrichmentListingChoice = 'use' | 'same_brand' | 'wrong_brand' | 'not_this_part';
+// page_brand: the page's brand is right, so the part moves to it.
+export type EnrichmentListingChoice = 'use' | 'same_brand' | 'wrong_brand' | 'page_brand' | 'not_this_part';
 
 export type EnrichmentListing = {
   sourceId: number | null;
@@ -69,7 +73,28 @@ export type EnrichmentListing = {
   answer: 'wrong_brand' | null;
 };
 
-export type EnrichmentListingResult = { status: 'open' | 'in_review' | 'resolved' | 'dismissed'; remembered: boolean; alias: string | null };
+export type EnrichmentListingResult = {
+  status: 'open' | 'in_review' | 'resolved' | 'dismissed';
+  remembered: boolean;
+  alias: string | null;
+  // The part as it is after the answer: another id when the part moved to the page's brand.
+  partId: number | null;
+};
+
+// The product as a listed page has it, read from the saved copy of the page.
+export type ListingProduct = {
+  brand: string | null;
+  number: string | null;
+  name: string | null;
+  description: string | null;
+  ean: string | null;
+  category: string[];
+  specs: { label: string; value: string }[];
+  images: string[];
+  price: number | null;
+  currency: string | null;
+  fetchedAt: string | null;
+};
 
 export type EnrichmentSourceStep = {
   id: number;
@@ -81,6 +106,8 @@ export type EnrichmentSourceStep = {
   reader: 'ai' | 'autodoc_family' | null;
   // websites: found through the site's own search rather than the shared web search
   ownSearch: boolean;
+  // The gaps this source can fill; null from a database that does not say yet (then no source is left out).
+  fills: EnrichmentGap[] | null;
   skip: string | null;
   last: { status: string; at: string | null; url: string | null } | null;
 };
@@ -144,6 +171,7 @@ export function readEnrichmentPreview(preview: JsonRecord | null): EnrichmentPre
           domain: readString(row?.domain),
           reader: reader === 'autodoc_family' ? 'autodoc_family' : provider === 'firecrawl' ? 'ai' : null,
           ownSearch: readBoolean(row?.own_search) ?? false,
+          fills: Array.isArray(row?.fills) ? (readStrings(row?.fills) as EnrichmentGap[]) : null,
           skip: readString(row?.skip),
           last: last && readString(last.status)
             ? { status: readString(last.status) ?? '', at: readString(last.at), url: readString(last.url) }
@@ -231,5 +259,42 @@ export async function resolveEnrichmentListing(
     status: status === 'in_review' || status === 'resolved' || status === 'dismissed' ? status : 'open',
     remembered: readBoolean(result?.remembered) ?? false,
     alias: readString(result?.alias),
+    partId: readNumber(result?.part_id),
   };
+}
+
+// The product as a listed page has it (any member), or null when no copy of the page is held. No call is made.
+export async function getListingProduct(supabase: Client, issueId: number, url: string): Promise<ListingProduct | null> {
+  const { data, error } = await supabase.rpc('enrichment_listing_product', { p_issue: issueId, p_url: url });
+  if (error) throw dataError(error);
+  return readListingProduct(readRecord(data));
+}
+
+export function readListingProduct(product: JsonRecord | null): ListingProduct | null {
+  if (!product) return null;
+  const specs = readRecord(product.specs) ?? {};
+  return {
+    brand: readString(product.brand),
+    number: readString(product.number),
+    name: readString(product.name),
+    description: readString(product.description),
+    ean: readString(product.ean),
+    category: readStrings(product.category),
+    specs: Object.entries(specs).flatMap(([label, value]) =>
+      typeof value === 'string' || typeof value === 'number' ? [{ label: label.replace(/_/g, ' '), value: String(value) }] : [],
+    ),
+    images: readStrings(product.images),
+    price: readNumber(product.price),
+    currency: readString(product.currency),
+    fetchedAt: readString(product.fetched_at),
+  };
+}
+
+// Applies the newest saved Autodoc page a part holds again (editor), at no cost. Answers with how it ended:
+// applied, mismatch, none (no page held) or failed.
+export async function applyHeldPage(supabase: Client, partId: number): Promise<'applied' | 'mismatch' | 'none' | 'failed'> {
+  const { data, error } = await supabase.rpc('enrichment_apply_held', { p_part: partId });
+  if (error) throw dataError(error);
+  const status = readString(readRecord(data)?.status);
+  return status === 'applied' || status === 'mismatch' || status === 'none' ? status : 'failed';
 }

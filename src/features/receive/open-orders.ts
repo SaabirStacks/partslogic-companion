@@ -1,7 +1,10 @@
 import {
   compareDelivery,
+  customerOrdersFor,
+  customerOrdersWords,
   localDate,
   windowText,
+  type CustomerShare,
   type DeliveryCheckRow,
   type ExpectedDelivery,
   type OpenOrderLine,
@@ -56,7 +59,7 @@ export function checkText(row: DeliveryCheckRow): string {
     case 'matched':
       return `${row.counted} counted · all that was due`;
     case 'short':
-      return `${row.counted} counted · ${row.due} due · ${row.due - row.counted} stay on order`;
+      return `${row.counted} counted · ${row.due} due · ${row.due - row.counted} ${row.due - row.counted === 1 ? 'stays' : 'stay'} on order`;
     case 'over':
       return `${row.counted} counted · ${row.due} due · ${row.counted - row.due} extra`;
     case 'not_ordered':
@@ -64,6 +67,43 @@ export function checkText(row: DeliveryCheckRow): string {
     case 'not_arrived':
       return `None counted · ${row.due} due today`;
   }
+}
+
+// Goods in for customers (PartsLogic docs/SALES.md 13.12): a part due on a customer's sales order is put aside for it
+// on the collection and delivery shelf when the delivery is matched. While scanning, the card says who the part is
+// for, never how many, so the count stays blind: "For SO-000061 · Hillside Garage".
+export function customerNotice(partId: number | null | undefined, open: readonly OpenOrderLine[] | null): string | null {
+  if (partId == null || !open) return null;
+  return customerOrdersWords(customerOrdersFor(partId, open));
+}
+
+// At Check: how many parts go to customers, for the strip, and the lines under one part's card ("Put 2 aside for
+// SO-000051 · Aire Road Garage", then "4 into Unbinned").
+export function customerParts(rows: readonly DeliveryCheckRow[]): number {
+  return rows.filter((row) => (row.putAside ?? []).some((share) => share.units > 0)).length;
+}
+
+export function putAsideLines(row: DeliveryCheckRow): { text: string; strong: boolean }[] {
+  const shares = (row.putAside ?? []).filter((share) => share.units > 0);
+  if (shares.length === 0) return [];
+  const put = shares.reduce((sum, share) => sum + share.units, 0);
+  const rest = row.counted - put;
+  return [
+    ...shares.map((share) => ({ text: `Put ${share.units} aside for ${share.order}${share.customer ? ` · ${share.customer}` : ''}`, strong: true })),
+    ...(rest > 0 ? [{ text: `${rest} into Unbinned`, strong: false }] : []),
+  ];
+}
+
+// The receipt's split: every customer's order and how many it takes, across the delivery's parts.
+export function receiptShares(rows: readonly DeliveryCheckRow[]): CustomerShare[] {
+  const byOrder = new Map<string, CustomerShare>();
+  for (const share of rows.flatMap((row) => row.putAside ?? [])) {
+    if (share.units <= 0) continue;
+    const current = byOrder.get(share.order) ?? { order: share.order, customer: share.customer, units: 0 };
+    current.units += share.units;
+    byOrder.set(share.order, current);
+  }
+  return [...byOrder.values()].sort((a, b) => a.order.localeCompare(b.order));
 }
 
 // A supplier expected today at this location: how many orders, overdue or not, and the earliest van.

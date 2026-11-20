@@ -3,6 +3,11 @@
 Filling a part's gaps (photo, OE numbers, barcode, category, specs, cross-references, vehicles) from approved
 sources: Autodoc through Piloterr, and websites through Firecrawl, within credit budgets.
 
+**The catalogue only (owner, 13 November 2026):** what a source finds is recorded in the catalogue (facts, barcodes,
+photos, OE numbers, links) and never puts a part on the stock list; `ingest.apply_staged_row` skips the stock-list
+item for a catalogue feed (migration `20261113170000_enrichment_catalogue_only`, SQL test
+`142_enrichment_catalogue_only.sql`). Price sheets and parts added by hand still put the part in your range.
+
 ## Files here
 - `sources.ts`: the source list and website profiles: `listEnrichmentSources`, `saveEnrichmentSource`,
   `reorderEnrichmentSources`, `removeEnrichmentSource`, `saveWebProfile`, `listWebProfileVersions`, spec keys,
@@ -28,10 +33,39 @@ sources: Autodoc through Piloterr, and websites through Firecrawl, within credit
   `enrichment_backfill_estimate`, `queue_enrichment_backfill`, `enrichment_backfill_status`,
   `cancel_enrichment_backfill`, `enrichment_budget`, `set_api_budget`, `reset_api_budget_period`,
   `enrichment_activity`, `enrichment_resolve_listing`; `ingest.spend_credits`, `ingest.store_api_response`, `ingest.apply_enrichment`.
+  Saved answers (slice 1 of `docs/ENRICHMENT_OVERHAUL.md`): `ingest.enrichment_answers`, `enrichment_save_answer`,
+  `enrichment_apply_answer`, `enrichment_held`, `enrichment_settle`, `ingest.apply_vehicle_answer`,
+  `ingest.reset_stuck_enrichment` (SQL test `149_enrichment_answers.sql`).
+  Background runs (slice 2): `ingest.enrichment_runs`, `enrichment_run_start`, `enrichment_run_progress`,
+  `enrichment_run_finish` (server only), `enrichment_run_status`, `enrichment_running` (any member),
+  `ingest.part_enrichment_state` (the Stock list's `enrichment` key) (SQL test `150_enrichment_background_runs.sql`).
+  Wrappers `runs.ts` (`getEnrichmentRun`, `getEnrichmentRunning`); the server's side in `lib/enrichment/background.ts`
+  (`startEnrichmentRun`, `runEnrichmentInBackground`); the progress shape in `lib/enrichment/run-state.ts`
+  (`reduceRunState`, `readRunState`, `runActivity`, `readRunResult`; tests `tests/enrichment/run-state.test.ts`);
+  the header's indicator in `blocks/application-shell-19/enrichment-activity.tsx`.
+  Gap-only runs and names (slices 3 and 4): `ingest.source_fills` (what a source can fill; `fills` on each source of
+  `enrichment_chain` and `enrichment_preview`), gaps `name` and `description`, `catalogue.display_name` and
+  `catalogue.searchable_name` (the name lists show and search), `enrichment_reapply_saved` (saved pages applied
+  again, admin) with `ingest.reading_rules` (SQL test `151_enrichment_gaps_and_names.sql`). Wrapper `saved.ts`
+  (`reapplySavedPages`); the gap rules for screens in `lib/enrichment/gaps.ts` (`wantedGaps`, `sourceCanFill`,
+  from `web-enrichment.ts`); the Settings card `organisation-settings/saved-pages-card.tsx`.
+  Find on Autodoc (slice 6): the page `app/catalogue/autodoc/`, actions `app/catalogue/autodoc-actions.ts`, the screen
+  `blocks/purchasing/autodoc-search.tsx`, the paid side `lib/enrichment/autodoc-search.ts` (`searchAutodoc`,
+  `openAutodocResult`), the wrapper `autodoc-search.ts` (`getSavedAutodocSearch`, `readAutodocSearch`,
+  `autodocResultName`), `autodocSearchByKeyword` and `keywordSearchQuery` in `_shared/autodoc.ts`. Database:
+  `ingest.autodoc_searches`, `autodoc_search_saved` (any member), `autodoc_search_save` and `autodoc_open_result`
+  (server only), `ingest.autodoc_search_cards` (SQL test `153_autodoc_search.sql`; unit test
+  `tests/enrichment/autodoc-search.test.ts`). A run kept to one provider: `onlyProvider` on the chain, `provider` on
+  the part's enrichment route.
+  The brand decision: `enrichment_listing_product` (the product as a listed page has it), the `page_brand` answer of
+  `enrichment_resolve_listing` (the part moves to the page's brand), `enrichment_apply_held` (the saved page applied
+  after an answer); wrappers `getListingProduct`, `applyHeldPage` in `preview.ts`; `loadListingProduct` in
+  `app/inventory/actions.ts`; `ListedProduct` in `enrich-panel.tsx` (SQL test `154_autodoc_brand_review.sql`).
   SQL tests: `supabase/tests/93_enrichment_sources.sql`, `94_onlinecarparts.sql`, `110_number_matching.sql`,
   `111_ean_matching.sql`, `112_glued_brand_code.sql`.
 - Tests: `tests/enrichment/` (chain, job, run, web), `tests/piloterr/autodoc.test.ts`.
-- Docs: `docs/web-enrichment.md`, `docs/autodoc-enrichment.md`, `docs/autodoc-product-mapping.md`, `piloterr.md`.
+- Docs: `docs/web-enrichment.md`, `docs/autodoc-enrichment.md`, `docs/autodoc-product-mapping.md`, `piloterr.md`;
+  the overhaul's audit, plan and decisions: `docs/ENRICHMENT_OVERHAUL.md`.
 
 ## Rules
 - Every paid Piloterr, Firecrawl or Apify call is preceded by `ingest.spend_credits`; store every response with

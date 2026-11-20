@@ -84,14 +84,19 @@ export type PartDetail = {
     brand: string;
     number: string;
     kind: PartKind;
+    // The name from price sheets: what buying screens show.
     description: string | null;
+    // The product name enrichment found (Autodoc's product type and subtitle), shown unless a name was typed.
+    title: string | null;
+    // The longer description enrichment found, one point a line.
+    longDescription: string | null;
     tecdocAlias: string | null;
     categoryId: number | null;
     redirectedFrom: number | null;
   };
   // Null when the part is in the catalogue but not in your range.
   item: InventoryRow | null;
-  // Your own name for the part, when one is set (item.name falls back to the catalogue description).
+  // Your own name for the part, when one is set (item.name falls back to the product name, then the price-sheet name).
   displayName: string | null;
   categoryTrail: string[];
   sourceCategory: string | null;
@@ -134,6 +139,8 @@ export async function getPartDetail(supabase: Client, partId: number): Promise<P
       number,
       kind: kind as PartKind,
       description: readString(part?.description),
+      title: readString(readRecord(part?.attributes)?.title),
+      longDescription: readString(readRecord(part?.attributes)?.long_description),
       tecdocAlias: readString(part?.tecdoc_alias),
       categoryId: readNumber(part?.category_id),
       redirectedFrom: readNumber(part?.redirected_from),

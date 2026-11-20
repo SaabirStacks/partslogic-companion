@@ -25,21 +25,6 @@ export type ValuationLine = {
   value: number | null;
 };
 
-export type ReorderSuggestion = {
-  partId: number;
-  brand: string;
-  number: string;
-  // Null for the all-locations reorder level; set when one location is at or under its minimum.
-  locationId: number | null;
-  locationCode: string | null;
-  onHand: number;
-  reorderLevel: number;
-  maxLevel: number | null;
-  suggestedQty: number;
-  bestCost: number | null;
-  bestSupplier: string | null;
-};
-
 export type ZeroResultSearch = { query: string; searches: number; lastSearchedAt: string };
 
 const COST_BASES = new Set(['stock_cost', 'last_receipt', 'supplier_price', 'unknown']);
@@ -78,32 +63,6 @@ export async function getStockValuation(supabase: Client, limit = 100): Promise<
             unitCost: readNumber(row.unit_cost),
             costBasis: row.cost_basis as ValuationLine['costBasis'],
             value: readNumber(row.value),
-          },
-        ],
-  );
-}
-
-// Parts at or below their reorder level (all locations), and locations at or below their minimum.
-export async function getReorderSuggestions(supabase: Client, limit = 100): Promise<ReorderSuggestion[]> {
-  const { data, error } = await supabase.rpc('reorder_suggestions').limit(Math.min(Math.max(limit, 1), 1000));
-  if (error) throw dataError(error);
-
-  return (data ?? []).flatMap((row) =>
-    row.part_id == null || row.brand == null || row.number == null
-      ? []
-      : [
-          {
-            partId: row.part_id,
-            brand: row.brand,
-            number: row.number,
-            locationId: readNumber(row.location_id),
-            locationCode: row.location_code,
-            onHand: readNumber(row.on_hand) ?? 0,
-            reorderLevel: readNumber(row.reorder_level) ?? 0,
-            maxLevel: readNumber(row.max_level),
-            suggestedQty: readNumber(row.suggested_qty) ?? 0,
-            bestCost: readNumber(row.best_cost),
-            bestSupplier: row.best_source,
           },
         ],
   );

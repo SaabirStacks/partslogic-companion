@@ -8,7 +8,11 @@ the report with quarantined rows. Brand matching during an upload uses `catalogu
   `validateMapping`, `readImportSpec`, `headersFor`, `DEFAULT_MAPPING_SETTINGS`. No database calls.
 - `profiles.ts`: `getImportProfile`, `saveImportProfile`.
 - `batches.ts`: `previewImport`, `beginImport`, `appendImportRows`, `finishImport`, `cancelImport`,
-  `getImportReport`, `listImportBatches`, `listQuarantinedRows`, `importProgress`.
+  `getImportReport`, `listImportBatches`, `listQuarantinedRows`, `importProgress`, `setImportListScope`, `LIST_SCOPES`.
+- `delisting.ts`: a full list's delisting check (step 3c): `getDelisting`, `settleDelisting`, `readDelisting`,
+  `LIST_SCOPE_LABELS`, `delistingScopeText`.
+- `changes.ts`: what an upload changed (step 3d): `getUploadChanges`, `decideCodeMove`, `undoUpload`,
+  `readUploadChanges`.
 - `upload-runs.ts`: re-running a past upload under the current mapping: `listUploadRuns`, `startRerun`,
   `confirmRerun`, `cancelRerun`, `undoRerun`, their readers and wording (`describeRerunOutcome`,
   `rerunProgress`).
@@ -27,9 +31,20 @@ the report with quarantined rows. Brand matching during an upload uses `catalogu
   `rerun_undo`; tables `ingest.batch_runs`, `run_rows`; `ingest.rerun_next_chunk` (cron). Vehicle applications:
   `ingest.read_applications`, `ingest.application_make`; matched later from `catalogue.vehicle_text_checks`. SQL tests:
   `supabase/tests/70_add_and_upload.sql`, `109_claim_withdrawals.sql`, `113_upload_reruns.sql`, `116_vehicle_applications.sql`,
-  `117_sheet_quantities.sql`. Ordering quantities are saved on the price by `ingest.publish_price`.
+  `117_sheet_quantities.sql`. Ordering quantities are saved on the price by `ingest.publish_price`. Full lists and
+  delisting (step 3c): `import_list_scope`, `delisting_lines`, `settle_delisting`; `ingest.listed_parts`,
+  `prepare_delisting`, `close_delisted`; tables `ingest.delist_candidates`, `ingest.batches.list_scope` and
+  `delist_state`, `supplier_prices.delisted_by`; SQL tests `141_full_lists.sql`; the panel is
+  `components/shadcn-studio/blocks/uploads/delisting-panel.tsx`. What changed and undo (step 3d): `upload_changes`,
+  `decide_code_move`, `undo_upload`; `ingest.undo_blocker`, `undo_left`, `undo_chunk`; tables
+  `ingest.supplier_code_moves`, `ingest.batches.undo_state`/`undone_at`/`undone_by_user`,
+  `supplier_prices.undone_by`/`restored_by`/`restored_from`; SQL tests `144_upload_changes_and_undo.sql`; the panels
+  are `components/shadcn-studio/blocks/uploads/upload-changes.tsx`. Sheet options (steps 13 and 3e): mapper fields
+  `discount_pct`, `starts_on`, `ending`, `break_qty`, `break_price`, `break_pct` (`mapping.ts`); `setImportStartsOn`
+  (`import_starts_on`); `public.supplier_price_schedule`, `ingest.schedule_price`, `ingest.publish_scheduled`,
+  `supplier_prices.breaks` and `ending`; shown through `purchasing/price-terms.ts`; SQL tests `146_sheet_options.sql`.
 - Tests: `tests/shared/imports.test.ts`, `tests/shared/upload-runs.test.ts`, `tests/imports/table.test.ts`,
-  `tests/uploads/rerun-panel.test.ts`, `tests/api/add-and-upload.test.ts`.
+  `tests/uploads/rerun-panel.test.ts`, `tests/uploads/upload-changes.test.ts`, `tests/api/add-and-upload.test.ts`.
 - Docs: `docs/UPLOADS.md`; `docs/PLAN.md` section 6 (ingestion pipeline).
 
 ## Rules

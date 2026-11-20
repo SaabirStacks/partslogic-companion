@@ -5,6 +5,9 @@ names, set-up codes and the people page.
 
 ## Files here
 - `members.ts`: `AppRole`, `APP_ROLES`, `roleAtLeast`, `getCurrentMember`, `listMemberLabels`.
+- `permissions.ts`: `PERMISSION_KEYS`, `PermissionKey`, `can(member, key)`, `readMyAccess` (what the signed-in
+  person may do; `getCurrentMember` reads it with the role). `access.ts`: what an owner sets (`getPeopleAccess`,
+  `setPersonPermission`, `setPersonOrderLimit`, `saveOrderLimit`, `changedPermissions`). See `docs/PERMISSIONS.md`.
 - `people.ts`: the people page (`listPeople`, `setPersonRole`, `setPersonName`, `removePersonAccess`,
   `addPerson`, `newSetupCode`, `changePersonEmail`, `finishSetup`) and the role wording.
 
@@ -23,4 +26,7 @@ names, set-up codes and the people page.
 ## Rules
 - Admins and above manage people; they never change themselves, never someone above their role, and never
   give a role above their own (`public.people_rule_problem`). The Edge Function checks the same rules first.
-- Every page checks the member's role on the server (`getCurrentMember`); screens follow the role.
+- Every page checks the member's role on the server (`getCurrentMember`); screens follow the role. For anything a
+  permission covers (purchasing, money and sales), ask `can(member, 'orders.place')`, never the role: an owner may have
+  switched it for that person. A new permission is a row in `public.permissions`, its key in `PERMISSION_KEYS`, and
+  the functions it covers listed in a migration (`docs/PERMISSIONS.md`).

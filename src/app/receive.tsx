@@ -8,7 +8,7 @@ import { DeliveryCheck } from '@/features/receive/delivery-check';
 import { DeliveryReceipt } from '@/features/receive/delivery-receipt';
 import type { Delivery } from '@/features/receive/delivery-store';
 import type { LineGroup } from '@/features/receive/lines';
-import { deliveryCheck, onOpenOrder } from '@/features/receive/open-orders';
+import { customerNotice, deliveryCheck, onOpenOrder, receiptShares } from '@/features/receive/open-orders';
 import { deliveryName } from '@/features/receive/sender';
 import { statusText } from '@/features/receive/status-text';
 import { useDelivery } from '@/features/receive/use-delivery';
@@ -27,6 +27,8 @@ import { Quantity } from '@/ui/quantity';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { StatusStrip } from '@/ui/status-strip';
 import { Tally } from '@/ui/tally';
+import { Txt } from '@/ui/text';
+import type { CustomerShare } from '@/vendor/partslogic/shared/purchasing';
 
 type Receiving = ReturnType<typeof useDelivery>;
 type OpenOrders = ReturnType<typeof useOpenOrders>;
@@ -40,11 +42,13 @@ export default function Receive() {
   const receiving = useDelivery();
   const [confirming, setConfirming] = useState(false);
   const [checking, setChecking] = useState(false);
+  // What Check said would go to customers, for the receipt's split.
+  const [putAside, setPutAside] = useState<CustomerShare[]>([]);
   const { delivery, groups, units, lastLine } = receiving;
   const open = useOpenOrders(delivery);
 
   if (!receiving.loaded) return <View className="flex-1 bg-ground" />;
-  if (receiving.finished && !delivery) return <Finished receiving={receiving} />;
+  if (receiving.finished && !delivery) return <Finished receiving={receiving} putAside={putAside} />;
   if (!location && !delivery) return <NeedsLocation />;
   if (!delivery) return <WhoIsItFrom onStart={(sender, reference) => void receiving.start(sender, reference)} />;
 
@@ -52,16 +56,18 @@ export default function Receive() {
   const toCheck = groups.filter((group) => statusText(group.status, group.reason).tone !== 'ok' && group.status !== 'waiting').length;
 
   if (checking && open.lines) {
+    const rows = deliveryCheck(groups, open.lines, new Date());
     return (
       <DeliveryCheck
         supplier={deliveryName(delivery.sender)}
-        rows={deliveryCheck(groups, open.lines, new Date())}
+        rows={rows}
         units={units}
         unknown={groups.filter((group) => group.partId == null && group.total > 0).length}
         savedAt={open.savedAt}
         onRecount={() => setChecking(false)}
         onFinish={() => {
           setChecking(false);
+          setPutAside(receiptShares(rows));
           void receiving.finish();
         }}
       />
@@ -103,7 +109,7 @@ export default function Receive() {
           <StatusStrip tone="stop" icon="stop" text={`${plural(receiving.problems, 'line', 'lines')} not sent · see Sync`} />
         ) : null}
         {groups.map((group) => (
-          <GroupRow key={group.code} group={group} receiving={receiving} />
+          <GroupRow key={group.code} group={group} receiving={receiving} forWhom={customerNotice(group.partId, open.lines)} />
         ))}
         {groups.length === 0 && !receiving.held.pending ? (
           <Button label="Cancel delivery" icon="close" variant="secondary" onPress={() => void receiving.cancel()} />
@@ -138,11 +144,19 @@ function LastScan({ receiving, open, supplier }: { receiving: Receiving; open: O
   if (held.pending) {
     const hit = held.pending.hit;
     const ordered = hit?.type === 'part' ? onOpenOrder(hit.partId, open.lines) : null;
+    // Who the part is for, never how many, so the count stays blind (S4b).
+    const forWhom = hit?.type === 'part' ? customerNotice(hit.partId, open.lines) : null;
     return (
       <ConfirmScanCard
         pending={held.pending}
         verb="Add"
-        notice={ordered === false ? { tone: 'warn', icon: 'warning', text: `Not on a ${supplier} order · keep it?` } : null}
+        notice={
+          ordered === false
+            ? { tone: 'warn', icon: 'warning', text: `Not on a ${supplier} order · keep it?` }
+            : forWhom
+              ? { tone: 'neutral', icon: 'account', text: forWhom }
+              : null
+        }
         onConfirm={() => void receiving.confirm()}
         onSkip={held.clear}
         onStep={held.step}
@@ -180,7 +194,7 @@ function LastScan({ receiving, open, supplier }: { receiving: Receiving; open: O
   );
 }
 
-function GroupRow({ group, receiving }: { group: LineGroup; receiving: Receiving }) {
+function GroupRow({ group, receiving, forWhom }: { group: LineGroup; receiving: Receiving; forWhom: string | null }) {
   const status = statusText(group.status, group.reason);
   const name = group.label ?? group.code;
   return (
@@ -196,6 +210,11 @@ function GroupRow({ group, receiving }: { group: LineGroup; receiving: Receiving
           onSet={(target) => void receiving.setTotal(group.code, target, group.total, group.label, group.partId)}
         />
       }>
+      {forWhom ? (
+        <Txt variant="caption" ink="text-ink" className="font-semibold">
+          {forWhom}
+        </Txt>
+      ) : null}
       {group.status === 'unknown' ? <AddPartLink code={group.code} /> : null}
     </LineRow>
   );
@@ -208,7 +227,7 @@ function bannerDetail(delivery: Delivery, number: string | null): string {
 }
 
 // After Finish: the receipt, and the next job.
-function Finished({ receiving }: { receiving: Receiving }) {
+function Finished({ receiving, putAside }: { receiving: Receiving; putAside: CustomerShare[] }) {
   const finished = receiving.finished!;
   return (
     <DeliveryReceipt
@@ -216,6 +235,7 @@ function Finished({ receiving }: { receiving: Receiving }) {
       number={finished.number}
       units={finished.units}
       summary={finished.summary}
+      putAside={putAside}
       onPutAway={() => router.replace({ pathname: '/count', params: { purpose: 'put-away' } })}
       onNext={receiving.dismissFinished}
     />

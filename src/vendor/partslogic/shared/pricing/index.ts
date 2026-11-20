@@ -23,3 +23,10 @@ export {
   type RuleMargins,
   type RuleScope,
 } from './rules';
+export {
+  getSellPriceHistory,
+  readSellPriceHistory,
+  type SellPriceChange,
+  type SellPriceChangeKind,
+  type SellPriceHistory,
+} from './sell-price-history';

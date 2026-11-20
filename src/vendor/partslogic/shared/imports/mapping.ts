@@ -29,6 +29,19 @@ export type ImportFields = {
   box_qty?: ImportRule;
   unit?: ImportRule;
   supplier_code?: ImportRule;
+  // A supersession the sheet states (step 3d): the part number this row's part is replaced by, or the one it
+  // replaces, in the row's brand. Recorded as a supersedes link.
+  replaced_by?: ImportRule;
+  replaces?: ImportRule;
+  // Sheet options (steps 13 and 3e). A discount off the list price gives the cost when the sheet states none; the
+  // day the row's price starts; the supplier's "while stocks last" mark; and up to three quantity breaks, each Break
+  // quantity column paired in order with a Break price or a Break % column.
+  discount_pct?: ImportRule;
+  starts_on?: ImportRule;
+  ending?: ImportRule;
+  break_qty?: ImportRule;
+  break_price?: ImportRule;
+  break_pct?: ImportRule;
   category?: ImportRule;
   // The vehicles a part fits, as the sheet writes them ("Ford Fiesta 01->08 Fusion 02->09"); read into vehicle lines.
   vehicles?: ImportRule;
@@ -60,6 +73,11 @@ export const IMPORT_TARGETS = [
   { id: 'description', label: 'Description', group: 'Identity' },
   { id: 'cost', label: 'Cost', group: 'Price' },
   { id: 'list_price', label: 'List price', group: 'Price' },
+  { id: 'discount_pct', label: 'Discount % off list', group: 'Price' },
+  { id: 'starts_on', label: 'Start date', group: 'Price' },
+  { id: 'break_qty', label: 'Break quantity', group: 'Price' },
+  { id: 'break_price', label: 'Break price', group: 'Price' },
+  { id: 'break_pct', label: 'Break % off', group: 'Price' },
   { id: 'surcharge', label: 'Exchange surcharge', group: 'Price' },
   { id: 'surcharge_code', label: 'Surcharge part number', group: 'Price' },
   { id: 'pack_qty', label: 'Sold in multiples of', group: 'Ordering' },
@@ -67,8 +85,11 @@ export const IMPORT_TARGETS = [
   { id: 'central_min_qty', label: 'Minimum order, central warehouse', group: 'Ordering' },
   { id: 'box_qty', label: 'Box quantity', group: 'Ordering' },
   { id: 'unit', label: 'Unit of issue', group: 'Ordering' },
+  { id: 'ending', label: 'While stocks last', group: 'Ordering' },
   { id: 'oe_number', label: 'OE number', group: 'References' },
   { id: 'oe_make', label: 'OE make', group: 'References' },
+  { id: 'replaced_by', label: 'Replaced by', group: 'References' },
+  { id: 'replaces', label: 'Replaces', group: 'References' },
   { id: 'category', label: 'Category', group: 'Details' },
   { id: 'fact:commodity_code', label: 'Commodity code', group: 'Details' },
   { id: 'fact:weight_kg', label: 'Weight (kg)', group: 'Details' },
@@ -111,10 +132,12 @@ export type SuggestedMapping = {
 
 type CopyField =
   | 'part_number' | 'description' | 'ean' | 'cost' | 'list_price' | 'surcharge' | 'surcharge_code' | 'pack_qty'
-  | 'min_qty' | 'central_min_qty' | 'box_qty' | 'unit' | 'supplier_code';
+  | 'min_qty' | 'central_min_qty' | 'box_qty' | 'unit' | 'supplier_code' | 'replaced_by' | 'replaces'
+  | 'discount_pct' | 'starts_on' | 'ending' | 'break_qty' | 'break_price' | 'break_pct';
 const COPY_FIELDS: readonly CopyField[] = [
   'part_number', 'description', 'ean', 'cost', 'list_price', 'surcharge', 'surcharge_code', 'pack_qty', 'min_qty',
-  'central_min_qty', 'box_qty', 'unit', 'supplier_code',
+  'central_min_qty', 'box_qty', 'unit', 'supplier_code', 'replaced_by', 'replaces',
+  'discount_pct', 'starts_on', 'ending', 'break_qty', 'break_price', 'break_pct',
 ];
 const FACT_KEYS = ['commodity_code', 'weight_kg', 'country_of_origin', 'supplier_rank'] as const;
 type FactKey = (typeof FACT_KEYS)[number];
@@ -133,6 +156,15 @@ const DEFAULT_TRANSFORMS: { [K in CopyField | FactKey]: ImportTransform[] } = {
   box_qty: ['digitsOnly'],
   unit: ['tidySpaces', 'upperCase'],
   supplier_code: ['tidySpaces'],
+  replaced_by: ['tidySpaces'],
+  replaces: ['tidySpaces'],
+  // the database reads a percentage, a date and a yes for these as the sheet writes them
+  discount_pct: ['tidySpaces'],
+  starts_on: ['tidySpaces'],
+  ending: ['tidySpaces'],
+  break_qty: ['money'],
+  break_price: ['money'],
+  break_pct: ['tidySpaces'],
   commodity_code: ['digitsOnly'],
   weight_kg: [],
   country_of_origin: ['tidySpaces', 'upperCase'],
@@ -147,10 +179,23 @@ const SYNONYMS: { [K in Exclude<ImportTarget, 'ignore'>]: string[] } = {
   supplier_code: ['supplier code', 'supplier part number', 'supplier part no', 'supplier ref', 'stock code', 'our ref',
     'fps part no', 'bga ref'],
   ean: ['ean', 'barcode', 'bar code', 'gtin', 'ean13', 'ean code', 'upc'],
+  // "Superceded" is a common misspelling on supplier sheets.
+  replaced_by: ['replaced by', 'superseded by', 'superceded by', 'replacement', 'replacement part', 'replacement part number',
+    'new part number', 'new part no', 'successor'],
+  replaces: ['replaces', 'supersedes', 'supercedes', 'replaces part', 'old part number', 'old part no',
+    'previous part number'],
   description: ['description', 'desc', 'product description', 'item description', 'product name', 'title'],
   cost: ['net price', 'nett price', 'invoice price', 'unit cost', 'cost', 'cost price', 'trade price', 'net', 'nett',
     'your price', 'buy price', 'price'],
   list_price: ['list price', 'rrp', 'retail price', 'list'],
+  // FPS: "PDisc%", "Quantity Break Unit" / "Price" / "%", "While Stocks Last". Punctuation is dropped before comparing,
+  // so "Quantity Break %" reads as "quantity break".
+  discount_pct: ['discount', 'pdisc', 'disc', 'discount percent', 'discount pct', 'trade discount', 'your discount'],
+  starts_on: ['start date', 'effective date', 'effective from', 'valid from', 'price start date', 'from date', 'price effective'],
+  break_qty: ['quantity break unit', 'break quantity', 'break qty', 'qty break', 'quantity break qty', 'break unit'],
+  break_price: ['quantity break price', 'break price', 'qty break price'],
+  break_pct: ['quantity break', 'quantity break percent', 'break percent', 'break discount', 'qty break percent'],
+  ending: ['while stocks last', 'wsl', 'discontinued', 'to be discontinued', 'run out', 'end of line'],
   surcharge: ['surcharge price', 'surcharge', 'exchange surcharge', 'surcharge value', 'exchange charge', 'core charge',
     'old unit surcharge', 'deposit'],
   surcharge_code: ['surcharge part', 'surcharge code', 'surcharge part number', 'surcharge part no'],
@@ -195,7 +240,7 @@ function headerKey(header: string): string {
 }
 
 // Targets more than one column can fill: categories by level, applications, an example vehicle's make and model.
-const MULTI_COLUMN = new Set<ImportTarget>(['category', 'vehicles', 'vehicle_example']);
+const MULTI_COLUMN = new Set<ImportTarget>(['category', 'vehicles', 'vehicle_example', 'break_qty', 'break_price', 'break_pct']);
 
 function copySources(rule: ImportRule | undefined): string[] {
   return rule && (rule.mode ?? 'copy') === 'copy' ? (rule.sources ?? []) : [];
@@ -419,7 +464,23 @@ export function validateMapping(
     }
   }
   if (!used('part_number')) problems.push({ level: 'error', message: 'Choose the part number column.' });
-  if (!used('cost')) problems.push({ level: 'error', message: 'Choose the cost column.' });
+  // a discount off the list price gives the cost on rows that state none
+  if (!used('cost') && !(used('list_price') && used('discount_pct'))) {
+    problems.push({ level: 'error', message: 'Choose the cost column, or a list price and a discount % column.' });
+  }
+  if (used('discount_pct') && !used('list_price')) {
+    problems.push({ level: 'warning', message: 'Discount % is only used with a List price column.' });
+  }
+  const breakQty = headersFor(mapping, 'break_qty', also).length;
+  const breakAt = Math.max(headersFor(mapping, 'break_price', also).length, headersFor(mapping, 'break_pct', also).length);
+  if (breakQty > 0 && breakAt === 0) {
+    problems.push({ level: 'error', message: 'Choose a Break price or Break % column for each Break quantity column.' });
+  } else if (breakQty === 0 && breakAt > 0) {
+    problems.push({ level: 'error', message: 'Choose the Break quantity column that goes with the break price.' });
+  } else if (breakQty > breakAt) {
+    problems.push({ level: 'warning', message: 'A Break quantity column has no price or % column in the same position, so it won’t be read.' });
+  }
+  if (breakQty > 3) problems.push({ level: 'warning', message: 'Up to three quantity breaks are read from a row.' });
   if (!used('brand') && !settings.defaultBrand?.trim()) {
     problems.push({ level: 'error', message: 'Choose the brand column, or a default brand for the whole file.' });
   }

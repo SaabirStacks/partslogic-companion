@@ -10,16 +10,31 @@ export {
   type EnrichmentRunSummary,
 } from './budget';
 export {
+  applyHeldPage,
   getEnrichmentPreview,
+  getListingProduct,
+  readListingProduct,
   readEnrichmentPreview,
   resolveEnrichmentListing,
   type EnrichmentListing,
   type EnrichmentListingChoice,
   type EnrichmentListingResult,
+  type EnrichmentGap,
+  type ListingProduct,
   type EnrichmentPreview,
   type EnrichmentReview,
   type EnrichmentSourceStep,
 } from './preview';
+export {
+  getEnrichmentRun,
+  getEnrichmentRunning,
+  readEnrichmentRun,
+  readEnrichmentRunning,
+  type EnrichmentRunning,
+  type EnrichmentRunningRun,
+  type EnrichmentRunRecord,
+  type EnrichmentRunStatus,
+} from './runs';
 export {
   cancelBackfill,
   estimateBackfill,
@@ -50,3 +65,13 @@ export {
   type WebProfileSpecInput,
   type WebProfileVersion,
 } from './sources';
+export { reapplySavedPages, type SavedPagesPass } from './saved';
+export {
+  AUTODOC_SEARCH_CREDITS,
+  AUTODOC_SEARCH_FRESH_DAYS,
+  autodocResultName,
+  getSavedAutodocSearch,
+  readAutodocSearch,
+  type AutodocSearch,
+  type AutodocSearchResult,
+} from './autodoc-search';

@@ -4,8 +4,14 @@ import type { Client } from '../core/client';
 import { dataError } from '../core/errors';
 import { readArray, readNumber, readRecord, readString } from '../core/read';
 
-// Some of the units in stock, from one supplier at one unit cost, entered by hand. Price lists keep setting each
-// supplier's current price; lots say what the stock on the shelf actually cost.
+// Where a lot's unit cost came from: typed in by hand; the order price, or the supplier's sheet price for units not on
+// an order, until the delivery's prices are checked; or checked from the delivery note.
+export type StockCostBasis = 'typed' | 'order' | 'sheet' | 'checked';
+
+const BASES = new Set<string>(['typed', 'order', 'sheet', 'checked']);
+
+// Some of the units in stock, from one supplier at one unit cost: typed in by hand, or put there by a delivery. Price
+// lists keep setting each supplier's current price; lots say what the stock on the shelf actually cost.
 export type StockCostLot = {
   id: number;
   supplierId: number;
@@ -16,6 +22,12 @@ export type StockCostLot = {
   note: string | null;
   createdAt: string;
   updatedAt: string;
+  basis: StockCostBasis;
+  // The delivery the units came in on (its goods receipt), for lots put there by a delivery. Its price is corrected
+  // in Price checks, not by hand.
+  receiptId: string | null;
+  receipt: string | null;
+  receivedQty: number | null;
 };
 
 export type StockCosts = {
@@ -34,6 +46,11 @@ export type StockCostLotInput = {
   unitCost: number;
   note?: string | null;
 };
+
+function readBasis(value: Json | undefined): StockCostBasis {
+  const basis = readString(value);
+  return basis && BASES.has(basis) ? (basis as StockCostBasis) : 'typed';
+}
 
 function readStockCosts(data: Json | null): StockCosts {
   const record = readRecord(data ?? undefined);
@@ -61,6 +78,10 @@ function readStockCosts(data: Json | null): StockCosts {
           note: readString(lot?.note),
           createdAt: readString(lot?.created_at) ?? '',
           updatedAt: readString(lot?.updated_at) ?? '',
+          basis: readBasis(lot?.basis),
+          receiptId: readString(lot?.document_id),
+          receipt: readString(lot?.receipt),
+          receivedQty: readNumber(lot?.received_qty),
         },
       ];
     }),
@@ -74,7 +95,7 @@ export async function getStockCosts(supabase: Client, partId: number): Promise<S
 }
 
 // Adds a lot, or changes one when input.id is set (editors). Refused when the part's lots would cover more units
-// than are in stock. Returns the part's stock costs.
+// than are in stock, or when the lot came in on a delivery. Returns the part's stock costs.
 export async function saveStockCostLot(supabase: Client, partId: number, input: StockCostLotInput): Promise<StockCosts> {
   const { data, error } = await supabase.rpc('save_stock_cost_lot', {
     p_part: partId,

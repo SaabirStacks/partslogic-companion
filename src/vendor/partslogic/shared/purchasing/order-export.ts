@@ -10,7 +10,7 @@ export const ORDER_EXPORT_FORMATS = ['pdf', 'csv', 'portal'] as const;
 export type OrderExportFormat = (typeof ORDER_EXPORT_FORMATS)[number];
 
 export const ORDER_CSV_HEADERS = [
-  'Their code',
+  'Supplier code',
   'Brand',
   'Part number',
   'Description',
@@ -49,7 +49,7 @@ export function portalText(order: PurchaseOrderDetail): { text: string; lines: n
 }
 
 // "PO-000014 Comline.pdf": the number and supplier, with nothing a file system or a mail program would choke on.
-export function orderFileName(order: Pick<PurchaseOrderDetail, 'number' | 'supplier'>, extension: 'pdf' | 'csv'): string {
+export function orderFileName(order: { number: string; supplier: { name: string } }, extension: 'pdf' | 'csv'): string {
   const supplier = order.supplier.name.replace(/[^A-Za-z0-9 &.-]+/g, ' ').replace(/\s+/g, ' ').trim();
   return `${order.number}${supplier ? ` ${supplier}` : ''}.${extension}`;
 }

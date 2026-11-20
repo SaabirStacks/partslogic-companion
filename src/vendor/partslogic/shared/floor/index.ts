@@ -18,6 +18,15 @@ export {
   type FloorReviewReason,
 } from './activity';
 export {
+  COUNT_REQUEST_REASON_LABELS,
+  countRequestReason,
+  listCountRequests,
+  readCountRequests,
+  removeCountRequest,
+  type CountRequest,
+  type CountRequestList,
+} from './count-requests';
+export {
   emptyBinSession,
   reduceBinSession,
   sessionLines,

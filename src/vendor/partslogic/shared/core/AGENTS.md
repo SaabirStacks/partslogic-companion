@@ -3,6 +3,8 @@
 What every domain uses. No database functions of its own.
 
 ## Files here
+- `call.ts`: `call` (await an RPC, read its data or throw a DataError) and `readHistoryEvents` (a history of
+  events with who and when), shared by purchasing's documents and customers' accounts.
 - `client.ts`: `Client`, the Supabase client typed from the generated database types. Every wrapper takes one.
 - `errors.ts`: `DataError` (keeps the Postgres or PostgREST code and hint), `dataError()`, and
   `classifyQueueError` (retry or needs attention, for the phone's offline queue).

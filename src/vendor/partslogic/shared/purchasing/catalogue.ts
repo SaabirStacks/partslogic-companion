@@ -6,6 +6,7 @@ import type { Page } from '../core/page';
 import { readArray, readBoolean, readNumber, readRecord, readString } from '../core/read';
 import type { PartKind } from '../inventory/items';
 import { isSupplierStatus, type SupplierStatus } from './suppliers';
+import { readPriceBreaks, readScheduledPrice, type PriceBreak, type ScheduledPrice } from './price-terms';
 
 // The supplier catalogue: every supplier's current price lines and your range in one search, with each part's
 // price from each supplier and its cheaper equivalents from other brands. Every rule lives in SQL
@@ -35,6 +36,11 @@ export type SupplierOffer = {
   surcharge: number | null;
   since: string | null;
   usable: boolean;
+  // Sheet options: quantity breaks (lowest quantity first), the supplier's "while stocks last" mark, and a price
+  // waiting to start on a later day.
+  breaks: PriceBreak[];
+  ending: boolean;
+  scheduled: ScheduledPrice | null;
 };
 
 // How a search found the row: the search's own match kinds, 'oe' for a part made to an OE number that was
@@ -47,6 +53,8 @@ export type CatalogueMatch =
   | 'similar'
   | 'description'
   | 'oe'
+  // an alternative to a number that was searched (same OE number, cross-reference, replacement); via names that part
+  | 'alternative'
   | 'listed';
 
 // A cheaper equivalent from another brand (same OE number, a cross-reference or a supersession).
@@ -112,7 +120,7 @@ export type ComparisonRow = CatalogueFacts & {
   cheapest: boolean;
 };
 
-const MATCHES = new Set<string>(['barcode', 'exact', 'supplier_code', 'starts_with', 'similar', 'description', 'oe', 'listed']);
+const MATCHES = new Set<string>(['barcode', 'exact', 'supplier_code', 'starts_with', 'similar', 'description', 'oe', 'alternative', 'listed']);
 
 export function readOffers(value: Json | undefined): SupplierOffer[] {
   return readArray(value).flatMap((item): SupplierOffer[] => {
@@ -140,6 +148,9 @@ export function readOffers(value: Json | undefined): SupplierOffer[] {
         surcharge: readNumber(offer.surcharge),
         since: readString(offer.since),
         usable: readBoolean(offer.usable) ?? false,
+        breaks: readPriceBreaks(offer.breaks),
+        ending: readBoolean(offer.ending) ?? false,
+        scheduled: readScheduledPrice(offer.scheduled),
       },
     ];
   });

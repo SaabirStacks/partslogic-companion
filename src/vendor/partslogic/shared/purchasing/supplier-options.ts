@@ -3,6 +3,7 @@ import type { Json } from '@partslogic/db-types';
 import type { Client } from '../core/client';
 import { dataError } from '../core/errors';
 import { readNumber, readRecord, readString } from '../core/read';
+import { readListScope, type ListScope } from '../imports/batches';
 
 // A supplier's newest price sheet uploaded as a file.
 export type SupplierUpload = {
@@ -11,6 +12,8 @@ export type SupplierUpload = {
   status: string;
   rows: number | null;
   createdAt: string;
+  // What the supplier's last uploaded sheet covered (step 3c), to pre-set the next upload's choice; null: none yet.
+  listScope: ListScope | null;
 };
 
 export function readSupplierUpload(value: Json | undefined): SupplierUpload | null {
@@ -19,7 +22,14 @@ export function readSupplierUpload(value: Json | undefined): SupplierUpload | nu
   const file = readString(upload?.file);
   const createdAt = readString(upload?.created_at);
   if (!batchId || !file || !createdAt) return null;
-  return { batchId, file, status: readString(upload?.status) ?? 'uploaded', rows: readNumber(upload?.rows), createdAt };
+  return {
+    batchId,
+    file,
+    status: readString(upload?.status) ?? 'uploaded',
+    rows: readNumber(upload?.rows),
+    createdAt,
+    listScope: upload?.list_scope == null ? null : readListScope(upload.list_scope),
+  };
 }
 
 // A supplier you buy from: price-list and manual sources, with whether a column mapping is saved. Archived

@@ -6,6 +6,8 @@ import type { ChipState } from '@/ui/status-chip';
 import { ReceiptCard } from '@/ui/receipt';
 import { Scroll } from '@/ui/scroll';
 import { BottomBar } from '@/ui/action-bar';
+import type { ReceiptRow } from '@/ui/receipt';
+import type { CustomerShare } from '@/vendor/partslogic/shared/purchasing';
 
 import type { Delivery } from './delivery-store';
 import { receiptLine, type ReceiptSummary } from './receipt';
@@ -17,12 +19,14 @@ const CHIP: Record<ReceiptSummary['state'], ChipState> = {
 };
 
 // The end of Receive goods, as a receipt: where it stands, the receipt number, who it was from, then the
-// numbers. Put away now goes straight to choosing a bin.
+// numbers. Units for customers' sales orders are split out: put aside for each order on the collection shelf, the
+// rest into Unbinned (S4b). Put away now goes straight to choosing a bin.
 export function DeliveryReceipt({
   delivery,
   number,
   units,
   summary,
+  putAside = [],
   onPutAway,
   onNext,
 }: {
@@ -30,13 +34,22 @@ export function DeliveryReceipt({
   number: string | null;
   units: number;
   summary: ReceiptSummary;
+  // What Check said goes to customers' sales orders.
+  putAside?: CustomerShare[];
   onPutAway: () => void;
   onNext: () => void;
 }) {
-  const rows: [string, number][] = [
-    ['Units into Unbinned', units],
-    ['Codes', summary.codes],
-    ...(summary.unknown > 0 ? ([['Unknown, kept for the office', summary.unknown]] as [string, number][]) : []),
+  const put = putAside.reduce((sum, share) => sum + share.units, 0);
+  const rows: ReceiptRow[] = [
+    ...(put > 0
+      ? [
+          { label: 'Put aside', value: `${plural(put, 'unit', 'units')} for ${plural(putAside.length, 'order', 'orders')}` },
+          ...putAside.map((share) => ({ label: share.order, value: [share.units, share.customer].filter(Boolean).join(' · ') })),
+        ]
+      : []),
+    { label: put > 0 ? 'Into Unbinned' : 'Units into Unbinned', value: put > 0 ? plural(Math.max(units - put, 0), 'unit', 'units') : units },
+    { label: 'Codes', value: summary.codes },
+    ...(summary.unknown > 0 ? [{ label: 'Unknown, kept for the office', value: summary.unknown, tone: 'warn' as const }] : []),
   ];
   return (
     <View className="flex-1 bg-ground">
@@ -45,7 +58,7 @@ export function DeliveryReceipt({
           chip={CHIP[summary.state]}
           reference={number ?? 'Not sent yet'}
           line={receiptLine(delivery)}
-          rows={rows.map(([label, value]) => ({ label, value, tone: label.startsWith('Unknown') ? 'warn' : undefined }))}
+          rows={rows}
           accessibilityLabel={`${CHIP[summary.state].label}. ${number ?? 'Not sent yet'}. ${receiptLine(delivery)}. ${plural(units, 'unit', 'units')}`}
         />
       </Scroll>

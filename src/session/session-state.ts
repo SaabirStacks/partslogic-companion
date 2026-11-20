@@ -1,4 +1,5 @@
 import type { AppRole, CurrentMember } from '@/vendor/partslogic/shared/members';
+import { isPermissionKey } from '@/vendor/partslogic/shared/people';
 import { APP_ROLES } from '@/vendor/partslogic/shared/members';
 
 import type { CachedMember } from '@/lib/prefs';
@@ -29,6 +30,8 @@ export function fromCache(cached: CachedMember | null, userId: string): CurrentM
     needsPassword: cached.needsPassword ?? false,
     workspaceName: cached.workspaceName,
     currency: cached.currency,
+    permissions: (cached.permissions ?? []).filter(isPermissionKey),
+    orderLimit: cached.orderLimit ?? null,
   };
 }
 
@@ -41,6 +44,8 @@ export function toCache(member: CurrentMember): CachedMember {
     needsPassword: member.needsPassword,
     workspaceName: member.workspaceName,
     currency: member.currency,
+    permissions: member.permissions,
+    orderLimit: member.orderLimit,
   };
 }
 

@@ -3167,6 +3167,67 @@ export type Database = {
           },
         ]
       }
+      document_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          detail: Json
+          document_id: string
+          event: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          detail?: Json
+          document_id: string
+          event: string
+          id?: never
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          detail?: Json
+          document_id?: string
+          event?: string
+          id?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_events_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_type_statuses: {
+        Row: {
+          description: string
+          doc_type: string
+          status: string
+        }
+        Insert: {
+          description: string
+          doc_type: string
+          status: string
+        }
+        Update: {
+          description?: string
+          doc_type?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_type_statuses_doc_type_fkey"
+            columns: ["doc_type"]
+            isOneToOne: false
+            referencedRelation: "document_types"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       document_types: {
         Row: {
           code: string
@@ -3291,6 +3352,13 @@ export type Database = {
             referencedRelation: "stocktakes"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "documents_status_fkey"
+            columns: ["doc_type", "status"]
+            isOneToOne: false
+            referencedRelation: "document_type_statuses"
+            referencedColumns: ["doc_type", "status"]
+          },
         ]
       }
       export_jobs: {
@@ -3304,7 +3372,7 @@ export type Database = {
           id: string
           profile_id: number
           row_count: number | null
-          status: Database["ingest"]["Enums"]["job_status"]
+          status: "queued" | "running" | "done" | "failed"
         }
         Insert: {
           completed_at?: string | null
@@ -3316,7 +3384,7 @@ export type Database = {
           id?: string
           profile_id: number
           row_count?: number | null
-          status?: Database["ingest"]["Enums"]["job_status"]
+          status?: "queued" | "running" | "done" | "failed"
         }
         Update: {
           completed_at?: string | null
@@ -3328,7 +3396,7 @@ export type Database = {
           id?: string
           profile_id?: number
           row_count?: number | null
-          status?: Database["ingest"]["Enums"]["job_status"]
+          status?: "queued" | "running" | "done" | "failed"
         }
         Relationships: [
           {
@@ -3372,6 +3440,60 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      inventory_index: {
+        Row: {
+          added_at: string
+          brand_id: number
+          brand_name: string
+          category_id: number | null
+          is_stocked: boolean
+          kind: "oe" | "aftermarket" | "oe_placeholder"
+          number: string
+          part_id: number
+          search_text: string
+          sku_key: string | null
+        }
+        Insert: {
+          added_at: string
+          brand_id: number
+          brand_name: string
+          category_id?: number | null
+          is_stocked: boolean
+          kind: "oe" | "aftermarket" | "oe_placeholder"
+          number: string
+          part_id: number
+          search_text: string
+          sku_key?: string | null
+        }
+        Update: {
+          added_at?: string
+          brand_id?: number
+          brand_name?: string
+          category_id?: number | null
+          is_stocked?: boolean
+          kind?: "oe" | "aftermarket" | "oe_placeholder"
+          number?: string
+          part_id?: number
+          search_text?: string
+          sku_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_index_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: true
+            referencedRelation: "inventory_items"
+            referencedColumns: ["part_id"]
+          },
+          {
+            foreignKeyName: "inventory_index_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: true
+            referencedRelation: "inventory_rows"
+            referencedColumns: ["part_id"]
+          },
+        ]
       }
       inventory_item_stats: {
         Row: {
@@ -3429,7 +3551,6 @@ export type Database = {
           is_stocked: boolean
           own_sku: string | null
           part_id: number
-          reorder_level: number | null
           surcharge: number | null
           updated_at: string
         }
@@ -3440,7 +3561,6 @@ export type Database = {
           is_stocked?: boolean
           own_sku?: string | null
           part_id: number
-          reorder_level?: number | null
           surcharge?: number | null
           updated_at?: string
         }
@@ -3451,7 +3571,6 @@ export type Database = {
           is_stocked?: boolean
           own_sku?: string | null
           part_id?: number
-          reorder_level?: number | null
           surcharge?: number | null
           updated_at?: string
         }
@@ -3526,6 +3645,51 @@ export type Database = {
             referencedColumns: ["part_id"]
           },
         ]
+      }
+      inventory_price_changes: {
+        Row: {
+          active_from: string | null
+          active_to: string | null
+          change: string
+          changed_at: string
+          changed_by: string | null
+          id: number
+          min_qty: number
+          new_price: number | null
+          old_price: number | null
+          part_id: number
+          price_id: number
+          tier: Database["public"]["Enums"]["price_tier"]
+        }
+        Insert: {
+          active_from?: string | null
+          active_to?: string | null
+          change: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          min_qty: number
+          new_price?: number | null
+          old_price?: number | null
+          part_id: number
+          price_id: number
+          tier: Database["public"]["Enums"]["price_tier"]
+        }
+        Update: {
+          active_from?: string | null
+          active_to?: string | null
+          change?: string
+          changed_at?: string
+          changed_by?: string | null
+          id?: never
+          min_qty?: number
+          new_price?: number | null
+          old_price?: number | null
+          part_id?: number
+          price_id?: number
+          tier?: Database["public"]["Enums"]["price_tier"]
+        }
+        Relationships: []
       }
       inventory_prices: {
         Row: {
@@ -3609,7 +3773,15 @@ export type Database = {
           opening_stock_done_at?: string | null
           opening_stock_done_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "locations_address_id_fkey"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "party_addresses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       members: {
         Row: {
@@ -3644,6 +3816,7 @@ export type Database = {
       parties: {
         Row: {
           company_number: string | null
+          contacts_role: Database["public"]["Enums"]["app_role"]
           created_at: string
           created_by: string | null
           id: number
@@ -3658,6 +3831,7 @@ export type Database = {
         }
         Insert: {
           company_number?: string | null
+          contacts_role?: Database["public"]["Enums"]["app_role"]
           created_at?: string
           created_by?: string | null
           id?: never
@@ -3672,6 +3846,7 @@ export type Database = {
         }
         Update: {
           company_number?: string | null
+          contacts_role?: Database["public"]["Enums"]["app_role"]
           created_at?: string
           created_by?: string | null
           id?: never
@@ -3872,45 +4047,62 @@ export type Database = {
       }
       stock_cost_lots: {
         Row: {
+          basis: string
           created_at: string
           created_by: string | null
           currency: string
+          document_id: string | null
           id: number
           note: string | null
           part_id: number
           qty: number
+          received_qty: number | null
           source_id: number
           unit_cost: number
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          basis?: string
           created_at?: string
           created_by?: string | null
           currency?: string
+          document_id?: string | null
           id?: never
           note?: string | null
           part_id: number
           qty: number
+          received_qty?: number | null
           source_id: number
           unit_cost: number
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          basis?: string
           created_at?: string
           created_by?: string | null
           currency?: string
+          document_id?: string | null
           id?: never
           note?: string | null
           part_id?: number
           qty?: number
+          received_qty?: number | null
           source_id?: number
           unit_cost?: number
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stock_cost_lots_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stock_document_lines: {
         Row: {
@@ -4351,23 +4543,74 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_price_schedule: {
+        Row: {
+          batch_id: string | null
+          cancelled_at: string | null
+          cost: number
+          created_at: string
+          currency: string
+          id: number
+          part_id: number
+          published_at: string | null
+          row_number: number | null
+          source_id: number
+          starts_on: string
+          terms: Json
+        }
+        Insert: {
+          batch_id?: string | null
+          cancelled_at?: string | null
+          cost: number
+          created_at?: string
+          currency?: string
+          id?: never
+          part_id: number
+          published_at?: string | null
+          row_number?: number | null
+          source_id: number
+          starts_on: string
+          terms?: Json
+        }
+        Update: {
+          batch_id?: string | null
+          cancelled_at?: string | null
+          cost?: number
+          created_at?: string
+          currency?: string
+          id?: never
+          part_id?: number
+          published_at?: string | null
+          row_number?: number | null
+          source_id?: number
+          starts_on?: string
+          terms?: Json
+        }
+        Relationships: []
+      }
       supplier_prices: {
         Row: {
           batch_id: string | null
           box_qty: number | null
+          breaks: Json | null
           central_min_qty: number | null
           cost: number
           currency: string
+          delisted_by: string | null
           ended_by_run: number | null
+          ending: boolean
           id: number
           list_price: number | null
           min_qty: number | null
           pack_qty: number | null
           part_id: number
+          restored_by: string | null
+          restored_from: number | null
           run_id: number | null
           source_id: number
           surcharge: number | null
           surcharge_code: string | null
+          undone_by: string | null
           unit: string | null
           valid_from: string
           valid_to: string | null
@@ -4375,19 +4618,25 @@ export type Database = {
         Insert: {
           batch_id?: string | null
           box_qty?: number | null
+          breaks?: Json | null
           central_min_qty?: number | null
           cost: number
           currency?: string
+          delisted_by?: string | null
           ended_by_run?: number | null
+          ending?: boolean
           id?: never
           list_price?: number | null
           min_qty?: number | null
           pack_qty?: number | null
           part_id: number
+          restored_by?: string | null
+          restored_from?: number | null
           run_id?: number | null
           source_id: number
           surcharge?: number | null
           surcharge_code?: string | null
+          undone_by?: string | null
           unit?: string | null
           valid_from?: string
           valid_to?: string | null
@@ -4395,19 +4644,25 @@ export type Database = {
         Update: {
           batch_id?: string | null
           box_qty?: number | null
+          breaks?: Json | null
           central_min_qty?: number | null
           cost?: number
           currency?: string
+          delisted_by?: string | null
           ended_by_run?: number | null
+          ending?: boolean
           id?: never
           list_price?: number | null
           min_qty?: number | null
           pack_qty?: number | null
           part_id?: number
+          restored_by?: string | null
+          restored_from?: number | null
           run_id?: number | null
           source_id?: number
           surcharge?: number | null
           surcharge_code?: string | null
+          undone_by?: string | null
           unit?: string | null
           valid_from?: string
           valid_to?: string | null
@@ -4514,7 +4769,15 @@ export type Database = {
           time_zone?: string
           vat_rate?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "workspace_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "parties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -4554,7 +4817,7 @@ export type Database = {
           eans: string[] | null
           enriched_at: string | null
           is_stocked: boolean | null
-          kind: Database["catalogue"]["Enums"]["part_kind"] | null
+          kind: "oe" | "aftermarket" | "oe_placeholder" | null
           name: string | null
           on_hand: number | null
           part_id: number | null
@@ -4656,6 +4919,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_substitute: { Args: { p: Json; p_order: string }; Returns: Json }
       add_brand_alias: {
         Args: { p_alias: string; p_brand: number }
         Returns: undefined
@@ -4668,6 +4932,27 @@ export type Database = {
       add_part_core: { Args: { p: Json; p_by: string }; Returns: Json }
       add_purchase_order_lines: {
         Args: { p_lines: Json; p_order: string }
+        Returns: Json
+      }
+      add_reorder_lines: { Args: { p_lines: Json }; Returns: Json }
+      add_statement_item: {
+        Args: { p: Json; p_statement: number }
+        Returns: Json
+      }
+      add_supplier_bill_line: {
+        Args: { p: Json; p_bill: string }
+        Returns: Json
+      }
+      add_supplier_bill_receipts: {
+        Args: { p_bill: string; p_receipts: string[] }
+        Returns: Json
+      }
+      add_supplier_credit_lines: {
+        Args: { p_credit: string; p_lines: Json }
+        Returns: Json
+      }
+      add_supplier_return_lines: {
+        Args: { p_lines: Json; p_return: string }
         Returns: Json
       }
       add_to_orders: {
@@ -4695,6 +4980,10 @@ export type Database = {
         Returns: undefined
       }
       apply_resolved_count: { Args: { p_count: number }; Returns: Json }
+      back_order_lines: {
+        Args: { p_location?: number; p_source?: number; p_to_chase?: boolean }
+        Returns: Json
+      }
       bin_count_is_active: { Args: { p_stocktake: string }; Returns: boolean }
       blended_stock_cost: {
         Args: {
@@ -4705,17 +4994,26 @@ export type Database = {
         }
         Returns: number
       }
+      book_in_cores: { Args: { p: Json }; Returns: Json }
       brand_options: {
         Args: { p_limit?: number; p_query?: string }
         Returns: {
           alias: string
           brand_id: number
-          kind: Database["catalogue"]["Enums"]["brand_kind"]
+          kind:
+            | "vehicle_manufacturer"
+            | "aftermarket"
+            | "private_label"
+            | "unknown"
           match: string
           name: string
           parts: number
           score: number
         }[]
+      }
+      cancel_back_order_line: {
+        Args: { p: Json; p_line: number }
+        Returns: Json
       }
       cancel_enrichment_backfill: { Args: never; Returns: number }
       cancel_purchase_order: {
@@ -4733,6 +5031,10 @@ export type Database = {
           value: number
         }[]
       }
+      chase_back_order_lines: {
+        Args: { p: Json; p_lines: number[] }
+        Returns: Json
+      }
       check_brands: {
         Args: { p_names: string[] }
         Returns: {
@@ -4743,6 +5045,7 @@ export type Database = {
           via_alias: boolean
         }[]
       }
+      check_core: { Args: { p: Json; p_core: number }; Returns: Json }
       choose_vehicle_for_vrm: {
         Args: { p_lookup: number; p_vehicle: number }
         Returns: undefined
@@ -4759,18 +5062,22 @@ export type Database = {
           row_number: number
           source: string
           source_id: number
-          source_kind: Database["ingest"]["Enums"]["source_kind"]
+          source_kind: "price_list" | "catalogue_feed" | "manual" | "stocktake"
         }[]
       }
+      clear_old_retail_customers: { Args: never; Returns: number }
       close_issue: {
         Args: {
           p_issue: number
           p_note?: string
-          p_status: Database["ingest"]["Enums"]["issue_status"]
+          p_status: "open" | "in_review" | "resolved" | "dismissed"
         }
         Returns: undefined
       }
-      close_purchase_order_short: { Args: { p_order: string; p_reason: string }; Returns: Json }
+      close_purchase_order_short: {
+        Args: { p_order: string; p_reason: string }
+        Returns: Json
+      }
       close_stale_receipts: { Args: never; Returns: number }
       close_stock_document: { Args: { p_document: string }; Returns: Json }
       commit_bin_count: {
@@ -4778,7 +5085,21 @@ export type Database = {
         Returns: Json
       }
       company_details: { Args: never; Returns: Json }
+      core_deposit_list: {
+        Args: { p_open?: boolean; p_source?: number }
+        Returns: Json
+      }
+      core_list: {
+        Args: {
+          p_limit?: number
+          p_search?: string
+          p_source?: number
+          p_view?: string
+        }
+        Returns: Json
+      }
       count_run_status: { Args: { p_run: string }; Returns: Json }
+      create_bill_from_order: { Args: { p_order: string }; Returns: Json }
       create_bins: {
         Args: { p_codes: string[]; p_location: number }
         Returns: Json
@@ -4788,6 +5109,7 @@ export type Database = {
         Returns: number
       }
       create_category_path: { Args: { p_names: string[] }; Returns: number }
+      create_customer_account: { Args: { p: Json }; Returns: number }
       create_purchase_order: {
         Args: {
           p_location: number
@@ -4798,6 +5120,18 @@ export type Database = {
         Returns: string
       }
       create_supplier: { Args: { p_name: string }; Returns: number }
+      create_supplier_bill: {
+        Args: { p?: Json; p_supplier: number }
+        Returns: Json
+      }
+      create_supplier_credit: {
+        Args: { p?: Json; p_supplier: number }
+        Returns: Json
+      }
+      create_supplier_statement: {
+        Args: { p: Json; p_source: number }
+        Returns: number
+      }
       current_sell_price: {
         Args: {
           p_on?: string
@@ -4807,9 +5141,87 @@ export type Database = {
         }
         Returns: number
       }
+      customer_detail: { Args: { p_account: number }; Returns: Json }
+      customer_list: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+          p_tier?: number
+        }
+        Returns: Json
+      }
+      customer_price: {
+        Args: {
+          p_account: number
+          p_on?: string
+          p_part: number
+          p_qty?: number
+        }
+        Returns: Json
+      }
+      customer_sale_check: {
+        Args: { p_account: number; p_amount?: number }
+        Returns: Json
+      }
+      customer_setup: { Args: never; Returns: Json }
+      deal_with_extras: { Args: { p: Json; p_order: string }; Returns: Json }
+      decide_code_move: {
+        Args: { p_confirm: boolean; p_move: number }
+        Returns: Json
+      }
+      decide_supplier_bill_line: {
+        Args: { p: Json; p_line: number }
+        Returns: Json
+      }
+      delete_core: { Args: { p_core: number }; Returns: undefined }
       delete_draft_purchase_order: {
         Args: { p_order: string }
         Returns: undefined
+      }
+      delete_draft_supplier_bill: {
+        Args: { p_bill: string }
+        Returns: undefined
+      }
+      delete_draft_supplier_credit: {
+        Args: { p_credit: string }
+        Returns: undefined
+      }
+      delete_draft_supplier_return: {
+        Args: { p_return: string }
+        Returns: undefined
+      }
+      delete_supplier_statement: {
+        Args: { p_statement: number }
+        Returns: undefined
+      }
+      delisting_lines: { Args: { p?: Json; p_batch: string }; Returns: Json }
+      developer_backup_page: {
+        Args: {
+          p_after?: string
+          p_area: string
+          p_limit?: number
+          p_piece: number
+        }
+        Returns: Json
+      }
+      developer_overview: { Args: never; Returns: Json }
+      developer_part_removal_backup: {
+        Args: { p_removal: number }
+        Returns: Json
+      }
+      developer_part_removals: { Args: { p_limit?: number }; Returns: Json }
+      developer_parts: { Args: { p?: Json }; Returns: Json }
+      developer_remove_parts: {
+        Args: { p_mode: string; p_parts: number[] }
+        Returns: Json
+      }
+      developer_reset_preview: { Args: { p_area: string }; Returns: Json }
+      developer_reset_step: { Args: { p_run: number }; Returns: Json }
+      developer_start_reset: {
+        Args: { p: Json; p_area: string }
+        Returns: number
       }
       discard_bin_count: { Args: { p_stocktake: string }; Returns: Json }
       effective_sell_price: {
@@ -4820,6 +5232,7 @@ export type Database = {
         }
         Returns: number
       }
+      ending_lines: { Args: { p_parts: number[] }; Returns: Json }
       enrichment_activity: {
         Args: { p_limit?: number }
         Returns: {
@@ -4829,11 +5242,132 @@ export type Database = {
           number: string
           part_id: number
           product_url: string
-          status: Database["ingest"]["Enums"]["enrichment_status"]
+          status:
+            | "queued"
+            | "in_progress"
+            | "applied"
+            | "no_match"
+            | "mismatch"
+            | "failed"
+            | "skipped"
           target_id: number
           updated_at: string
         }[]
       }
+      enrichment_apply_answer: { Args: { p_answer: number }; Returns: Json }
+      enrichment_held: { Args: { p_target: number }; Returns: Json }
+      enrichment_run_finish: {
+        Args: { p_result: Json; p_run: number; p_state?: Json; p_status: string }
+        Returns: undefined
+      }
+      enrichment_run_progress: {
+        Args: { p_run: number; p_state: Json }
+        Returns: undefined
+      }
+      enrichment_run_start: {
+        Args: { p_by: string; p_options?: Json; p_part: number }
+        Returns: Json
+      }
+      autodoc_open_result: { Args: { p_search: number; p_product_url: string; p_by: string }; Returns: Json }
+      autodoc_search_save: { Args: { p_keyword: string; p_page: number; p_doc: Json; p_by: string }; Returns: Json }
+      autodoc_search_saved: { Args: { p_keyword: string; p_page?: number }; Returns: Json }
+      category_tree: { Args: never; Returns: Json }
+      create_category: { Args: { p_parent: number; p_name: string }; Returns: number }
+      map_category_wording: { Args: { p_wording: string; p_category: number }; Returns: Json }
+      remove_category: { Args: { p_category: number }; Returns: undefined }
+      rename_category: { Args: { p_category: number; p_name: string }; Returns: undefined }
+      set_part_category: { Args: { p_part: number; p_category: number }; Returns: Json }
+      unmapped_category_wordings: { Args: { p_limit?: number }; Returns: Json }
+      customer_briefs: { Args: { p_parties: number[] | null; p_cards: number[] | null }; Returns: Json }
+      customer_find: { Args: { p_search: string; p_limit?: number }; Returns: Json }
+      enquiry_assign: { Args: { p_ids: string[]; p_owner: string | null }; Returns: number }
+      enquiry_close: { Args: { p_id: string; p_outcome: string; p_reason?: string | null; p_note?: string | null }; Returns: undefined }
+      enquiry_close_request: { Args: { p_request: number; p_outcome: string; p_reason?: string | null; p_note?: string | null }; Returns: undefined }
+      enquiry_create: { Args: { p?: Json }; Returns: Json }
+      enquiry_accept_offer: { Args: { p_offer: number; p?: Json }; Returns: undefined }
+      enquiry_add_offer: { Args: { p_request: number; p: Json }; Returns: number }
+      enquiry_delete: { Args: { p_id: string }; Returns: undefined }
+      enquiry_find_parts: { Args: { p_request: number; p_search?: string | null }; Returns: Json }
+      enquiry_refresh_offer: { Args: { p_offer: number }; Returns: undefined }
+      enquiry_requote: { Args: { p_id: string; p_keep: boolean }; Returns: number }
+      enquiry_supplier_quote_price: { Args: { p_request: number; p: Json }; Returns: Json }
+      enquiry_record_supplier_quote: { Args: { p_request: number; p: Json }; Returns: Json }
+      enquiry_ask_supplier: { Args: { p_request: number; p: Json }; Returns: undefined }
+      enquiry_source_request: { Args: { p_request: number }; Returns: undefined }
+      enquiry_add_photo: { Args: { p_request: number; p: Json }; Returns: number }
+      enquiry_remove_photo: { Args: { p_photo: number }; Returns: string }
+      enquiry_log_autodoc_search: { Args: { p_request: number; p_keyword: string; p_found: number; p_credits: number }; Returns: undefined }
+      enquiry_order_preview: { Args: { p_id: string }; Returns: Json }
+      enquiry_create_order: { Args: { p_id: string; p?: Json }; Returns: Json }
+      sales_order_list: { Args: { p_view?: string; p_search?: string; p_location?: number; p_limit?: number; p_offset?: number; p_filters?: Json }; Returns: Json }
+      sales_order_add_line: { Args: { p_order: string; p: Json }; Returns: Json }
+      sales_order_confirm_preview: { Args: { p_id: string }; Returns: Json }
+      sales_order_create: { Args: { p?: Json }; Returns: Json }
+      sales_order_create_preview: { Args: { p?: Json }; Returns: Json }
+      sales_order_discard: { Args: { p_id: string }; Returns: undefined }
+      sales_order_find_parts: { Args: { p_order: string; p_search?: string | null }; Returns: Json }
+      sales_order_hold: { Args: { p_id: string; p_note: string }; Returns: undefined }
+      sales_order_release_hold: { Args: { p_id: string }; Returns: Json }
+      sales_order_set_caller: { Args: { p_id: string; p_name: string; p_phone: string }; Returns: undefined }
+      sales_order_confirm: { Args: { p_id: string; p?: Json }; Returns: Json }
+      sales_order_check_credit: { Args: { p_id: string }; Returns: Json }
+      sales_order_override_hold: { Args: { p_id: string; p_reason: string }; Returns: Json }
+      sales_order_cancel_line: { Args: { p_line: number }; Returns: undefined }
+      sales_order_set_aside_line: { Args: { p_line: number }; Returns: number }
+      sales_order_ready_copied: { Args: { p_order: string }; Returns: Json }
+      sales_order_order_in_preview: { Args: { p_id: string; p_line?: number }; Returns: Json }
+      sales_order_order_in: { Args: { p_id: string; p: Json }; Returns: Json }
+      sales_order_undo_order_in: { Args: { p_id: string; p_links: number[] }; Returns: Json }
+      part_set_aside: { Args: { p_part: number }; Returns: Json }
+      count_request_list: { Args: Record<PropertyKey, never>; Returns: Json }
+      count_request_remove: { Args: { p_id: number }; Returns: undefined }
+      sales_order_detail: { Args: { p_id: string }; Returns: Json }
+      sales_order_save: { Args: { p_id: string; p: Json }; Returns: undefined }
+      sales_order_save_line: { Args: { p_line: number; p_quantity: number }; Returns: undefined }
+      sales_order_remove_line: { Args: { p_line: number }; Returns: undefined }
+      sales_order_cancel: { Args: { p_id: string; p: Json }; Returns: undefined }
+      customer_account_terms: { Args: { p_account: number }; Returns: { limit: number; terms: Json }[] }
+      customer_account_balance: { Args: { p_account: number }; Returns: number }
+      enquiry_review_prices: { Args: { p_id: string }; Returns: Json }
+      enquiry_send_quote: { Args: { p_id: string; p?: Json }; Returns: number }
+      enquiry_unsend_quote: { Args: { p_quote: number }; Returns: undefined }
+      enquiry_remove_offer: { Args: { p_offer: number }; Returns: undefined }
+      enquiry_save_offer: { Args: { p_offer: number; p: Json }; Returns: undefined }
+      enquiry_unaccept_offer: { Args: { p_offer: number }; Returns: undefined }
+      enquiry_detail: { Args: { p_id: string }; Returns: Json }
+      enquiry_list: { Args: { p_view?: string; p_search?: string | null; p_next_move?: string | null; p_limit?: number; p_offset?: number; p_filters?: Json }; Returns: Json }
+      enquiry_log_contact: { Args: { p_id: string; p: Json }; Returns: number }
+      enquiry_merge: { Args: { p_from: string; p_into: string }; Returns: undefined }
+      enquiry_owners: { Args: never; Returns: Json }
+      enquiry_caller_to_card: { Args: { p_id: string }; Returns: number }
+      enquiry_pulse: { Args: never; Returns: Json }
+      enquiry_recent_customers: { Args: { p_limit?: number }; Returns: Json }
+      enquiry_split_request: { Args: { p_request: number; p_parts: string[] }; Returns: undefined }
+      enquiry_touch: { Args: { p_id: string }; Returns: Json }
+      vehicle_find: { Args: { p_search: string; p_limit?: number }; Returns: Json }
+      vehicle_heal_log: { Args: { p_limit?: number }; Returns: Json }
+      vrm_like_for_like: { Args: { p_lookup: number; p_vehicle: number }; Returns: Json }
+      vrm_candidates: { Args: { p_vrm: string }; Returns: Json }
+      vrm_lookup_begin: { Args: { p_vrm: string }; Returns: Json }
+      vrm_lookup_finish: { Args: { p_lookup: number }; Returns: Json }
+      enquiry_remove_request: { Args: { p_request: number }; Returns: undefined }
+      enquiry_remove_vehicle: { Args: { p_vehicle: number }; Returns: undefined }
+      enquiry_reopen: { Args: { p_id: string }; Returns: undefined }
+      enquiry_reopen_request: { Args: { p_request: number }; Returns: undefined }
+      enquiry_save: { Args: { p_id: string; p: Json }; Returns: undefined }
+      enquiry_save_request: { Args: { p_id: string; p: Json }; Returns: number }
+      enquiry_save_vehicle: { Args: { p_id: string; p: Json }; Returns: Json }
+      enquiry_set_status: { Args: { p_id: string; p_status: string }; Returns: undefined }
+      enrichment_apply_held: { Args: { p_part: number }; Returns: Json }
+      enrichment_listing_product: { Args: { p_issue: number; p_url: string }; Returns: Json }
+      enrichment_reapply_saved: { Args: { p_limit?: number }; Returns: Json }
+      enrichment_run_status: { Args: { p_part: number }; Returns: Json }
+      enrichment_running: { Args: never; Returns: Json }
+      enrichment_save_answer: {
+        Args: { p_doc: Json; p_key: string; p_kind: string; p_target: number }
+        Returns: number
+      }
+      enrichment_settle: { Args: { p_target: number }; Returns: string }
       enrichment_apply: {
         Args: { p_doc: Json; p_target: number }
         Returns: Json
@@ -4852,7 +5386,14 @@ export type Database = {
       enrichment_finish: {
         Args: {
           p_error?: string
-          p_status: Database["ingest"]["Enums"]["enrichment_status"]
+          p_status:
+            | "queued"
+            | "in_progress"
+            | "applied"
+            | "no_match"
+            | "mismatch"
+            | "failed"
+            | "skipped"
           p_target: number
         }
         Returns: undefined
@@ -4888,6 +5429,7 @@ export type Database = {
         Args: { p_code: string; p_location: number }
         Returns: Json
       }
+      erase_retail_customer: { Args: { p_id: number }; Returns: boolean }
       expected_deliveries: {
         Args: { p_location?: number }
         Returns: {
@@ -4909,6 +5451,7 @@ export type Database = {
           units_due: number
         }[]
       }
+      feedback_list: { Args: { p?: Json }; Returns: Json }
       find_parts_to_add: {
         Args: { max_results?: number; q: string }
         Returns: {
@@ -4919,7 +5462,7 @@ export type Database = {
           image_url: string
           in_inventory: boolean
           is_stocked: boolean
-          kind: Database["catalogue"]["Enums"]["part_kind"]
+          kind: "oe" | "aftermarket" | "oe_placeholder"
           match_type: string
           number: string
           on_hand: number
@@ -5006,6 +5549,10 @@ export type Database = {
       }
       import_cancel: { Args: { p_batch: string }; Returns: undefined }
       import_finish: { Args: { p_batch: string }; Returns: Json }
+      import_list_scope: {
+        Args: { p_batch: string; p_scope: string }
+        Returns: Json
+      }
       import_preview: { Args: { p_rows: Json; p_spec: Json }; Returns: Json }
       import_profile: { Args: { p_source: number }; Returns: Json }
       import_quarantined: {
@@ -5022,7 +5569,21 @@ export type Database = {
         Args: { p_batch: string; p_details?: boolean }
         Returns: Json
       }
+      import_starts_on: {
+        Args: { p_batch: string; p_date: string }
+        Returns: Json
+      }
       inventory_filter_options: { Args: never; Returns: Json }
+      inventory_search_text: {
+        Args: {
+          p_brand: string
+          p_description: string
+          p_number: string
+          p_number_key: string
+          p_sku: string
+        }
+        Returns: string
+      }
       is_catalogue_curator: { Args: never; Returns: boolean }
       is_restricted_gtin: { Args: { value: string }; Returns: boolean }
       item_pricing: {
@@ -5046,6 +5607,7 @@ export type Database = {
           surcharge_uplift: number
         }[]
       }
+      jsonb_ids: { Args: { p: Json }; Returns: number[] }
       ktypes_for_part: {
         Args: {
           include_inferred?: boolean
@@ -5093,7 +5655,7 @@ export type Database = {
           eans: string[]
           enriched_at: string
           is_stocked: boolean
-          kind: Database["catalogue"]["Enums"]["part_kind"]
+          kind: "oe" | "aftermarket" | "oe_placeholder"
           name: string
           on_hand: number
           part_id: number
@@ -5160,6 +5722,10 @@ export type Database = {
         Args: { p_alias: string; p_category: number }
         Returns: number
       }
+      merge_suppliers: {
+        Args: { p_from: number; p_into: number }
+        Returns: Json
+      }
       mark_bin_counted: {
         Args: { p_bin: number; p_stocktake: string }
         Returns: undefined
@@ -5177,6 +5743,10 @@ export type Database = {
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }[]
+      }
+      move_purchase_order_line: {
+        Args: { p_line: number; p_source: number }
+        Returns: Json
       }
       next_document_number: { Args: { p_type: string }; Returns: string }
       normalise_name_key: { Args: { value: string }; Returns: string }
@@ -5204,6 +5774,8 @@ export type Database = {
           expected_from: string
           expected_on: string
           expected_run: string
+          for_customer: string | null
+          for_order: string | null
           line_id: number
           number: string
           our_reference: string
@@ -5223,12 +5795,19 @@ export type Database = {
           location_id: number
         }[]
       }
+      order_extras_to_deal: {
+        Args: { p_orders: string[] }
+        Returns: {
+          document_id: string
+          units: number
+        }[]
+      }
       part_alternatives: {
         Args: { min_confidence?: number; p_part: number }
         Returns: {
           brand: string
           confidence: number
-          kind: Database["catalogue"]["Enums"]["part_kind"]
+          kind: "oe" | "aftermarket" | "oe_placeholder"
           number: string
           part_id: number
           relation: string
@@ -5242,7 +5821,7 @@ export type Database = {
           brand: string
           confidence: number
           in_range: boolean
-          kind: Database["catalogue"]["Enums"]["part_kind"]
+          kind: "oe" | "aftermarket" | "oe_placeholder"
           margin: number
           number: string
           on_hand: number
@@ -5253,6 +5832,10 @@ export type Database = {
         }[]
       }
       part_card: { Args: { p_part: number }; Returns: Json }
+      part_cost_history: {
+        Args: { p_limit?: number; p_part: number }
+        Returns: Json
+      }
       part_detail: { Args: { p_part: number }; Returns: Json }
       part_fitments_for: {
         Args: { min_confidence?: number; p_part: number }
@@ -5266,7 +5849,7 @@ export type Database = {
           match_method: string
           model: string
           power_kw: number
-          state: Database["catalogue"]["Enums"]["claim_state"]
+          state: "asserted" | "inferred" | "verified" | "rejected" | "conflict"
           type_name: string
           vehicle_id: number
           year_from: number
@@ -5300,7 +5883,7 @@ export type Database = {
           description: string
           in_range: boolean
           is_stocked: boolean
-          kind: Database["catalogue"]["Enums"]["part_kind"]
+          kind: "oe" | "aftermarket" | "oe_placeholder"
           margin: number
           number: string
           offers: Json
@@ -5313,6 +5896,12 @@ export type Database = {
       }
       part_pricing_rules: { Args: { p_part: number }; Returns: Json }
       part_references: { Args: { p_part: number }; Returns: Json }
+      part_reorder: { Args: { p_part: number }; Returns: Json }
+      part_return_options: { Args: { p_part: number }; Returns: Json }
+      part_sell_price_history: {
+        Args: { p_limit?: number; p_part: number }
+        Returns: Json
+      }
       part_specs: {
         Args: { p_part: number }
         Returns: {
@@ -5322,7 +5911,7 @@ export type Database = {
           first_seen: string
           last_seen: string
           sources: number
-          state: Database["catalogue"]["Enums"]["claim_state"]
+          state: "asserted" | "inferred" | "verified" | "rejected" | "conflict"
           value: Json
         }[]
       }
@@ -5335,7 +5924,7 @@ export type Database = {
           matched_vehicles: number
           qualifiers: Json
           sources: number
-          state: Database["catalogue"]["Enums"]["claim_state"]
+          state: "asserted" | "inferred" | "verified" | "rejected" | "conflict"
           vehicle_text: string
         }[]
       }
@@ -5430,6 +6019,14 @@ export type Database = {
       }
       purchase_order_counts: { Args: never; Returns: Json }
       purchase_order_detail: { Args: { p_order: string }; Returns: Json }
+      my_access: { Args: never; Returns: Json }
+      people_access: { Args: never; Returns: Json }
+      set_person_permission: { Args: { p_user: string; p_key: string; p_allowed: boolean }; Returns: Json }
+      set_person_order_limit: { Args: { p_user: string; p_kind: string; p_amount?: number }; Returns: Json }
+      save_order_limit: { Args: { p_amount: number }; Returns: Json }
+      request_order_approval: { Args: { p_order: string; p_note?: string }; Returns: Json }
+      decide_order_approval: { Args: { p_order: string; p_approve: boolean; p_reason?: string }; Returns: Json }
+      has_permission: { Args: { p_key: string }; Returns: boolean }
       purchase_order_list: {
         Args: {
           p_limit?: number
@@ -5454,6 +6051,7 @@ export type Database = {
           status: string
           supplier: string
           total_count: number
+          approval: string | null
         }[]
       }
       put_away: {
@@ -5472,6 +6070,7 @@ export type Database = {
         Returns: Json
       }
       quick_add_part: { Args: { p: Json }; Returns: Json }
+      ready_supplier_return: { Args: { p_return: string }; Returns: Json }
       reapply_web_page: { Args: { p_page: number }; Returns: Json }
       receipt_order_matches: {
         Args: { p_receipts: string[] }
@@ -5485,7 +6084,10 @@ export type Database = {
           waiting: boolean
         }[]
       }
-      receive_purchase_order: { Args: { p: Json; p_order: string }; Returns: Json }
+      receive_purchase_order: {
+        Args: { p: Json; p_order: string }
+        Returns: Json
+      }
       record_count: {
         Args: {
           p_bin: number
@@ -5514,17 +6116,25 @@ export type Database = {
         }
         Returns: Json
       }
+      record_supplier_bill: { Args: { p_bill: string }; Returns: Json }
+      record_supplier_credit: { Args: { p_credit: string }; Returns: Json }
+      record_supplier_payment: {
+        Args: { p: Json; p_source: number }
+        Returns: Json
+      }
       recount_bin: {
         Args: { p_bin: number; p_stocktake: string }
         Returns: number
       }
       refresh_all_item_stats: { Args: never; Returns: number }
+      refresh_inventory_index: { Args: { p_part: number }; Returns: undefined }
       refresh_item_stats: { Args: { p_part: number }; Returns: undefined }
       register_label: {
         Args: { p_code: string; p_label_type?: string; p_part: number }
         Returns: undefined
       }
       rematch_receipt: { Args: { p_receipt: string }; Returns: Json }
+      remove_discount_rule: { Args: { p_id: number }; Returns: Json }
       remove_enrichment_source: { Args: { p_id: number }; Returns: string }
       remove_kit_component: { Args: { p_link: number }; Returns: undefined }
       remove_party_address: {
@@ -5539,18 +6149,29 @@ export type Database = {
         Args: { p_vehicle: number }
         Returns: Json
       }
+      remove_statement_item: { Args: { p_item: number }; Returns: Json }
       remove_stock_cost_lot: { Args: { p_id: number }; Returns: Json }
+      remove_supplier_bill_line: { Args: { p_line: number }; Returns: Json }
+      remove_supplier_bill_receipt: {
+        Args: { p_bill: string; p_receipt: string }
+        Returns: Json
+      }
       remove_supplier_code: {
         Args: { p_code: string; p_source: number }
         Returns: undefined
       }
+      remove_supplier_credit_line: { Args: { p_line: number }; Returns: Json }
+      remove_supplier_return_line: { Args: { p_line: number }; Returns: Json }
       reopen_opening_stock: { Args: { p_location: number }; Returns: Json }
+      reopen_supplier_bill: { Args: { p_bill: string }; Returns: Json }
+      reopen_supplier_credit: { Args: { p_credit: string }; Returns: Json }
+      reopen_supplier_return: { Args: { p_return: string }; Returns: Json }
       reorder_enrichment_sources: {
         Args: { p_ids: number[] }
         Returns: undefined
       }
       reorder_suggestions: {
-        Args: never
+        Args: { p_location?: number; p_part?: number }
         Returns: {
           best_cost: number
           best_source: string
@@ -5558,11 +6179,18 @@ export type Database = {
           location_code: string
           location_id: number
           max_level: number
+          min_order_qty: number
+          name: string
           number: string
+          on_drafts: number
           on_hand: number
+          on_order: number
+          pack_qty: number
           part_id: number
           reorder_level: number
           suggested_qty: number
+          supplier_id: number
+          supplier_reason: string
         }[]
       }
       request_export: {
@@ -5575,6 +6203,10 @@ export type Database = {
           p_new_role?: Database["public"]["Enums"]["app_role"]
           p_target: string
         }
+        Returns: undefined
+      }
+      require_party_role: {
+        Args: { p_kind?: string; p_party: number }
         Returns: undefined
       }
       require_role: {
@@ -5601,6 +6233,15 @@ export type Database = {
         Args: { p_code: string; p_location?: number }
         Returns: Json
       }
+      resolve_statement_item: {
+        Args: { p: Json; p_item: number }
+        Returns: Json
+      }
+      retail_customer_list: {
+        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Returns: Json
+      }
+      return_terms: { Args: { p_source?: number }; Returns: Json }
       return_to_pool: {
         Args: {
           p_bin: number
@@ -5612,13 +6253,22 @@ export type Database = {
         }
         Returns: number
       }
+      return_to_supplier: {
+        Args: { p_lines?: Json; p_location: number; p_supplier: number }
+        Returns: Json
+      }
       reverse_floor_change: {
         Args: { p_id: string; p_kind: string; p_reason: string }
         Returns: Json
       }
       review_link: {
         Args: {
-          p_decision: Database["catalogue"]["Enums"]["claim_state"]
+          p_decision:
+            | "asserted"
+            | "inferred"
+            | "verified"
+            | "rejected"
+            | "conflict"
           p_link: number
         }
         Returns: undefined
@@ -5646,6 +6296,13 @@ export type Database = {
         Args: { p_error?: string; p_job: number; p_outcome: string }
         Returns: undefined
       }
+      save_company_details: { Args: { p: Json }; Returns: Json }
+      save_core: { Args: { p: Json; p_core: number }; Returns: Json }
+      save_core_rule: { Args: { p: Json; p_source: number }; Returns: Json }
+      save_customer_account: { Args: { p: Json }; Returns: Json }
+      save_customer_settings: { Args: { p: Json }; Returns: Json }
+      save_discount_rule: { Args: { p: Json }; Returns: Json }
+      save_discount_tier: { Args: { p: Json }; Returns: Json }
       save_enrichment_source: {
         Args: {
           p_brand_ids?: number[]
@@ -5662,14 +6319,11 @@ export type Database = {
         Args: { p_source: number; p_spec: Json }
         Returns: Json
       }
-      save_company_details: { Args: { p: Json }; Returns: Json }
       save_party_address: { Args: { p: Json }; Returns: Json }
       save_party_contact: { Args: { p: Json }; Returns: Json }
+      save_payment_terms: { Args: { p: Json }; Returns: Json }
       save_price_check: { Args: { p: Json; p_receipt: string }; Returns: Json }
-      save_purchase_order: {
-        Args: { p: Json; p_order: string }
-        Returns: Json
-      }
+      save_purchase_order: { Args: { p: Json; p_order: string }; Returns: Json }
       save_purchase_order_line: {
         Args: { p: Json; p_line: number }
         Returns: Json
@@ -5678,6 +6332,8 @@ export type Database = {
         Args: { p: Json; p_order: string }
         Returns: Json
       }
+      save_retail_customer: { Args: { p: Json }; Returns: Json }
+      save_return_terms: { Args: { p: Json; p_source: number }; Returns: Json }
       save_spec_key: {
         Args: {
           p_aliases?: string[]
@@ -5702,7 +6358,47 @@ export type Database = {
         Returns: Json
       }
       save_supplier: { Args: { p: Json }; Returns: Json }
-      save_supplier_delivery_terms: { Args: { p: Json; p_source: number }; Returns: Json }
+      save_supplier_back_orders: {
+        Args: { p_holds: boolean; p_source: number }
+        Returns: Json
+      }
+      save_supplier_bill: { Args: { p: Json; p_bill: string }; Returns: Json }
+      save_supplier_bill_line: {
+        Args: { p: Json; p_line: number }
+        Returns: Json
+      }
+      save_supplier_bill_terms: {
+        Args: { p: Json; p_source: number }
+        Returns: Json
+      }
+      save_supplier_credit: {
+        Args: { p: Json; p_credit: string }
+        Returns: Json
+      }
+      save_supplier_credit_line: {
+        Args: { p: Json; p_line: number }
+        Returns: Json
+      }
+      save_supplier_delivery_terms: {
+        Args: { p: Json; p_source: number }
+        Returns: Json
+      }
+      save_supplier_return: {
+        Args: { p: Json; p_return: string }
+        Returns: Json
+      }
+      save_supplier_return_line: {
+        Args: { p: Json; p_line: number }
+        Returns: Json
+      }
+      save_supplier_sheet_schedule: {
+        Args: { p_every_days: number; p_source: number }
+        Returns: Json
+      }
+      save_supplier_statement: {
+        Args: { p: Json; p_statement: number }
+        Returns: Json
+      }
       save_web_profile: {
         Args: { p_source: number; p_spec: Json }
         Returns: Json
@@ -5720,16 +6416,27 @@ export type Database = {
         Returns: {
           brand: string
           description: string
-          kind: Database["catalogue"]["Enums"]["part_kind"]
+          kind: "oe" | "aftermarket" | "oe_placeholder"
           match_type: string
           number: string
           part_id: number
           score: number
         }[]
       }
+      send_cores: { Args: { p_cores: number[] }; Returns: Json }
+      send_feedback: { Args: { p: Json }; Returns: string }
+      send_supplier_return: { Args: { p_return: string }; Returns: Json }
       set_api_budget: {
         Args: { p_credit_limit: number; p_provider: string }
         Returns: undefined
+      }
+      set_customer_status: {
+        Args: { p_account: number; p_reason?: string; p_status: string }
+        Returns: Json
+      }
+      set_feedback_status: {
+        Args: { p_ids: string[]; p_status: string }
+        Returns: number
       }
       set_person_name: {
         Args: { p_name: string; p_user_id: string }
@@ -5741,6 +6448,14 @@ export type Database = {
           p_user_id: string
         }
         Returns: undefined
+      }
+      set_preferred_supplier: {
+        Args: { p_part: number; p_supplier: number }
+        Returns: Json
+      }
+      set_preferred_supplier_lines: {
+        Args: { p_parts: number[]; p_source: number }
+        Returns: Json
       }
       set_receipt_details: {
         Args: {
@@ -5778,11 +6493,24 @@ export type Database = {
       }
       set_vehicle_text_match: {
         Args: {
-          p_state: Database["catalogue"]["Enums"]["claim_state"]
+          p_state:
+            | "asserted"
+            | "inferred"
+            | "verified"
+            | "rejected"
+            | "conflict"
           p_text: string
           p_vehicle: number
         }
         Returns: undefined
+      }
+      settle_delisting: {
+        Args: { p_batch: string; p_delist: boolean }
+        Returns: Json
+      }
+      settle_supplier_return_line: {
+        Args: { p: Json; p_line: number }
+        Returns: Json
       }
       sku_available: { Args: { p_part?: number; p_sku: string }; Returns: Json }
       spec_keys: { Args: never; Returns: Json }
@@ -5806,6 +6534,8 @@ export type Database = {
         Returns: string
       }
       start_stocktake: { Args: { p_stocktake: string }; Returns: number }
+      stock_list: { Args: { p?: Json }; Returns: Json }
+      stock_list_options: { Args: never; Returns: Json }
       stock_valuation: {
         Args: never
         Returns: {
@@ -5829,6 +6559,16 @@ export type Database = {
           variance: number
         }[]
       }
+      supplier_bill_detail: { Args: { p_bill: string }; Returns: Json }
+      supplier_bill_list: {
+        Args: {
+          p_limit?: number
+          p_search?: string
+          p_source?: number
+          p_status?: string
+        }
+        Returns: Json
+      }
       supplier_catalogue: {
         Args: {
           p_brand?: number
@@ -5849,7 +6589,7 @@ export type Database = {
           equivalents: number
           in_range: boolean
           is_stocked: boolean
-          kind: Database["catalogue"]["Enums"]["part_kind"]
+          kind: "oe" | "aftermarket" | "oe_placeholder"
           margin: number
           match_type: string
           number: string
@@ -5861,7 +6601,19 @@ export type Database = {
           via: string
         }[]
       }
+      supplier_credit_detail: { Args: { p_credit: string }; Returns: Json }
+      supplier_credit_list: {
+        Args: {
+          p_limit?: number
+          p_search?: string
+          p_source?: number
+          p_status?: string
+        }
+        Returns: Json
+      }
       supplier_detail: { Args: { p_source: number }; Returns: Json }
+      supplier_figures: { Args: never; Returns: Json }
+      supplier_lines: { Args: { p?: Json; p_source: number }; Returns: Json }
       supplier_list: {
         Args: {
           p_limit?: number
@@ -5896,6 +6648,53 @@ export type Database = {
           status: string
         }[]
       }
+      supplier_merge_preview: {
+        Args: { p_from: number; p_into: number }
+        Returns: Json
+      }
+      supplier_overview: { Args: { p_source: number }; Returns: Json }
+      supplier_pay_options: { Args: { p_source: number }; Returns: Json }
+      supplier_payables_list: { Args: never; Returns: Json }
+      supplier_payment_detail: { Args: { p_payment: string }; Returns: Json }
+      supplier_payment_list: {
+        Args: { p_limit?: number; p_search?: string; p_source?: number }
+        Returns: Json
+      }
+      supplier_performance: { Args: { p_source: number }; Returns: Json }
+      supplier_price_sheets: {
+        Args: { p_limit?: number; p_source: number }
+        Returns: Json
+      }
+      supplier_return_detail: { Args: { p_return: string }; Returns: Json }
+      supplier_return_list: {
+        Args: {
+          p_limit?: number
+          p_search?: string
+          p_source?: number
+          p_status?: string
+        }
+        Returns: Json
+      }
+      supplier_scores: {
+        Args: { p_sources: number[] }
+        Returns: {
+          lines: number
+          otif: number
+          source_id: number
+        }[]
+      }
+      supplier_statement_detail: {
+        Args: { p_statement: number }
+        Returns: Json
+      }
+      supplier_statement_list: {
+        Args: { p_limit?: number; p_source?: number }
+        Returns: Json
+      }
+      tick_statement_items: {
+        Args: { p_documents: string[]; p_on: boolean; p_statement: number }
+        Returns: Json
+      }
       transfer_stock: {
         Args: {
           p_from_bin: number
@@ -5908,6 +6707,12 @@ export type Database = {
       }
       trim_stock_cost_lots: { Args: { p_part: number }; Returns: number }
       try_uuid: { Args: { value: string }; Returns: string }
+      undo_core_deposit_loss: { Args: { p_loss: number }; Returns: Json }
+      undo_supplier_return_outcome: {
+        Args: { p_outcome: number }
+        Returns: Json
+      }
+      undo_upload: { Args: { p_batch: string }; Returns: Json }
       unlocated_stock: {
         Args: { p_limit?: number; p_location?: number }
         Returns: {
@@ -5921,6 +6726,8 @@ export type Database = {
       }
       unlocated_stock_summary: { Args: { p_location?: number }; Returns: Json }
       unmapped_spec_labels: { Args: { p_source?: number }; Returns: Json }
+      unsend_supplier_return: { Args: { p_return: string }; Returns: Json }
+      upload_changes: { Args: { p_batch: string }; Returns: Json }
       upload_runs: { Args: { p_batch: string }; Returns: Json }
       vehicle_candidates_for_vrm: {
         Args: { p_lookup: number }
@@ -5943,6 +6750,10 @@ export type Database = {
       }
       void_count: { Args: { p_count: number }; Returns: undefined }
       void_floor_code: { Args: { p_code: string }; Returns: Json }
+      void_supplier_payment: {
+        Args: { p_payment: string; p_reason: string }
+        Returns: Json
+      }
       web_enrichment_apply: {
         Args: {
           p_by?: string
@@ -5977,6 +6788,7 @@ export type Database = {
       }
       web_page_detail: { Args: { p_page: number }; Returns: Json }
       web_profile_versions: { Args: { p_source: number }; Returns: Json }
+      write_off_core_deposit: { Args: { p: Json }; Returns: Json }
       write_off_unlocated: {
         Args: { p_bin: number; p_parts: number[] }
         Returns: Json
