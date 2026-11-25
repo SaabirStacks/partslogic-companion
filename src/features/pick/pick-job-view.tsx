@@ -78,7 +78,7 @@ export function PickJobView({
             onPress={() => (totals.left > 0 ? setConfirming('finish') : end('finished'))}
             // Nothing picked or short yet: nothing to finish (Stop picking lets the orders go).
             disabled={totals.picked === 0 && totals.short === 0}
-            secondary={lastRow && !lastRow.short && lastRow.scanned + lastRow.tapped > 0 ? { label: 'Undo the last scan', icon: 'undo', onPress: onUndo } : undefined}
+            secondary={lastRow && !lastRow.short && lastRow.scanned + lastRow.tapped > 0 ? { label: 'Undo the last unit', icon: 'undo', onPress: onUndo } : undefined}
           />
         }>
         <Tally

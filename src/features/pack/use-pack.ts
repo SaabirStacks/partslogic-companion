@@ -1,6 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import { useRef, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Platform } from 'react-native';
 
 import { feel } from '@/feel/feel';
 import { useOnline } from '@/lib/network';
@@ -88,7 +88,7 @@ export function usePack() {
       setBox(next);
       setCard({ key: Crypto.randomUUID(), card: shown });
       // iOS reads no live region: the result is said for VoiceOver as it shows (critique B).
-      AccessibilityInfo.announceForAccessibility(packCardWords(shown));
+      if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(packCardWords(shown));
     },
 
     step(lineId: number, change: 1 | -1) {

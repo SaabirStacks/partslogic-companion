@@ -217,12 +217,12 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
   'pick-stop': () => <Pick job={midway()} confirming="stop" />,
   'pick-receipt-sending': () => (
     <Screen title="Pick">
-      <PickReceipt receipt={{ state: 'sending', line: '12 picked · 1 short · 4 orders', orders: ORDER_STAGES.map((order) => ({ ...order, stage: null })), refused: [] }} onPack={noop} onDone={noop} />
+      <PickReceipt receipt={{ state: 'sending', line: '12 picked · 1 short · 4 orders', orders: ORDER_STAGES.map((order) => ({ ...order, stage: null })), refused: [], endRefused: null }} onPack={noop} onDone={noop} />
     </Screen>
   ),
   'pick-receipt-sent': () => (
     <Screen title="Pick">
-      <PickReceipt receipt={{ state: 'sent', line: '11 picked · 1 short · 4 orders', orders: ORDER_STAGES, refused: [] }} onPack={noop} onDone={noop} />
+      <PickReceipt receipt={{ state: 'sent', line: '11 picked · 1 short · 4 orders', orders: ORDER_STAGES, refused: [], endRefused: null }} onPack={noop} onDone={noop} />
     </Screen>
   ),
   'pick-receipt': () => (
@@ -233,6 +233,7 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
           line: '11 picked · 1 short · 4 orders',
           orders: ORDER_STAGES,
           refused: [{ key: 'r', order: 'SO-000023', reason: 'Only 0 in B-02 on the books. Count the bin, then pick.' }],
+          endRefused: null,
         }}
         onPack={noop}
         onDone={noop}

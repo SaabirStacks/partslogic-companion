@@ -92,7 +92,7 @@ function Row({ row, onMenu }: { row: JobRow; onMenu?: () => void }) {
   return onMenu && left(row) > 0 ? (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${partName(row)}, ${countOf(row)} for ${row.order}`}
+      accessibilityLabel={[partName(row), `${countOf(row)} for ${row.order}`, row.urgent ? 'urgent' : null, state?.text].filter(Boolean).join(', ')}
       accessibilityHint="Can’t scan or short pick"
       onPress={onMenu}
       className="active:opacity-70">

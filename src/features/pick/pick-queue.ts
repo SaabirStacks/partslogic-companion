@@ -12,9 +12,17 @@ type Item<K extends PickQueueItem['kind']> = Extract<PickQueueItem, { kind: K }>
 const same = (item: Item<'pick_row'> | Item<'pick_short'>) => (pick: { lineId: number; binId: number }) =>
   pick.lineId === item.lineId && pick.binId === item.binId;
 
+// The job as PartsLogic has it, to compare with. With no answer the difference can't be known, so nothing is sent:
+// sending the whole total would pick a row twice (critique B, round 2).
+async function jobFor(supabase: Client, jobId: string) {
+  const job = await getPickJob(supabase, jobId);
+  if (!job) throw new Error('PartsLogic sent no pick job to compare with. Try again.');
+  return job;
+}
+
 export async function sendPickRow(supabase: Client, item: Item<'pick_row'>) {
-  const job = await getPickJob(supabase, item.jobId);
-  const mine = (job?.picked ?? []).filter((pick) => same(item)(pick) && pick.method === item.method && pick.short === 0);
+  const job = await jobFor(supabase, item.jobId);
+  const mine = job.picked.filter((pick) => same(item)(pick) && pick.method === item.method && pick.short === 0);
   const have = mine.reduce((sum, pick) => sum + pick.qty, 0);
   const change = item.target - have;
   if (change > 0) {
@@ -40,8 +48,8 @@ export async function sendPickRow(supabase: Client, item: Item<'pick_row'>) {
 
 // A short pick already in PartsLogic for this row, with this reason, is this one sent before.
 export async function sendPickShort(supabase: Client, item: Item<'pick_short'>) {
-  const job = await getPickJob(supabase, item.jobId);
-  const sent = (job?.picked ?? []).find((pick) => same(item)(pick) && pick.short > 0 && pick.reason === item.reason);
+  const job = await jobFor(supabase, item.jobId);
+  const sent = job.picked.find((pick) => same(item)(pick) && pick.short > 0 && pick.reason === item.reason);
   if (sent) return { pickId: sent.pickId, picked: sent.qty, short: sent.short };
   // The phone's own pick, as a scan: what was found is moved as the web's short pick moves it.
   return pickLine(supabase, {

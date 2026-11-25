@@ -9,6 +9,8 @@ import { inBox, type BoxLine } from './pack';
 
 export const NOTHING_TO_PACK = { title: 'Nothing to pack', line: 'Deliveries appear here once every part is picked.' };
 export const NO_SIGNAL_TO_PACK = { title: 'No signal', line: 'Pack when it’s back.' };
+// The packing screen's strip with no signal: the box carries on and Packed is saved.
+export const PACK_OFFLINE = 'No signal · Packed sends when it’s back';
 
 // The banner under the order number: "Northway Fleet Services · Shipley BD18".
 export const packingDetail = (order: PackingOrder) => [pickingCustomer(order.customer), packingPlace(order)].filter(Boolean).join(' · ');

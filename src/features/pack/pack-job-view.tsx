@@ -14,7 +14,7 @@ import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 import { boxTotals, full, inBox, type Box } from './pack';
 import { PackScanCard, ParcelsSheet } from './pack-views';
 import type { PackCard } from './use-pack';
-import { boxProgress, LEAVE_NOTE, linePart, packingDetail, toGo } from './words';
+import { boxProgress, LEAVE_NOTE, linePart, PACK_OFFLINE, packingDetail, toGo } from './words';
 
 // Packing one delivery: the order (large) and where it goes, the camera, the last scan's card, how much is in the box,
 // each part with − and + for one that won't scan, and Packed in the thumb zone, which asks how many parcels. Drawn
@@ -46,6 +46,7 @@ export function PackJobView({
       <JobScreen
         placeholder="Barcode or part number"
         onScan={onScan}
+        offlineText={PACK_OFFLINE}
         // No scan counts while Packed's sheet is open (DESIGN.md: a sheet pauses the camera).
         scanEnabled={!asking && !leaving}
         banner={<JobBanner size="headline" family="outbound" title={box.order.order} detail={packingDetail(box.order)} />}

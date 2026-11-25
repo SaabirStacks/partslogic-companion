@@ -12,6 +12,8 @@ export type PickReceipt = {
   line: string;
   orders: { id: string; number: string; stage: string | null }[];
   refused: { key: string; order: string; reason: string }[];
+  // The end itself refused (the picks went through): why, for the receipt's line and Sync.
+  endRefused: string | null;
 };
 
 const ofJob = (jobId: string) => (item: OutboxItem) =>
@@ -38,6 +40,7 @@ export function pickReceipt(job: LocalPickJob, items: OutboxItem[]): PickReceipt
   const mine = jobItems(job, items);
   const refused = refusedPicks(job, items);
   const end = mine.find((item) => item.payload.kind === 'pick_job_end' && item.status === 'done');
+  const endItem = mine.find((item) => item.payload.kind === 'pick_job_end' && item.status === 'attention');
   // What PartsLogic made of each order once the job ended (endPickJob's answer): To pack, Ready for collection, To pick.
   const answer = end ? (end.result as { job?: PickJob | null; pickedUnits?: number; shortUnits?: number } | null) : null;
   const after = answer?.job ?? null;
@@ -61,5 +64,6 @@ export function pickReceipt(job: LocalPickJob, items: OutboxItem[]): PickReceipt
     ),
     orders,
     refused,
+    endRefused: endItem ? (endItem.lastError ?? 'Not ended') : null,
   };
 }

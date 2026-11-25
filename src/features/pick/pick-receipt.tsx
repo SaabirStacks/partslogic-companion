@@ -16,11 +16,15 @@ const CHIP: Record<Exclude<Receipt['state'], 'check'>, ChipState> = {
   sent: { tone: 'ok', icon: 'sent', label: 'Sent' },
 };
 
-// A job mostly through with a pick refused reads amber, "1 not picked"; the refusal itself is the red line below.
-const chipOf = (receipt: Receipt): ChipState =>
-  receipt.state === 'check'
-    ? { tone: 'warn', icon: 'warning', label: `${receipt.refused.length} not picked` }
-    : CHIP[receipt.state];
+// A job mostly through with picks refused reads amber, "1 pick refused" (each refusal is a red line below, with its
+// units in its words); an end refused is the one thing to check in Sync.
+function chipOf(receipt: Receipt): ChipState {
+  if (receipt.state !== 'check') return CHIP[receipt.state];
+  const count = receipt.refused.length;
+  return count > 0
+    ? { tone: 'warn', icon: 'warning', label: `${count} ${count === 1 ? 'pick' : 'picks'} refused` }
+    : { tone: 'stop', icon: 'stop', label: 'Check in Sync' };
+}
 
 // The end of a pick job: where it stands (Sending, then Sent), what was picked and short, each order's stage once
 // PartsLogic has the end (To pack, Ready for collection), and any pick it refused, in words with its order (P8).
@@ -43,6 +47,7 @@ export function PickReceipt({ receipt, onPack, onDone }: { receipt: Receipt; onP
         {receipt.refused.map((refusal) => (
           <StatusStrip key={refusal.key} tone="stop" icon="stop" text={refusedLine(refusal.order, refusal.reason)} />
         ))}
+        {receipt.endRefused ? <StatusStrip tone="stop" icon="stop" text={`Not ended · ${receipt.endRefused}`} /> : null}
       </Scroll>
       <BottomBar className="gap-2">
         {packing ? <Button label="Pack" icon="pack" onPress={onPack} /> : null}

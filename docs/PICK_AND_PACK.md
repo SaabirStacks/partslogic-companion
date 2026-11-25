@@ -30,16 +30,15 @@ last. Packed sent twice finds the order packed, which counts as done.
 | Decision | Why |
 |---|---|
 | Copper is #8B5A2B (dark #E2B280) | The owner's deep brown-orange; 5.8:1 on white and 5.0:1 on its soft fill. OKLab ΔE 13.9 from `stop` red, as close as plum is to violet; never the only sign (name and icon) |
-| No second No signal strip on the job | Every job screen already has the offline banner ("Offline · saving on this phone"); the deck's strip would say it twice (P7) |
+| No second No signal strip on the job | The job screen's one offline banner says the deck's words ("No signal · Picks send when it's back"; Pack's "Packed sends when it's back") instead of the app's; a second strip would say it twice (P7) |
 | Can't scan starts at 1 unit | A tap stands in for a scan, which adds one; the deck's "− 0 +" would need a step before Add works |
-| A short pick on the phone is recorded as the phone's (scan) | The units found in it move as the web's short pick moves them; only scans and taps say how a unit was confirmed |
+| A short pick on the phone is recorded as the phone's (scan) | The units found in it are counted, not scanned, and move as the web's short pick moves them; the record keeps the short and its reason, which is what the owner asked to see |
 | The receipt names stages in the web's words | `fulfilmentLabel`: "Ready for collection", not the deck's "Ready to collect"; the database has no "Part ready" stage (an order part picked is still To pick) |
 | A scanned bin label, and a code the phone can't check offline, have their own cards | "A bin label · Scan the part"; "Not checked · No signal · scan it again when it's back, or use Can't scan" (words not in the deck). The phone keeps every part's codes, so a known part scans offline; this card is for a code it has never seen |
 | Not on this pick leads with Scan again, not Short pick | A misread or a neighbour's part is commoner than a missing one; Short pick is the second button, and stays on the row's menu |
 | Pack's list needs signal; Packed is queued | Which deliveries are ready changes as others pick and pack; a list from earlier could send a packer to an order already packed. Packed itself is saved and sent when the signal is back |
 | Undo the last scan is the square icon beside Finish, named for screen readers | As Receive's, so both jobs undo alike |
 | Start picking and Carry on sit in the empty state, not a pinned bar | As every job's first screen (Notice) |
-| A short pick on the phone is recorded as a scan | Units found in it are counted, not scanned; the record keeps the short and its reason, which is what the owner asked to see |
 | Stop picking sits at the foot of the rows | The job's only other action; the native header holds no menu on any job screen |
 | Rows sit under the bin they're in | The walk reads bin by bin; picked rows and rows needing a count follow |
 | Finish says what's picked | "Finish · 9 units"; units not picked are said in its sheet before anything ends |
@@ -54,6 +53,7 @@ last. Packed sent twice finds the order packed, which counts as done.
 | 7 Audit | Reviewer B: 15/20 (Accessibility 3, Performance 3, Theming 4, Responsive 2, Integrity 3); every text AA (lowest 5.12:1), every target at least 48 |
 | 8 Critique round 1 | A 29/40 (on the first build), B 31/40 (after A's fixes); combined 29, lowest per heuristic (Consistency 2) |
 | 9 Fixes | Run log below |
+| 10 Confirm (round 2) | A 31/40, B 33/40 (audit 16/20; B's queue simulation: replays, lost answers and an undo all come to the right count); combined 30/40, every heuristic 3. No P0 or P1. Both rounds below 31, so the owner decides: ship or a third round |
 
 ## Run log
 
@@ -63,4 +63,6 @@ last. Packed sent twice finds the order packed, which counts as done.
 | 1, A (not taken) | Offline scans fall back to Can't scan | The phone keeps every part's codes (the offline scan list, every 15 minutes), so known parts scan offline; only a code never seen says Not checked, now with "scan it again with signal, or use Can't scan" |
 | 1, B | Pack could lose a scan made while another was checked, and bring back a closed box; Pack rows cut "MANN-FILTE / R" at 360; sheets opened on the backdrop for screen readers; the camera counted scans under sheets, and a late scan could reopen an ended job; the receipt counted refused units as picked; bin codes broke in refusals; Pack's box was lost on leaving; Can't scan reasons merged; "1 units"; iOS didn't announce scans | Pack builds on its latest box and drops answers for a closed one; − n + under the part, only the number unbreakable; the backdrop is hidden from screen readers and focus goes to the sheet's title, which names the dialog; sheets pause the camera and Finish clears the job before saving; the receipt uses PartsLogic's counts once the end is sent; codes in reasons kept whole; the box is kept on the phone and Another order asks first; taps join only the same reason; spoken plurals; each scan is announced |
 | 1 (kept) | Two phones on one job with unsent picks on both; a job quiet for two hours ends and its queued picks are refused; Pack's list needs signal; the scan card's buttons are 48 tall; location named on Start | Rare and visible: the refused picks are on the receipt in words (owner, 25 November 2026); orders change while offline; the same size as Receive's card; the deck's words, for the owner |
-
+| 2, A | A tally's number alone on a line at 360; the parcels − live at 1; Pack said "1 of 2" four times; Not on this order had no next step; a red chip for a mostly sent job; bin headings looked pressable; the Resume line cut at 360; gallery gaps | Numbers stay with "of"; steppers know their bounds; rows say "1 to go in"; "Put it back"; amber "1 pick refused"; plain bin headings; "6 of 14 units picked"; Can't scan, sent receipt, Pack ready and a job's foot added |
+| 2, B | The row sheet kept focus nowhere on a step change; the chip counted items, and an end refused said "0 not picked"; a last scan could queue after the end; an empty job read would pick a row twice; the spoken row left out Urgent; Android heard scans twice; long bin codes cut at large text; Pack's offline words | Focus follows the sheet's title; "1 pick refused", or "Check in Sync" with "Not ended · why"; every save and send runs in turn and the end waits for them; no job, nothing sent; the row says urgent and its state; announce on iOS only; the banner shrinks to fit; "No signal · Packed sends when it's back"; Undo reads "Undo the last unit" |
+| 2 (kept) | Location named on Start, and its order count includes orders on other pickers' jobs; 48 pt buttons on the scan card; no Short pick undo on the phone | The deck's words, for the owner; as Receive's card; Picked today on the web undoes a short pick |

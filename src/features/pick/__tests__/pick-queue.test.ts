@@ -44,6 +44,12 @@ describe('sending a row’s scans as its total', () => {
     expect(pickLine).toHaveBeenCalledWith({}, { lineId: 31, binId: 4, qty: 1, jobId: 'j1', method: 'tap', cantScan: 'label' });
   });
 
+  it('sends nothing when PartsLogic gives no job to compare with', async () => {
+    jest.mocked(getPickJob).mockResolvedValue(null);
+    await expect(sendQueued(scans(2))).rejects.toThrow('no pick job');
+    expect(pickLine).not.toHaveBeenCalled();
+  });
+
   it('lets PartsLogic’s refusal through, for the receipt', async () => {
     withPicks([]);
     jest.mocked(pickLine).mockRejectedValue(new DataError('Only 0 in D-01 on the books. Count the bin, then pick.', '22023'));

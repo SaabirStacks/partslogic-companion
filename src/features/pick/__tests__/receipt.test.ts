@@ -75,4 +75,12 @@ describe('the pick receipt', () => {
     expect(receipt.state).toBe('check');
     expect(receipt.refused).toEqual([{ key: 'r', order: 'SO-000021', reason: 'Only 0 in D-01 on the books. Count the bin, then pick.' }]);
   });
+
+  it('says when the end itself was refused', () => {
+    const end = item({
+      clientId: 'e', kind: 'pick_job_end', status: 'attention', lastError: 'Pick job not found',
+      payload: { kind: 'pick_job_end', clientId: 'e', jobId: 'j1', how: 'finished' },
+    });
+    expect(pickReceipt(local, [item({ status: 'done' }), end])).toMatchObject({ state: 'check', refused: [], endRefused: 'Pick job not found' });
+  });
 });

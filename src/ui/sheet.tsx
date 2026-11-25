@@ -37,7 +37,8 @@ export function Sheet({
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [visible]);
+    // Again when a sheet moves to its next step (a new title), so focus never lands nowhere (critique B, round 2).
+  }, [visible, title]);
   const content = (
     <>
       {/* A tap outside closes it; screen readers use the sheet's own Cancel instead of this. */}

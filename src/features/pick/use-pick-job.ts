@@ -1,6 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Platform } from 'react-native';
 
 import { db } from '@/db/database';
 import { feel } from '@/feel/feel';
@@ -42,6 +42,13 @@ export function usePickJob() {
   const [starting, setStarting] = useState<{ busy: boolean; problem: string | null }>({ busy: false, problem: null });
   // Scans arrive faster than saves: each one builds on the latest job, not the one the screen last drew.
   const latest = useRef<LocalPickJob | null>(null);
+  // Every save and send of the job runs in turn, so the end, queued after them, is always sent last (critique B).
+  const writes = useRef<Promise<unknown>>(Promise.resolve());
+  const inTurn = (work: () => Promise<unknown>) => {
+    const next = writes.current.then(work, work);
+    writes.current = next.catch(() => undefined);
+    return next;
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -96,12 +103,15 @@ export function usePickJob() {
     const { job: next, card: shown } = pickScan(now, toPickCheck(check));
     feel(pickMoment(shown));
     setCard({ key: Crypto.randomUUID(), card: shown });
-    // iOS reads no live region: the result is said for VoiceOver as it shows (critique B).
-    AccessibilityInfo.announceForAccessibility(pickCardWords(shown));
+    // iOS reads no live region: the result is said for VoiceOver as it shows. Android's live region says it already.
+    if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(pickCardWords(shown));
     if (shown.kind !== 'added') return;
     setLastKey(shown.row.key);
-    await keep(next);
-    await sendRow(next, shown.row, 'scan');
+    latest.current = next;
+    await inTurn(async () => {
+      await keep(next);
+      await sendRow(next, shown.row, 'scan');
+    });
   }
 
   const mine = job ? refusedPicks(job, outbox.items) : [];
@@ -150,8 +160,11 @@ export function usePickJob() {
       feel('scan');
       setLastKey(key);
       setCard(null);
-      await keep(next);
-      await sendRow(next, row, 'tap');
+      latest.current = next;
+      await inTurn(async () => {
+        await keep(next);
+        await sendRow(next, row, 'tap');
+      });
     },
 
     // Undo the last scan: the last row's last unit goes back to its bin.
@@ -164,24 +177,31 @@ export function usePickJob() {
       if (!before || !row || next === current) return;
       feel('tick');
       setCard(null);
-      await keep(next);
-      await sendRow(next, row, before.scanned > row.scanned ? 'scan' : 'tap');
+      latest.current = next;
+      await inTurn(async () => {
+        await keep(next);
+        await sendRow(next, row, before.scanned > row.scanned ? 'scan' : 'tap');
+      });
     },
 
     // Short pick: how many of the rest are here, and why the others aren't.
     async short(key: string, found: number, reason: ShortPickReason) {
       const current = latest.current;
       const before = current ? rowOf(current, key) : null;
-      if (!current || !before || before.binId === null) return;
+      const binId = before?.binId ?? null;
+      if (!current || !before || binId === null) return;
       const next = shortRow(current, key, found, reason);
       if (next === current) return;
       feel('press');
       setCard(null);
-      await keep(next);
-      await outbox.enqueue(
-        { kind: 'pick_short', clientId: Crypto.randomUUID(), jobId: current.jobId, lineId: before.lineId, binId: before.binId, qty: left(before), found, reason },
-        `Short pick for ${before.order} · ${partName(before)}`,
-      );
+      latest.current = next;
+      await inTurn(async () => {
+        await keep(next);
+        await outbox.enqueue(
+          { kind: 'pick_short', clientId: Crypto.randomUUID(), jobId: current.jobId, lineId: before.lineId, binId, qty: left(before), found, reason },
+          `Short pick for ${before.order} · ${partName(before)}`,
+        );
+      });
     },
 
     // Finish or Stop: the job ends on the phone at once; PartsLogic lets its orders go when the end is sent, after
@@ -192,6 +212,8 @@ export function usePickJob() {
       // No scan lands after this: the job is over on the phone before anything is saved or sent (critique B).
       latest.current = null;
       const closed: LocalPickJob = { ...current, endedAt: new Date().toISOString(), endedHow: how };
+      // After every scan already saved and queued, so the end is the job's last item.
+      await writes.current;
       await outbox.enqueue(
         { kind: 'pick_job_end', clientId: Crypto.randomUUID(), jobId: current.jobId, how },
         how === 'finished' ? 'Finish pick job' : 'Stop pick job',
