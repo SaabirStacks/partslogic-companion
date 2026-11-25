@@ -23,10 +23,10 @@ export function tileBadge(id: LiveWorkflowId, openWork: OpenWork[], unbinned: nu
   }
   const count = (n: number) => new Intl.NumberFormat('en-GB').format(n);
   if (id === 'pick' && outbound && outbound.toPick > 0) {
-    return { label: `${count(outbound.toPick)} ${outbound.toPick === 1 ? 'unit' : 'units'}`, tone: 'action', spoken: `${outbound.toPick} units to pick` };
+    return { label: `${count(outbound.toPick)} ${outbound.toPick === 1 ? 'unit' : 'units'}`, tone: 'action', spoken: `${outbound.toPick} ${outbound.toPick === 1 ? 'unit' : 'units'} to pick` };
   }
   if (id === 'pack' && outbound && outbound.toPack > 0) {
-    return { label: `${count(outbound.toPack)} ${outbound.toPack === 1 ? 'order' : 'orders'}`, tone: 'action', spoken: `${outbound.toPack} orders to pack` };
+    return { label: `${count(outbound.toPack)} ${outbound.toPack === 1 ? 'order' : 'orders'}`, tone: 'action', spoken: `${outbound.toPack} ${outbound.toPack === 1 ? 'order' : 'orders'} to pack` };
   }
   if (id === 'put-away' && unbinned !== null && unbinned > 0) {
     return { label: `${new Intl.NumberFormat('en-GB').format(unbinned)} waiting`, tone: 'action', spoken: `${unbinned} units waiting in Unbinned` };

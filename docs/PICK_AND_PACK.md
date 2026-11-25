@@ -45,4 +45,17 @@ last. Packed sent twice finds the order packed, which counts as done.
 | Phase | Evidence |
 |---|---|
 | 5 Build | Commits from `Sync PartsLogic shared code from main (a802a03)` to the review; 241 unit tests (job, queue, receipt, pack, badges) |
-| 6 Script, detector | Review gallery: 28 outbound screens at 390 wide, light and dark, no page errors, no sideways scroll; detector `[]` on the source and on rendered screens; server contract: 43 functions, nothing broken |
+| 6 Script, detector | Review gallery: 29 outbound screens at 360, 390 and 430 wide, light and dark, no page errors, no sideways scroll, no code broken across lines (`broken-words` check); detector `[]` on the source and on rendered screens; server contract: 43 functions, nothing broken |
+| 7 Audit | Reviewer B: 15/20 (Accessibility 3, Performance 3, Theming 4, Responsive 2, Integrity 3); every text AA (lowest 5.12:1), every target at least 48 |
+| 8 Critique round 1 | A 29/40 (on the first build), B 31/40 (after A's fixes); combined 29, lowest per heuristic (Consistency 2) |
+| 9 Fixes | Run log below |
+
+## Run log
+
+| Round | Found | Done |
+|---|---|---|
+| 1, A | The order was small on the scan card; part numbers broke across lines; the row menu was a small target; Finish and Packed pressable with nothing to finish; Stop's sheet said less than Finish's; "All picked" with units short; the job's offline words; Scan again not the lead on Not on this pick | The card leads "Put with SO-000019"; codes never break; the whole row opens its menu; Finish waits for a pick or a short and Packed reads "1 of 3 in the box" till ready; Stop shows Picked and Not picked; "Nothing left to pick · 3 short"; "No signal · Picks send when it's back"; Scan again leads |
+| 1, A (not taken) | Offline scans fall back to Can't scan | The phone keeps every part's codes (the offline scan list, every 15 minutes), so known parts scan offline; only a code never seen says Not checked, now with "scan it again with signal, or use Can't scan" |
+| 1, B | Pack could lose a scan made while another was checked, and bring back a closed box; Pack rows cut "MANN-FILTE / R" at 360; sheets opened on the backdrop for screen readers; the camera counted scans under sheets, and a late scan could reopen an ended job; the receipt counted refused units as picked; bin codes broke in refusals; Pack's box was lost on leaving; Can't scan reasons merged; "1 units"; iOS didn't announce scans | Pack builds on its latest box and drops answers for a closed one; − n + under the part, only the number unbreakable; the backdrop is hidden from screen readers and focus goes to the sheet's title, which names the dialog; sheets pause the camera and Finish clears the job before saving; the receipt uses PartsLogic's counts once the end is sent; codes in reasons kept whole; the box is kept on the phone and Another order asks first; taps join only the same reason; spoken plurals; each scan is announced |
+| 1 (kept) | Two phones on one job with unsent picks on both; a job quiet for two hours ends and its queued picks are refused; Pack's list needs signal; the scan card's buttons are 48 tall; location named on Start | Rare and visible: the refused picks are on the receipt in words (owner, 25 November 2026); orders change while offline; the same size as Receive's card; the deck's words, for the owner |
+

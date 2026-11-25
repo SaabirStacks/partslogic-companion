@@ -66,6 +66,8 @@ export function PickJobView({
         placeholder="Barcode or part number"
         onScan={onScan}
         offlineText={PICK_OFFLINE}
+        // No scan counts while a sheet is open (DESIGN.md: a sheet pauses the camera).
+        scanEnabled={!sheet && !confirming}
         banner={<JobBanner size={now ? 'display' : 'headline'} family="outbound" title={bannerTitle(now, totals)} detail={bannerDetail(next, now, totals)} />}
         result={card ? <PickCard key={card.key} card={card.card} onShortPick={(row) => setSheet({ key: row.key, start: 'short' })} onDismiss={onDismissCard} /> : null}
         action={

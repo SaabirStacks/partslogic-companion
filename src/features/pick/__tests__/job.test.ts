@@ -1,7 +1,7 @@
 import type { PickJob } from '@/vendor/partslogic/shared/sales/pick-jobs';
 
 import { bins, done, fromServerJob, left, scanPart, shortRow, tapRow, totals, unscanRow } from '../job';
-import { bannerDetail, bannerTitle, countOf, goBack, receiptLine, rowState } from '../words';
+import { bannerDetail, bannerTitle, countOf, goBack, pickCardWords, receiptLine, refusedLine, rowState } from '../words';
 
 const part = (id: number, number: string) => ({ id, brand: 'MANN-FILTER', number, description: null });
 const row = (over: Partial<PickJob['rows'][number]>) => ({
@@ -94,5 +94,20 @@ describe('a pick job on the phone', () => {
     expect(totals(local).units).toBe(0);
     expect(bins(local).now).toBeNull();
     expect(rowState(local.rows[0])?.text).toBe('Not in a bin on the books · count first');
+  });
+});
+
+describe('words that must read whole', () => {
+  it('keeps order numbers and bin codes in a refusal on one line', () => {
+    expect(refusedLine('SO-000021', 'Only 0 in D-01 on the books. Count the bin, then pick.')).toBe(
+      'Not picked · SO\u2011000021 · Only 0 in D\u201101 on the books. Count the bin, then pick.',
+    );
+  });
+
+  it('says the scan card for VoiceOver', () => {
+    const local = fromServerJob(job(), 'u1');
+    const { outcome } = scanPart(local, 6);
+    expect(outcome.kind === 'added' && pickCardWords(outcome)).toBe('Put with SO-000019, MANN-FILTER C 35 154, 1 of 2');
+    expect(pickCardWords({ kind: 'not_on_pick', scanned: 'BOSCH X', here: null })).toBe('Not on this pick: BOSCH X');
   });
 });

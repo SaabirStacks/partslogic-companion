@@ -1,8 +1,10 @@
 import * as Crypto from 'expo-crypto';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 
 import { feel } from '@/feel/feel';
 import { useOnline } from '@/lib/network';
+import { packBoxPref } from '@/lib/prefs';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
 import { useOutbox } from '@/queue/outbox-provider';
@@ -29,7 +31,15 @@ export function usePack() {
   const online = useOnline();
   const outbox = useOutbox();
   const locationId = location?.id ?? null;
-  const [box, setBox] = useState<Box | null>(null);
+  // The box survives leaving the screen and the app closing (packBoxPref); scans arriving while one is being checked
+  // build on the latest box, not the one the screen last drew (critique B).
+  const [box, setBoxState] = useState<Box | null>(() => readBox(packBoxPref.get()));
+  const latest = useRef<Box | null>(box);
+  const setBox = (next: Box | null) => {
+    latest.current = next;
+    setBoxState(next);
+    packBoxPref.set(next);
+  };
   const [card, setCard] = useState<{ key: string; card: PackCard } | null>(null);
   const [packed, setPacked] = useState<{ order: PackingOrder; parcels: number; clientId: string } | null>(null);
 
@@ -58,12 +68,16 @@ export function usePack() {
     },
 
     async scan(code: string) {
-      if (!box) return;
+      const open = latest.current;
+      if (!open) return;
       const check = await checkScan(code, location);
+      // The box may have been closed, packed or changed while the code was checked.
+      const now = latest.current;
+      if (!now || now.order.orderId !== open.order.orderId) return;
       let shown: PackCard;
-      let next = box;
+      let next = now;
       if (check.type === 'part') {
-        const { box: after, outcome } = scanIntoBox(box, check.partId);
+        const { box: after, outcome } = scanIntoBox(now, check.partId);
         next = after;
         shown = outcome.kind === 'not_on_order' ? { kind: 'not_on_order', scanned: `${check.brand} ${check.number}`.trim() } : outcome;
       } else if (check.type === 'bin') shown = { kind: 'bin', bin: check.bin };
@@ -73,16 +87,19 @@ export function usePack() {
       feel(shown.kind === 'added' ? 'scan' : shown.kind === 'error' ? 'refused' : 'unknown');
       setBox(next);
       setCard({ key: Crypto.randomUUID(), card: shown });
+      // iOS reads no live region: the result is said for VoiceOver as it shows (critique B).
+      AccessibilityInfo.announceForAccessibility(packCardWords(shown));
     },
 
     step(lineId: number, change: 1 | -1) {
-      if (box) setBox(stepLine(box, lineId, change));
+      if (latest.current) setBox(stepLine(latest.current, lineId, change));
     },
     set(lineId: number, target: number) {
-      if (box) setBox(setLine(box, lineId, target));
+      if (latest.current) setBox(setLine(latest.current, lineId, target));
     },
 
     async pack(parcels: number) {
+      const box = latest.current;
       if (!box || !boxTotals(box).ready) return;
       const clientId = Crypto.randomUUID();
       await outbox.enqueue(
@@ -103,3 +120,26 @@ export function usePack() {
 }
 
 export type PackState = ReturnType<typeof usePack>;
+
+// A saved box, if it still reads as one (an app update may have changed its shape).
+function readBox(value: unknown): Box | null {
+  const box = value as Box | null;
+  return box && box.order && Array.isArray(box.lines) && typeof box.order.orderId === 'string' ? box : null;
+}
+
+// The scan card in a few words, for VoiceOver.
+function packCardWords(card: PackCard): string {
+  switch (card.kind) {
+    case 'added':
+      return `${card.complete ? 'All in the box' : 'In the box'}, ${card.line.part.brand} ${card.line.part.number}, ${card.line.scanned + card.line.tapped} of ${card.line.qty}`;
+    case 'spare':
+      return `All ${card.line.qty} in the box. Put the spare back`;
+    case 'not_on_order':
+      return `Not on this order: ${card.scanned}`;
+    case 'bin':
+      return 'A bin label. Scan the part';
+    case 'offline':
+    case 'error':
+      return `Not checked: ${card.code}`;
+  }
+}

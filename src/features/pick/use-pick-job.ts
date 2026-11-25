@@ -1,5 +1,6 @@
 import * as Crypto from 'expo-crypto';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 
 import { db } from '@/db/database';
 import { feel } from '@/feel/feel';
@@ -17,7 +18,7 @@ import { fromServerJob, left, shortRow, tapRow, totals, unscanRow, type JobRow, 
 import { PickStore } from './pick-store';
 import { pickReceipt, refusedPicks } from './receipt';
 import { pickMoment, pickScan, type PickCard, type PickCheck } from './scan-card';
-import { partName } from './words';
+import { partName, pickCardWords } from './words';
 
 // The resolver's answer in the shape a pick job reads (scan-card.ts): a bin label by its code.
 const toPickCheck = (check: ScanCheck): PickCheck => (check.type === 'bin' ? { type: 'bin', bin: check.bin } : check);
@@ -76,7 +77,10 @@ export function usePickJob() {
     await outbox.enqueue(
       { kind: 'pick_row', clientId: Crypto.randomUUID(), jobId: current.jobId, lineId: row.lineId, binId: row.binId, method, cantScan, target },
       label,
-      (existing) => (existing.kind === 'pick_row' && existing.method === method ? { payload: { ...existing, target, cantScan }, label } : null),
+      // A newer total joins the one waiting only for the same way of picking, and for a tap the same reason, so each
+      // unit is logged with the reason given for it (critique B).
+      (existing) =>
+        existing.kind === 'pick_row' && existing.method === method && existing.cantScan === cantScan ? { payload: { ...existing, target }, label } : null,
     );
   }
 
@@ -86,9 +90,14 @@ export function usePickJob() {
     const current = latest.current;
     if (!current || current.endedAt) return;
     const check = await checkScan(code, location);
-    const { job: next, card: shown } = pickScan(latest.current ?? current, toPickCheck(check));
+    // The job may have ended (or another started) while the code was checked: a late scan never reopens it.
+    const now = latest.current;
+    if (!now || now.jobId !== current.jobId) return;
+    const { job: next, card: shown } = pickScan(now, toPickCheck(check));
     feel(pickMoment(shown));
     setCard({ key: Crypto.randomUUID(), card: shown });
+    // iOS reads no live region: the result is said for VoiceOver as it shows (critique B).
+    AccessibilityInfo.announceForAccessibility(pickCardWords(shown));
     if (shown.kind !== 'added') return;
     setLastKey(shown.row.key);
     await keep(next);
@@ -180,6 +189,8 @@ export function usePickJob() {
     async end(how: 'finished' | 'stopped') {
       const current = latest.current;
       if (!current || current.endedAt) return;
+      // No scan lands after this: the job is over on the phone before anything is saved or sent (critique B).
+      latest.current = null;
       const closed: LocalPickJob = { ...current, endedAt: new Date().toISOString(), endedHow: how };
       await outbox.enqueue(
         { kind: 'pick_job_end', clientId: Crypto.randomUUID(), jobId: current.jobId, how },

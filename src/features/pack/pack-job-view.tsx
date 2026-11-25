@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { View } from 'react-native';
 
 import { ActionBar } from '@/ui/action-bar';
+import { ConfirmSheet } from '@/ui/confirm-sheet';
 import { Button } from '@/ui/button';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
@@ -12,7 +14,7 @@ import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 import { boxTotals, full, inBox, type Box } from './pack';
 import { PackScanCard, ParcelsSheet } from './pack-views';
 import type { PackCard } from './use-pack';
-import { boxCount, boxProgress, linePart, packingDetail } from './words';
+import { boxCount, boxProgress, LEAVE_NOTE, linePart, packingDetail } from './words';
 
 // Packing one delivery: the order (large) and where it goes, the camera, the last scan's card, how much is in the box,
 // each part with − and + for one that won't scan, and Packed in the thumb zone, which asks how many parcels. Drawn
@@ -37,12 +39,15 @@ export function PackJobView({
   asking?: boolean;
 }) {
   const [asking, setAsking] = useState(initialAsking);
+  const [leaving, setLeaving] = useState(false);
   const total = boxTotals(box);
   return (
     <>
       <JobScreen
         placeholder="Barcode or part number"
         onScan={onScan}
+        // No scan counts while Packed's sheet is open (DESIGN.md: a sheet pauses the camera).
+        scanEnabled={!asking && !leaving}
         banner={<JobBanner size="headline" family="outbound" title={box.order.order} detail={packingDetail(box.order)} />}
         result={card ? <PackScanCard key={card.key} card={card.card} /> : null}
         // Packed waits for every unit in the box, and says how far it is till then (critique A, F8).
@@ -61,15 +66,19 @@ export function PackJobView({
           ]}
         />
         {box.lines.map((line) => (
+          // The part number gets the row's whole width (it never wraps inside itself, P7); − n + sits under it.
           <LineRow
             key={line.lineId}
             name={linePart(line)}
             code={line.part.description}
             status={full(line) ? { text: boxCount(line), icon: 'sent', tone: 'ok' } : { text: boxCount(line), icon: 'waiting', tone: 'neutral' }}
-            quantity={<Quantity total={inBox(line)} name={linePart(line)} onStep={(change) => onStep(line.lineId, change)} onSet={(target) => onSet(line.lineId, target)} />}
-          />
+            quantity={null}>
+            <View className="items-end">
+              <Quantity total={inBox(line)} name={linePart(line)} onStep={(change) => onStep(line.lineId, change)} onSet={(target) => onSet(line.lineId, target)} />
+            </View>
+          </LineRow>
         ))}
-        <Button label="Another order" icon="back" variant="secondary" onPress={onClose} />
+        <Button label="Another order" icon="back" variant="secondary" onPress={() => (total.inBox > 0 ? setLeaving(true) : onClose())} />
       </JobScreen>
       <ParcelsSheet
         key={asking ? 'open' : 'closed'}
@@ -79,6 +88,20 @@ export function PackJobView({
           onPacked(parcels);
         }}
         onClose={() => setAsking(false)}
+      />
+      <ConfirmSheet
+        visible={leaving}
+        title={`Leave ${box.order.order}?`}
+        note={LEAVE_NOTE}
+        confirm={{
+          label: 'Leave',
+          onPress: () => {
+            setLeaving(false);
+            onClose();
+          },
+        }}
+        cancelLabel="Keep packing"
+        onCancel={() => setLeaving(false)}
       />
     </>
   );

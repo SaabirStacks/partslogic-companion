@@ -3,6 +3,7 @@ import { binLabel, SHORT_PICK_REASON_LABELS, CANT_SCAN_REASON_LABELS } from '@/v
 import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 
 import { left, picked, type JobRow, type JobTotals } from './job';
+import type { PickCard } from './scan-card';
 
 // The phone's words for a pick job: the copy deck in PartsLogic's docs/design-checks/phone-picking.md (signed off by
 // the owner, 25 November 2026). The web's words for the same things come from the shared code, so both say them alike.
@@ -73,4 +74,23 @@ export function receiptLine(total: JobTotals): string {
     .join(' · ');
 }
 // A pick PartsLogic refused when the signal came back: "Not picked · SO-000021 · Only 0 in D-01 on the books…".
-export const refusedLine = (order: string, reason: string) => `Not picked · ${unbroken(order)} · ${reason}`;
+// Bin codes and numbers inside PartsLogic's reason ("Only 0 in B-02 …") never break either.
+export const refusedLine = (order: string, reason: string) =>
+  `Not picked · ${unbroken(order)} · ${reason.replace(/\b[A-Z0-9]+(?:-[A-Z0-9]+)+\b/g, unbroken)}`;
+
+// The scan card in a few words, for VoiceOver: "Put with SO-000019, MANN-FILTER C 35 154, 1 of 2".
+export function pickCardWords(card: PickCard): string {
+  switch (card.kind) {
+    case 'added':
+      return `Put with ${card.row.order}, ${card.row.part.brand} ${card.row.part.number}, ${quantityWords(picked(card.row))} of ${quantityWords(card.row.want)}`;
+    case 'spare':
+      return `${spareLine(card.want)}. ${SPARE_BACK}`;
+    case 'not_on_pick':
+      return `${NOT_ON_PICK}: ${card.scanned}`;
+    case 'bin':
+      return 'A bin label. Scan the part';
+    case 'offline':
+    case 'error':
+      return `Not checked: ${card.code}`;
+  }
+}

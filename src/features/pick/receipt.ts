@@ -39,7 +39,8 @@ export function pickReceipt(job: LocalPickJob, items: OutboxItem[]): PickReceipt
   const refused = refusedPicks(job, items);
   const end = mine.find((item) => item.payload.kind === 'pick_job_end' && item.status === 'done');
   // What PartsLogic made of each order once the job ended (endPickJob's answer): To pack, Ready for collection, To pick.
-  const after = end ? ((end.result as { job?: PickJob | null } | null)?.job ?? null) : null;
+  const answer = end ? (end.result as { job?: PickJob | null; pickedUnits?: number; shortUnits?: number } | null) : null;
+  const after = answer?.job ?? null;
   const orders = job.orders.map((order) => {
     const now = after?.orders.find((candidate) => candidate.id === order.id);
     const method = now?.method ?? order.method;
@@ -52,7 +53,12 @@ export function pickReceipt(job: LocalPickJob, items: OutboxItem[]): PickReceipt
   const waiting = mine.some((item) => item.status === 'pending' || item.status === 'sending');
   return {
     state: mine.some((item) => item.status === 'attention') ? 'check' : waiting || !end ? 'sending' : 'sent',
-    line: receiptLine(totals(job)),
+    // What PartsLogic counted once the end is sent, so a refused pick isn't counted as picked (critique B).
+    line: receiptLine(
+      answer && typeof answer.pickedUnits === 'number'
+        ? { ...totals(job), picked: answer.pickedUnits, short: answer.shortUnits ?? totals(job).short }
+        : totals(job),
+    ),
     orders,
     refused,
   };

@@ -32,8 +32,8 @@ export function unbroken(text: string): string {
   return text.replace(/ /g, '\u00a0').replace(/-/g, '\u2011');
 }
 
-// A part as the floor reads it off the label: "MANN-FILTER C 35 154" (the description goes on its own line). A line
-// breaks only between the brand and the number.
+// A part as the floor reads it off the label: "MANN-FILTER C 35 154" (the description goes on its own line). The
+// number never breaks; a long brand may.
 export function partNumber(part: { brand: string; number: string }): string {
-  return [part.brand, part.number].filter(Boolean).map(unbroken).join(' ');
+  return [part.brand, unbroken(part.number)].filter(Boolean).join(' ');
 }

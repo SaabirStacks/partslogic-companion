@@ -55,6 +55,8 @@ describe('the pick receipt', () => {
     });
     const receipt = pickReceipt(local, [item({ status: 'done' }), end]);
     expect(receipt.state).toBe('sent');
+    // PartsLogic's count once the end is sent: a refused pick isn't counted as picked.
+    expect(pickReceipt(local, [item({ status: 'done' }), { ...end, result: { ...(end.result as object), pickedUnits: 0, shortUnits: 0 } }]).line).toBe('0 picked · 2 orders');
     expect(receipt.orders).toEqual([
       { id: 'o19', number: 'SO-000019', stage: 'To pack' },
       { id: 'o21', number: 'SO-000021', stage: 'To pick' },

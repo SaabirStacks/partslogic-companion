@@ -30,7 +30,7 @@ export function ConfirmSheet({
   onCancel: () => void;
 }) {
   return (
-    <Sheet visible={visible} title={title} closeLabel={cancelLabel} onClose={onCancel}>
+    <Sheet visible={visible} title={title} onClose={onCancel}>
       {facts && facts.length > 0 ? <Tally items={facts} /> : null}
       {note ? <Txt variant="caption" ink="text-ink">{note}</Txt> : null}
       <View className="gap-2">

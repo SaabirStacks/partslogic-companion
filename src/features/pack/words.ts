@@ -20,3 +20,5 @@ export const NOT_ON_ORDER = 'Not on this order';
 // Packed's place until every unit is in: "1 of 3 in the box".
 export const boxProgress = (inBox: number, units: number) => `${quantityWords(inBox)} of ${quantityWords(units)} in the box`;
 export const PARCELS_QUESTION = 'How many parcels?';
+// Another order with parts already in the box.
+export const LEAVE_NOTE = 'What’s in the box isn’t counted any more; the order stays To pack.';
