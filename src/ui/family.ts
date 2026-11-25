@@ -2,17 +2,20 @@ import type { WorkflowFamily } from '@/workflows/catalogue';
 
 import type { ColourName } from './palette';
 
-// A job family's colour: teal for inbound, violet for stock control, plum for parts. It marks which kind of
-// job you're in (its tile, its heading on the board, the line under its title) and never means "press" or a
-// state, which keep blue and green, amber and red. Outbound gets its own when it arrives.
+// A job family's colour: teal for inbound, violet for stock control, plum for parts, copper for outbound. It
+// marks which kind of job you're in (its tile, its heading on the board, the line under its title) and never
+// means "press" or a state, which keep blue and green, amber and red.
 export type FamilyColours = { ink: ColourName; soft: ColourName; bg: string; dot: string; text: string; border: string };
 
 const FAMILY: Record<WorkflowFamily, FamilyColours> = {
   inbound: { ink: 'inbound', soft: 'inbound-soft', bg: 'bg-inbound-soft', dot: 'bg-inbound', text: 'text-inbound', border: 'border-inbound' },
   stock: { ink: 'control', soft: 'control-soft', bg: 'bg-control-soft', dot: 'bg-control', text: 'text-control', border: 'border-control' },
   parts: { ink: 'parts', soft: 'parts-soft', bg: 'bg-parts-soft', dot: 'bg-parts', text: 'text-parts', border: 'border-parts' },
-  outbound: { ink: 'action-ink', soft: 'action-soft', bg: 'bg-action-soft', dot: 'bg-action', text: 'text-action-ink', border: 'border-action' },
+  outbound: { ink: 'outbound', soft: 'outbound-soft', bg: 'bg-outbound-soft', dot: 'bg-outbound', text: 'text-outbound', border: 'border-outbound' },
 };
+
+// The board's location pin blue: a place, and a person's role, as settings of the shop rather than a family.
+const PLACE: FamilyColours = { ink: 'action-ink', soft: 'action-soft', bg: 'bg-action-soft', dot: 'bg-action', text: 'text-action-ink', border: 'border-action' };
 
 export function familyColours(family: WorkflowFamily): FamilyColours {
   return FAMILY[family];
@@ -29,9 +32,8 @@ const PICK: Record<PickKind, FamilyColours> = {
   bin: FAMILY.stock,
   sender: FAMILY.inbound,
   brand: FAMILY.parts,
-  // The blue outbound borrows until it has a colour of its own.
-  place: FAMILY.outbound,
-  role: FAMILY.outbound,
+  place: PLACE,
+  role: PLACE,
 };
 
 export function pickColours(kind: PickKind): FamilyColours {

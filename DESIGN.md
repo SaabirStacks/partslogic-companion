@@ -23,7 +23,7 @@ Nothing is coloured for decoration. If something is coloured, it is doing one of
 |---|---|---|
 | **Press this** | Blue `action` #154889 (the app icon's blue) | The main button; a second button is the blue tint `action-soft` with blue words |
 | **A state** | Green `ok`, yellow `warn`, red `stop` | Chips, strips and receipt numbers, always with a word and a symbol |
-| **Which family** | Teal `inbound`, violet `control` (stock), plum `parts` | A job's tile, the rule under its header, its section dot, its progress bar. Never a button |
+| **Which family** | Teal `inbound`, violet `control` (stock), plum `parts`, copper `outbound` #8B5A2B (picking and packing) | A job's tile, the rule under its header, its section dot, its progress bar. Never a button |
 
 Everything else is the counter's neutrals:
 
@@ -43,6 +43,9 @@ rare thing that must be seen across the room. Dark mode keeps the same roles, li
 
 Rules:
 - Never colour alone. A state is a word plus a symbol; a family is also a name and an icon.
+- Copper is a deep brown-orange, kept clear of `warn`'s amber by its darkness and of `stop`'s red by its hue
+  (OKLab ΔE 13.9 to `stop`, as close as plum is to violet). For red-green colour blindness copper and red come
+  together, as plum and teal do, so a family is never the only sign: the tile and banner name the job.
 - A chosen row, chip or tile is marked in the colour of **what** is chosen (`pickColours` in `family.ts`): bins
   violet (their colour on the part card), who goods come from teal, a part's brand plum, a location blue (the
   board's location pin), a person's role blue too. A 2 pt outline, a soft fill and a tick in that colour, so the outline and tick still
