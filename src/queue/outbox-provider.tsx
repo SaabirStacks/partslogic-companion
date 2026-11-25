@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 import { db } from '@/db/database';
 import { useOnline } from '@/lib/network';
 import { useSession } from '@/session/session-provider';
-import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
+import type { QueueItem } from './items';
 
 import { sendQueued } from './handlers';
 import { discardPlan } from './discard';

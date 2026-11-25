@@ -4,17 +4,20 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { CountStore, type BinCount, type CountWorkflow, type RunWorkflow } from '@/features/count/count-store';
 import { runCountText, runProgress } from '@/features/count/run-progress';
 import { RunStore, type CountRun } from '@/features/count/run-store';
+import { totals } from '@/features/pick/job';
+import { PickStore } from '@/features/pick/pick-store';
 import { DeliveryStore } from '@/features/receive/delivery-store';
 import { clock, plural } from '@/lib/format';
 import { liveWorkflow } from '@/workflows/catalogue';
 import { visibleLines } from '@/vendor/partslogic/shared/bin-session';
 
 // Work left open on this phone: a delivery still being received, a bin still being counted, a stock take
-// or opening-stock run paused part way (its bin being counted, if any, is part of it).
+// or opening-stock run paused part way (its bin being counted, if any, is part of it), a pick job.
 export type OpenWork =
   | { kind: 'delivery'; from: string | null; units: number; startedAt: string }
   | { kind: 'count'; workflow: CountWorkflow; bin: string; units: number; startedAt: string }
-  | { kind: 'run'; runId: string; workflow: RunWorkflow; counted: number; total: number; counting: string | null; startedAt: string };
+  | { kind: 'run'; runId: string; workflow: RunWorkflow; counted: number; total: number; counting: string | null; startedAt: string }
+  | { kind: 'pick'; picked: number; units: number; startedAt: string };
 
 // A run's resume row, from its counts on this phone.
 export function runWork(run: CountRun, counts: BinCount[]): OpenWork {
@@ -26,7 +29,12 @@ export function runWork(run: CountRun, counts: BinCount[]): OpenWork {
 export async function readOpenWork(database: SQLiteDatabase, userId: string): Promise<OpenWork[]> {
   const deliveries = new DeliveryStore(database);
   const counts = new CountStore(database);
-  const [delivery, count, runs] = await Promise.all([deliveries.open(userId), counts.open(userId), new RunStore(database).allOpen(userId)]);
+  const [delivery, count, runs, pick] = await Promise.all([
+    deliveries.open(userId),
+    counts.open(userId),
+    new RunStore(database).allOpen(userId),
+    new PickStore(database).open(userId),
+  ]);
   const work: OpenWork[] = [];
   if (delivery) {
     const lines = await deliveries.lines(delivery.documentId);
@@ -43,6 +51,10 @@ export async function readOpenWork(database: SQLiteDatabase, userId: string): Pr
     const units = visibleLines(count.session).reduce((sum, line) => sum + line.qty, 0);
     work.push({ kind: 'count', workflow: count.workflow, bin: count.binCode, units, startedAt: count.startedAt });
   }
+  if (pick) {
+    const { picked, units } = totals(pick);
+    work.push({ kind: 'pick', picked, units, startedAt: pick.startedAt });
+  }
   return work;
 }
 
@@ -58,6 +70,9 @@ export function resumeText(work: OpenWork): { title: string; detail: string; hre
       detail: work.counting ? `Counting ${work.counting} · ${progress}` : `${progress} · started ${clock(work.startedAt)}`,
       href: { pathname: '/count', params: { purpose: work.workflow } },
     };
+  }
+  if (work.kind === 'pick') {
+    return { title: 'Pick job', detail: `${work.picked} of ${plural(work.units, 'unit', 'units')} · started ${clock(work.startedAt)}`, href: '/pick' };
   }
   const detail = `${plural(work.units, 'unit', 'units')} · started ${clock(work.startedAt)}`;
   return work.kind === 'delivery'

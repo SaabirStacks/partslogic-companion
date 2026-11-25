@@ -14,6 +14,9 @@ export const ICONS = {
   add: symbol('plus.square.fill', 'add_box'),
   stockTake: symbol('checklist', 'checklist'),
   opening: symbol('flag.fill', 'flag'),
+  // Outbound: picking customers' orders off the shelves, packing deliveries for the van.
+  pick: symbol('basket.fill', 'shopping_basket'),
+  pack: symbol('box.truck.fill', 'local_shipping'),
   sync: symbol('arrow.triangle.2.circlepath', 'sync'),
   account: symbol('person.crop.circle.fill', 'account_circle'),
   // Scanning
@@ -36,6 +39,7 @@ export const ICONS = {
   retry: symbol('arrow.clockwise', 'refresh'),
   chevron: symbol('chevron.down', 'expand_more'),
   forward: symbol('chevron.right', 'chevron_right'),
+  more: symbol('ellipsis.circle', 'more_horiz'),
   back: symbol('chevron.left', 'arrow_back'),
   signOut: symbol('rectangle.portrait.and.arrow.right', 'logout'),
   expand: symbol('arrow.up.left.and.arrow.down.right', 'open_in_full'),

@@ -1,4 +1,4 @@
-import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
+import type { QueueItem } from '../items';
 import { DataError } from '@/vendor/partslogic/shared/errors';
 
 import { backoffMs, runOutbox } from '../runner';

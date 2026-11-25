@@ -26,7 +26,7 @@ export function familyColours(family: WorkflowFamily): FamilyColours {
 // plum, and a place (a location) takes the blue of the board's location pin. The outline and tick stay, so
 // colour is never the only sign of a choice. A person's role takes the same blue, as a setting of the
 // shop rather than a family of jobs.
-export type PickKind = 'bin' | 'sender' | 'brand' | 'place' | 'role';
+export type PickKind = 'bin' | 'sender' | 'brand' | 'place' | 'role' | 'reason';
 
 const PICK: Record<PickKind, FamilyColours> = {
   bin: FAMILY.stock,
@@ -34,6 +34,8 @@ const PICK: Record<PickKind, FamilyColours> = {
   brand: FAMILY.parts,
   place: PLACE,
   role: PLACE,
+  // Why a part can't be scanned or picked: a choice in a form, not a thing with a colour of its own.
+  reason: PLACE,
 };
 
 export function pickColours(kind: PickKind): FamilyColours {

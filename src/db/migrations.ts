@@ -105,4 +105,15 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE delivery_lines ADD COLUMN part_id INTEGER;
   `,
+  // 9: pick jobs (S5b, src/features/pick/pick-store.ts): the orders PartsLogic claimed for this picker and each row's
+  // count so far, as a LocalPickJob in JSON, so a job carries on without signal and after the app closes.
+  `
+  CREATE TABLE pick_jobs (
+    job_id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    job TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    ended_at TEXT
+  );
+  `,
 ];
