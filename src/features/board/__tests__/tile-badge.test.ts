@@ -28,3 +28,16 @@ describe('tileBadge', () => {
     expect(tileBadge('put-away', [{ kind: 'count', workflow: 'put-away', bin: 'C-03', units: 1, startedAt }], 24)).toMatchObject({ label: 'Counting' });
   });
 });
+
+describe('the outbound tiles', () => {
+  it('count units to pick and orders to pack, and a pick job open on this phone', () => {
+    const outbound = { toPick: 1240, toPack: 2 };
+    expect(tileBadge('pick', [], null, outbound)).toMatchObject({ label: '1,240 units', tone: 'action' });
+    expect(tileBadge('pack', [], null, outbound)).toMatchObject({ label: '2 orders', tone: 'action' });
+    expect(tileBadge('pack', [], null, { toPick: 1, toPack: 1 })).toMatchObject({ label: '1 order' });
+    expect(tileBadge('pick', [], null, { toPick: 0, toPack: 0 })).toBeNull();
+    expect(tileBadge('pick', [], null)).toBeNull();
+    const open = { kind: 'pick', picked: 6, units: 14, startedAt: '2026-11-25T08:00:00Z' } as const;
+    expect(tileBadge('pick', [open], null, outbound)).toMatchObject({ label: '6 of 14', tone: 'warn' });
+  });
+});

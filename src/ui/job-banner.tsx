@@ -18,7 +18,8 @@ export function JobBanner({
 }: {
   title: string;
   detail?: string | null;
-  size?: 'title' | 'headline';
+  // display: the one thing to read from across the aisle (the bin a pick goes to next).
+  size?: 'title' | 'headline' | 'display';
   family?: WorkflowFamily;
 }) {
   return (
@@ -26,7 +27,7 @@ export function JobBanner({
       accessible
       accessibilityRole="header"
       className={cx('gap-0.5 bg-surface px-4 py-2.5', family ? cx('border-b-[3px]', familyColours(family).border) : 'border-b border-edge')}>
-      <Txt variant={size} numberOfLines={1} className="font-extrabold">
+      <Txt variant={size} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} className="font-extrabold">
         {title}
       </Txt>
       {detail ? (

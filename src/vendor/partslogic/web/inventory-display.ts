@@ -31,6 +31,15 @@ export function formatDate(value: string | null | undefined): string {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(date)
 }
 
+// "28 Nov" for a day this year, "28 Nov 2025" otherwise: due dates and counts in a tight space.
+export function formatDay(value: string | null | undefined, today: Date = new Date()): string {
+  if (!value) return "—"
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const sameYear = date.getFullYear() === today.getFullYear()
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) }).format(date)
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return "—"
   const date = new Date(value)
@@ -110,7 +119,7 @@ const FIELD_LABELS: Record<string, string> = {
   description: "Description",
   commodity_code: "Commodity code",
   country_of_origin: "Country of origin",
-  weight_kg: "Weight (kg)",
+  weight_kg: "Weight (kg)", // the value is the number alone: the unit is said once, here
   supplier_rank: "Supplier rank",
   example_vehicle: "Example vehicle",
   source_category: "Source category",
@@ -127,9 +136,21 @@ const FIELD_LABELS: Record<string, string> = {
   restricted_code: "Restricted barcode",
 }
 
-// spec_thread_size → "Thread size"; known fields get their own wording.
-export function fieldLabel(field: string): string {
-  const known = FIELD_LABELS[field]
+// The same fields said without the provider, for everyone but the developer with Show sources on (the part window;
+// owner, 24 November 2026).
+const NEUTRAL_LABELS: Record<string, string> = {
+  market_price: "Online retail price",
+  market_currency: "Online price currency",
+  autodoc_url: "Product page",
+  autodoc_product_id: "Product id",
+  autodoc_generic_id: "Product type id",
+  autodoc_brand_no: "Brand id",
+  compatibility_summary: "Fits (online summary)",
+}
+
+// spec_thread_size → "Thread size"; known fields get their own wording. `sources: false` leaves the provider out.
+export function fieldLabel(field: string, { sources = true }: { sources?: boolean } = {}): string {
+  const known = (!sources && NEUTRAL_LABELS[field]) || FIELD_LABELS[field]
   if (known) return known
   const words = field.replace(/^spec_/, "").replace(/_(\d+)$/, " $1").replace(/_/g, " ").trim()
   return words.charAt(0).toUpperCase() + words.slice(1)

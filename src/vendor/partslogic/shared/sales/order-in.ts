@@ -237,6 +237,52 @@ function readPair(value: Json | undefined): { id: string; number: string } | nul
   return row && id ? { id, number: readString(row.number) ?? '' } : null;
 }
 
+// The suppliers that list a part, as Order in and Customer lines read them.
+export function readOrderInSuppliers(value: Json | undefined): OrderInSupplier[] {
+  return readArray(value).flatMap((entry) => {
+    const supplier = readRecord(entry);
+    const sourceId = readNumber(supplier?.source_id);
+    if (!supplier || sourceId == null) return [];
+    const waiting = readRecord(supplier.waiting);
+    const waitingId = readString(waiting?.id);
+    return [
+      {
+        sourceId,
+        name: readString(supplier.name) ?? '',
+        preferred: readBoolean(supplier.preferred) ?? false,
+        offer: readBoolean(supplier.offer) ?? false,
+        onHold: readBoolean(supplier.on_hold) ?? false,
+        delivery: readOfferDelivery(supplier.delivery),
+        missedCutoffAt: readString(supplier.missed_cutoff_at),
+        draft: readPair(supplier.draft),
+        waiting: waiting && waitingId ? { id: waitingId, number: readString(waiting.number) ?? '', approval: readString(waiting.approval) ?? 'requested' } : null,
+        cost: readNumber(supplier.cost),
+      },
+    ];
+  });
+}
+
+// Lines typed on a purchase order by hand that name the sales order.
+export function readTypedPurchaseLines(value: Json | undefined): TypedPurchaseLine[] {
+  return readArray(value).flatMap((entry) => {
+    const typed = readRecord(entry);
+    const poLineId = readNumber(typed?.po_line_id);
+    const poId = readString(typed?.po_id);
+    if (!typed || poLineId == null || !poId) return [];
+    return [
+      {
+        poLineId,
+        poId,
+        poNumber: readString(typed.po_number) ?? '',
+        status: readString(typed.status) ?? 'draft',
+        qty: readNumber(typed.qty) ?? 0,
+        free: readNumber(typed.free) ?? 0,
+        reference: readString(typed.reference),
+      },
+    ];
+  });
+}
+
 export function readOrderInOptions(value: Json | undefined): OrderInOptions {
   const body = readRecord(value) ?? {};
   const location = readRecord(body.location);
@@ -256,45 +302,9 @@ export function readOrderInOptions(value: Json | undefined): OrderInOptions {
           description: readString(row.description),
           units: readNumber(row.units) ?? 0,
           offerSourceId: readNumber(row.offer_source_id),
-          suppliers: readArray(row.suppliers).flatMap((entry) => {
-            const supplier = readRecord(entry);
-            const sourceId = readNumber(supplier?.source_id);
-            if (!supplier || sourceId == null) return [];
-            const waiting = readRecord(supplier.waiting);
-            const waitingId = readString(waiting?.id);
-            return [
-              {
-                sourceId,
-                name: readString(supplier.name) ?? '',
-                preferred: readBoolean(supplier.preferred) ?? false,
-                offer: readBoolean(supplier.offer) ?? false,
-                onHold: readBoolean(supplier.on_hold) ?? false,
-                delivery: readOfferDelivery(supplier.delivery),
-                missedCutoffAt: readString(supplier.missed_cutoff_at),
-                draft: readPair(supplier.draft),
-                waiting: waiting && waitingId ? { id: waitingId, number: readString(waiting.number) ?? '', approval: readString(waiting.approval) ?? 'requested' } : null,
-                cost: readNumber(supplier.cost),
-              },
-            ];
-          }),
+          suppliers: readOrderInSuppliers(row.suppliers),
           defaultSourceId: readNumber(row.default_source_id),
-          typed: readArray(row.typed).flatMap((entry) => {
-            const typed = readRecord(entry);
-            const poLineId = readNumber(typed?.po_line_id);
-            const poId = readString(typed?.po_id);
-            if (!typed || poLineId == null || !poId) return [];
-            return [
-              {
-                poLineId,
-                poId,
-                poNumber: readString(typed.po_number) ?? '',
-                status: readString(typed.status) ?? 'draft',
-                qty: readNumber(typed.qty) ?? 0,
-                free: readNumber(typed.free) ?? 0,
-                reference: readString(typed.reference),
-              },
-            ];
-          }),
+          typed: readTypedPurchaseLines(row.typed),
         },
       ];
     }),
@@ -401,7 +411,7 @@ function windowWords(timing: Expected): string {
 }
 
 // When a draft's units would arrive if it were placed in time: "tomorrow 08:30–10:30". Null without delivery times.
-function arrivesWords(delivery: OfferDelivery | null, now: string): string | null {
+export function arrivesWords(delivery: OfferDelivery | null, now: string): string | null {
   if (!delivery?.arrivesOn) return null;
   const window = delivery.arrivesFrom && delivery.arrivesBy ? ` ${delivery.arrivesFrom}–${delivery.arrivesBy}` : delivery.arrivesFrom ? ` from ${delivery.arrivesFrom}` : '';
   return `${dayWords(delivery.arrivesOn, now)}${window}`;
@@ -506,10 +516,18 @@ export function orderInRunWords(supplier: Pick<OrderInSupplier, 'delivery' | 'mi
   return deliveryWords(supplier.delivery, supplier.missedCutoffAt, now);
 }
 
-// Where the parts go: "joins PO-000007", "starts a draft", "starts a draft: PO-000007 is waiting for approval".
+// A supplier in the supplier menu (Order in and Customer lines): "Order by 16:00 · arrives tomorrow 08:30–10:30 ·
+// joins draft PO-000015", or "Missed 12:00 today · arrives tomorrow 16:00–18:00 · starts a draft".
+export function supplierMenuWords(supplier: Pick<OrderInSupplier, 'delivery' | 'missedCutoffAt' | 'draft' | 'waiting'>, now: string): string {
+  const arrives = arrivesWords(supplier.delivery, now);
+  const run = supplier.missedCutoffAt && arrives ? `Missed ${clockTime(supplier.missedCutoffAt)} today · arrives ${arrives}` : orderInRunWords(supplier, now);
+  return `${run} · ${orderInDestinationWords(supplier)}`;
+}
+
+// Where the parts go: "joins draft PO-000007", "starts a draft", "starts a draft: PO-000007 is awaiting approval".
 export function orderInDestinationWords(supplier: Pick<OrderInSupplier, 'draft' | 'waiting'>): string {
-  if (supplier.draft) return `joins ${supplier.draft.number}`;
-  if (supplier.waiting) return `starts a draft: ${supplier.waiting.number} is ${supplier.waiting.approval === 'approved' ? 'approved and not placed' : 'waiting for approval'}`;
+  if (supplier.draft) return `joins draft ${supplier.draft.number}`;
+  if (supplier.waiting) return `starts a draft: ${supplier.waiting.number} is ${supplier.waiting.approval === 'approved' ? 'approved and not placed' : 'awaiting approval'}`;
   return 'starts a draft';
 }
 

@@ -34,7 +34,17 @@ export type InventoryQuery = {
   offset: number;
 };
 
-export type StockLine = { binId: number; place: string; qty: number };
+// One bin holding the part. place is "LOCATION/BIN"; code, location and system come with the Stock list's rows (a
+// system bin is the location's Unbinned or Collection shelf, or Unassigned with no location).
+export type StockLine = {
+  binId: number;
+  place: string;
+  qty: number;
+  code?: string | null;
+  locationId?: number | null;
+  location?: string | null;
+  system?: boolean;
+};
 
 // How the part is priced: sellPrice is what people pay at retail (typed, or worked out from the margin rules).
 export type ItemPricing = {
@@ -79,7 +89,14 @@ export type InventoryRow = {
   onHand: number;
   // Units set aside for confirmed sales orders: on hand less this is what can be sold.
   setAside: number;
+  // Reorder's rule (purchasing.reorder_lines): a place's free stock, with what is on order and on drafts, is at or
+  // below its minimum.
   belowReorder: boolean;
+  // Still due on open purchase orders, the first date one is due (the date the supplier last gave, else the order's
+  // expected date) and how many are past their date. The Stock list's rows say these; other lists leave 0 and null.
+  onOrder: number;
+  onOrderDue: string | null;
+  onOrderLate: number;
   // The cheapest current supplier price.
   bestCost: number | null;
   bestCurrency: string | null;
@@ -102,6 +119,42 @@ export type InventoryRow = {
   // Listed as an alternative to what was searched, and why (the Stock list's search; null for a direct match).
   match?: StockMatch | null;
 };
+
+// What can be sold: on hand less what is set aside for orders, never below none.
+export function availableOf(row: Pick<InventoryRow, 'onHand' | 'setAside'>): number {
+  return Math.max(row.onHand - row.setAside, 0);
+}
+
+// A place as people say it, from its system form "LEEDS/UNBINNED" (location code / bin code): "LEEDS · Unbinned",
+// "LEEDS · B-01"; just the bin's word with `withLocation: false` (where the location is already said, as a group
+// heading). The place with no location, UNASSIGNED, reads "Unassigned". Every bin named on screen goes through this or
+// binWord, never the raw code (RF3).
+export function placeWords(place: string, { withLocation = true }: { withLocation?: boolean } = {}): string {
+  if (place === 'UNASSIGNED') return 'Unassigned';
+  const at = place.indexOf('/');
+  if (at < 0) return place;
+  const location = place.slice(0, at);
+  const code = place.slice(at + 1);
+  const bin = code === 'UNBINNED' ? 'Unbinned' : code === 'COLLECTION' ? 'Collection' : code;
+  return withLocation ? `${location} · ${bin}` : bin;
+}
+
+// How many more are set aside for orders than are on hand ("1 short"): an order that can't all be picked. 0 when
+// what is on hand covers them, and 0 with nothing set aside (on hand below zero is a count to fix, not a shortfall).
+export function shortOf(row: Pick<InventoryRow, 'onHand' | 'setAside'>): number {
+  return Math.max(row.setAside - Math.max(row.onHand, 0), 0);
+}
+
+// A part's stock badge (docs/STOCK_STATUSES.md, docs/design-checks/status-colours.md): Out when a part in the range has
+// none available (on hand less set aside, the figure the Stock column leads with and the Out of stock filter reads),
+// Reorder when Reorder's rule says it needs more, else none. The Stock list and the part window both use it, so the
+// two never disagree.
+export function stockBadgeWord(
+  row: Pick<InventoryRow, 'isStocked' | 'onHand' | 'belowReorder'> & { setAside?: number },
+): 'Out' | 'Reorder' | null {
+  if (row.isStocked && row.onHand - (row.setAside ?? 0) <= 0) return 'Out';
+  return row.belowReorder ? 'Reorder' : null;
+}
 
 // Why a row is an alternative to a searched part: how it relates, the OE number they share (via) and the part it
 // is an alternative of.
@@ -279,6 +332,9 @@ export function readInventoryRow(row: JsonRecord | null): InventoryRow | null {
     onHand: readNumber(row.on_hand) ?? 0,
     setAside: readNumber(row.set_aside) ?? 0,
     belowReorder: readBoolean(row.below_reorder) ?? false,
+    onOrder: readNumber(row.on_order) ?? 0,
+    onOrderDue: readString(row.on_order_due),
+    onOrderLate: readNumber(row.on_order_late) ?? 0,
     bestCost: readNumber(row.best_cost),
     bestCurrency: readString(row.best_currency),
     bestSupplierId: readNumber(row.best_source_id),
@@ -293,7 +349,13 @@ export function readInventoryRow(row: JsonRecord | null): InventoryRow | null {
       const binId = readNumber(line?.bin_id);
       const place = readString(line?.place);
       const qty = readNumber(line?.qty);
-      return binId == null || !place || qty == null ? [] : [{ binId, place, qty }];
+      if (binId == null || !place || qty == null) return [];
+      const stockLine: StockLine = { binId, place, qty };
+      if (line?.code !== undefined) stockLine.code = readString(line.code);
+      if (line?.location_id !== undefined) stockLine.locationId = readNumber(line.location_id);
+      if (line?.location !== undefined) stockLine.location = readString(line.location);
+      if (line?.system !== undefined) stockLine.system = readBoolean(line.system) ?? false;
+      return [stockLine];
     }),
     updatedAt: readString(row.updated_at),
     enrichedAt: readString(row.enriched_at),

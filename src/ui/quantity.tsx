@@ -9,7 +9,7 @@ import { useColour } from './theme';
 function Step({ label, icon, onPress, disabled }: { label: string; icon: 'minus' | 'plus'; onPress: () => void; disabled?: boolean }) {
   return (
     <PressableCard haptic="tick" accessibilityLabel={label} disabled={disabled} onPress={onPress} className="h-14 w-14 items-center justify-center">
-      <Icon name={icon} size={22} />
+      <Icon name={icon} size={22} colour={disabled ? 'quiet-ink' : undefined} />
     </PressableCard>
   );
 }
@@ -21,11 +21,16 @@ export function Quantity({
   name,
   onStep,
   onSet,
+  min = 0,
+  max,
 }: {
   total: number;
   name: string;
   onStep: (change: 1 | -1) => void;
   onSet: (target: number) => void;
+  // The bounds the caller keeps to: a step past them is drawn disabled (parcels start at 1).
+  min?: number;
+  max?: number;
 }) {
   const colourOf = useColour();
   const [editing, setEditing] = useState(false);
@@ -56,7 +61,7 @@ export function Quantity({
 
   return (
     <View className="flex-row items-center gap-1">
-      <Step label={`One fewer ${name}`} icon="minus" onPress={() => onStep(-1)} disabled={total <= 0} />
+      <Step label={`One fewer ${name}`} icon="minus" onPress={() => onStep(-1)} disabled={total <= min} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${total} of ${name}. Type a total`}
@@ -67,7 +72,7 @@ export function Quantity({
         className="h-14 min-w-12 items-center justify-center px-1">
         <Ticking value={total} origin="center" variant="headline" className="font-extrabold" />
       </Pressable>
-      <Step label={`One more ${name}`} icon="plus" onPress={() => onStep(1)} />
+      <Step label={`One more ${name}`} icon="plus" onPress={() => onStep(1)} disabled={max !== undefined && total >= max} />
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { classifyQueueError } from '@/vendor/partslogic/shared/errors';
-import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
+import type { QueueItem } from './items';
 
 import type { OutboxStore } from './store';
 

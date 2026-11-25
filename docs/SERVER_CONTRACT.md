@@ -13,7 +13,7 @@ To check a PartsLogic branch, after its generated types and schema snapshot are 
 node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 ```
 
-## Functions (35)
+## Functions (43)
 
 | Function | Arguments the app sends | Used by |
 |---|---|---|
@@ -36,11 +36,19 @@ node scripts/check-server-contract.mjs --from ../PartsLogic --ref <branch>
 | `part_alternatives_with_stock` | `p_part` | `features/part/part-view.tsx` |
 | `part_detail` | `p_part` | `features/move/use-move.ts`, `features/part/load-part.ts` |
 | `people` | none | `features/people/use-people.ts` |
+| `pick_job` | `p_job` | `features/pick/pick-queue.ts` |
+| `pick_job_end` | `p` | `features/pick/pick-queue.ts` |
+| `pick_job_start` | `p` | `features/pick/use-pick-job.ts` |
+| `pick_job_status` | `p` | `app/index.tsx`, `features/pick/use-pick-job.ts` |
+| `pick_job_unscan` | `p` | `features/pick/pick-queue.ts` |
+| `picking_list` | `p` | `features/pack/use-pack.ts` |
 | `quick_add_part` | `p` | `features/quick-add/use-quick-add.ts`, `queue/handlers.ts` |
 | `record_counts` | `p_bin`, `p_lines`, `p_stocktake` | `queue/handlers.ts` |
 | `record_receipt_lines` | `p_device`, `p_document`, `p_lines`, `p_location` | `queue/handlers.ts` |
 | `remove_person_access` | `p_user_id` | `app/people/[id].tsx` |
 | `resolve_scan` | `p_code`, `p_location` | `scan/resolve.ts` |
+| `sales_order_pack` | `p` | `features/pack/pack-queue.ts` |
+| `sales_order_pick` | `p` | `features/pick/pick-queue.ts` |
 | `scan_index` | `p_after`, `p_limit` | `scan/scan-index.ts` |
 | `scan_index_version` | none | `scan/scan-index.ts` |
 | `search_parts` | `max_results`, `q` | `features/lookup/use-look-up.ts` |

@@ -19,6 +19,7 @@ export {
 } from './activity';
 export {
   COUNT_REQUEST_REASON_LABELS,
+  countRequestLine,
   countRequestReason,
   listCountRequests,
   readCountRequests,

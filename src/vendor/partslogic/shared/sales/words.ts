@@ -1,5 +1,6 @@
 import type { EnquiryChannel } from './channels';
 import type { EnquiryDetail, EnquiryRequest, EnquiryRow, EnquiryStatus, EnquiryStep, EnquiryView, NextMove, RequestOutcome, RequestState } from './enquiries';
+import type { BadgeTone, StatusState } from '../core/status';
 import type { EnquiryOffer, FoundPart, FoundSupplier, OfferDelivery, PartFit, PartMatch } from './offers';
 
 // The words the enquiry screens use (DESIGN.md, "Sales: enquiries and orders"). Pure: the database says where an
@@ -26,17 +27,18 @@ export const ENQUIRY_STATUS_LABELS: Record<EnquiryStatus, string> = {
   duplicate: 'Duplicate',
 };
 
-// The record pill each status takes: blue for work under way, green only for a settled sale.
-export const ENQUIRY_STATUS_TONES: Record<EnquiryStatus, 'neutral' | 'busy' | 'done'> = {
-  new: 'neutral',
-  in_progress: 'busy',
-  to_source: 'busy',
-  quoted: 'neutral',
-  waiting_supplier: 'neutral',
-  ordered: 'done',
-  lost: 'neutral',
-  no_reply: 'neutral',
-  duplicate: 'neutral',
+// Each status's badge state (docs/design-checks/status-colours.md): our move blue, waiting on the customer or a
+// supplier amber, a settled sale green, an enquiry that went nowhere grey.
+export const ENQUIRY_STATUS_STATES: Record<EnquiryStatus, StatusState> = {
+  new: 'active',
+  in_progress: 'active',
+  to_source: 'active',
+  quoted: 'waiting',
+  waiting_supplier: 'waiting',
+  ordered: 'ready',
+  lost: 'ended',
+  no_reply: 'ended',
+  duplicate: 'ended',
 };
 
 export const NEXT_MOVE_LABELS: Record<NextMove, { label: string; meaning: string }> = {
@@ -65,6 +67,17 @@ const LONDON = 'Europe/London';
 const dayKey = (at: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: LONDON }).format(at);
 const clock = (at: Date) =>
   new Intl.DateTimeFormat('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(at);
+
+// Days from today (in London) to a date: 0 today, 1 tomorrow, -2 two days ago.
+export function daysFromToday(date: string, now: string): number {
+  return Math.round((Date.parse(date.slice(0, 10)) - Date.parse(dayKey(new Date(now)))) / 86_400_000);
+}
+
+// A day near today in words: "today", "yesterday", "tomorrow", else "Mon 16 Nov".
+export function nearDayWords(date: string, now: string): string {
+  const days = daysFromToday(date, now);
+  return days === 0 ? 'today' : days === -1 ? 'yesterday' : days === 1 ? 'tomorrow' : dateWords(date.slice(0, 10));
+}
 
 // "today 15:00", "tomorrow 09:00", "yesterday 16:40", "Wed 18 Nov 09:00", and the year when it is not this one.
 export function dayAndTime(at: string, now: string): string {
@@ -325,17 +338,29 @@ export const REQUEST_STATE_LABELS: Record<RequestState, string> = {
   no_reply: 'No reply',
 };
 
+
+// A request's badge state: our move until the quote goes, waiting on the customer once it has, green once ordered.
+export const REQUEST_STATE_STATES: Record<RequestState, StatusState> = {
+  new: 'active',
+  to_source: 'active',
+  offered: 'active',
+  quoted: 'waiting',
+  accepted: 'active',
+  ordered: 'ready',
+  declined: 'ended',
+  could_not_supply: 'ended',
+  no_reply: 'ended',
+};
 // How well a part fits, with its evidence for the line beneath. Only "Fits" is green; "Does not fit" only ever
 // means the catalogue was told so. "Other years" is a part listed for the vehicle, but not for the year this car
 // was made: worth a check, not a block.
-export const PART_FIT_WORDS: Record<PartFit, { label: string; evidence: string; tone: 'done' | 'neutral' | 'blocked' }> = {
-  fits: { label: 'Fits', evidence: 'Listed for this vehicle', tone: 'done' },
-  via_alternative: { label: 'Fits via an alternative', evidence: 'Same OE number as a part that fits', tone: 'neutral' },
-  other_years: { label: 'Listed for other years', evidence: 'Not for the year of this car', tone: 'neutral' },
-  no_data: { label: 'No vehicle data', evidence: 'No vehicles listed for this part', tone: 'neutral' },
+export const PART_FIT_WORDS: Record<PartFit, { label: string; evidence: string; tone: BadgeTone }> = {
+  fits: { label: 'Fits', evidence: 'Listed for this vehicle', tone: 'ready' },
+  via_alternative: { label: 'Fits via an alternative', evidence: 'Same OE number as a part that fits', tone: 'plain' },
+  other_years: { label: 'Listed for other years', evidence: 'Not for the year of this car', tone: 'plain' },
+  no_data: { label: 'No vehicle data', evidence: 'No vehicles listed for this part', tone: 'plain' },
   does_not_fit: { label: 'Does not fit', evidence: 'Marked as not fitting this vehicle', tone: 'blocked' },
 };
-
 // "£38.40". Money is shown to the penny.
 export function moneyWords(value: number | null | undefined, currency = 'GBP'): string {
   if (value == null || Number.isNaN(value)) return '';

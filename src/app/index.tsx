@@ -16,6 +16,7 @@ import { useSession } from '@/session/session-provider';
 import { roleAtLeast } from '@/vendor/partslogic/shared/members';
 import { PreviewStrip } from '@/features/developer/preview-strip';
 import { unlocatedStockSummary } from '@/vendor/partslogic/shared/floor';
+import { getPickJobStatus } from '@/vendor/partslogic/shared/sales/pick-jobs';
 import { boardFor } from '@/workflows/catalogue';
 
 // The job board, home for everyone signed in.
@@ -33,7 +34,12 @@ export default function Board() {
   const unbinned = useRemote(online && locationId !== null && roleAtLeast(role, 'counter') ? `unbinned:${locationId}` : null, () =>
     unlocatedStockSummary(supabase, locationId),
   );
-  const { reload } = unbinned;
+  // Units to pick and orders to pack here, for Pick's and Pack's tiles.
+  const outbound = useRemote(online && roleAtLeast(role, 'counter') ? `pick-status:${locationId}` : null, () =>
+    getPickJobStatus(supabase, { locationId }),
+  );
+  const reloadUnbinned = unbinned.reload;
+  const reloadOutbound = outbound.reload;
   // A viewer's board lists the parts looked up lately (Look up keeps them); read again on each return.
   const [recent, setRecent] = useState(() => recentPartsPref.get() ?? []);
   const firstFocus = useRef(true);
@@ -44,8 +50,9 @@ export default function Board() {
         firstFocus.current = false;
         return;
       }
-      reload();
-    }, [reload]),
+      reloadUnbinned();
+      reloadOutbound();
+    }, [reloadUnbinned, reloadOutbound]),
   );
 
   return (
@@ -54,6 +61,7 @@ export default function Board() {
       notice={<PreviewStrip />}
       openWork={openWork}
       unbinned={unbinned.data?.qty ?? null}
+      outbound={outbound.data ? { toPick: outbound.data.toPick, toPack: outbound.data.toPack } : null}
       update={update}
       location={location?.name ?? null}
       sync={syncState({ waiting, needsAttention, online })}
@@ -64,7 +72,14 @@ export default function Board() {
       onAccount={() => router.push('/account')}
       recent={recent.slice(0, 6)}
       onPart={(part) => router.push({ pathname: '/part/[id]', params: { id: String(part.partId) } })}
-      onRefresh={online ? reload : undefined}
+      onRefresh={
+        online
+          ? () => {
+              reloadUnbinned();
+              reloadOutbound();
+            }
+          : undefined
+      }
       refreshing={unbinned.loading && !!unbinned.data}
     />
   );

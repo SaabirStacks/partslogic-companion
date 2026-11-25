@@ -14,6 +14,12 @@ import { isSupplierStatus, type SupplierStatus } from './suppliers';
 
 export const SUPPLIER_CREDIT_STATUSES = ['draft', 'recorded'] as const;
 export type SupplierCreditStatus = (typeof SUPPLIER_CREDIT_STATUSES)[number];
+// A credit note's badge word (owner, 23 November 2026): Draft, then To review while the accounts need to look (as a
+// bill), then Recorded. One badge, never two side by side. The state comes from STATUS_WORD_STATES.
+export function creditBadgeWord(status: SupplierCreditStatus, needsReview: boolean): 'Draft' | 'To review' | 'Recorded' {
+  if (status === 'draft') return 'Draft';
+  return needsReview ? 'To review' : 'Recorded';
+}
 
 export function isSupplierCreditStatus(value: unknown): value is SupplierCreditStatus {
   return typeof value === 'string' && (SUPPLIER_CREDIT_STATUSES as readonly string[]).includes(value);

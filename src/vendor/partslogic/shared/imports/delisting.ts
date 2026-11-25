@@ -61,7 +61,7 @@ export function readDelisting(value: Json | undefined): Delisting | null {
   return {
     batchId,
     supplierId,
-    file: readString(record.file) ?? 'Price list',
+    file: readString(record.file) ?? 'Price sheet',
     state: readState(record.state),
     scope: readListScope(record.scope),
     brands: Array.isArray(record.brands) ? readStrings(record.brands) : null,
@@ -127,7 +127,7 @@ export async function settleDelisting(supabase: Client, batchId: string, delist:
 // What a sheet covers, in words, for the wizard, the report and the supplier's Price sheets tab.
 export const LIST_SCOPE_LABELS: Record<ListScope, string> = {
   update: 'Update',
-  full_supplier: 'Full price list',
+  full_supplier: 'Full price sheet',
   full_brands: 'Full list for its brands',
 };
 

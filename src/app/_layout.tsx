@@ -126,6 +126,8 @@ function RootStack({ scheme }: { scheme: Scheme }) {
         <Stack.Screen name="account" options={{ ...SHEET, sheetAllowedDetents: [0.6, 1] }} />
         <Stack.Screen name="location" options={{ ...SHEET, sheetAllowedDetents: [0.5, 1] }} />
         <Stack.Screen name="move" options={jobHeader(scheme, liveWorkflow('transfer').label)} />
+        <Stack.Screen name="pick" options={jobHeader(scheme, liveWorkflow('pick').label)} />
+        <Stack.Screen name="pack" options={jobHeader(scheme, liveWorkflow('pack').label)} />
         <Stack.Screen name="quick-add" options={jobHeader(scheme, liveWorkflow('add-part').label)} />
         {/* Opened from the Account sheet, so they come up over it as their own screens. */}
         <Stack.Screen name="people" options={{ presentation: 'modal' }} />

@@ -1,4 +1,4 @@
-import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
+import type { QueueItem } from './items';
 
 // pending: waiting to send. sending: claimed by the runner (reset to pending if the app stopped
 // mid-send; the server recognises replays). attention: refused by the server, needs a person.

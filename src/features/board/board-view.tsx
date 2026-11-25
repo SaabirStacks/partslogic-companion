@@ -20,13 +20,15 @@ import type { BoardSection, LiveWorkflow } from '@/workflows/catalogue';
 import { boardLayout } from './board-layout';
 import { openWorkKey, resumeText, type OpenWork } from './open-work';
 import type { SyncState } from './sync-state';
-import { tileBadge } from './tile-badge';
+import { tileBadge, type Outbound } from './tile-badge';
 
 type BoardProps = {
   sections: BoardSection[];
   openWork: OpenWork[];
   // Units waiting in the location's Unbinned bin, for Put away's tile (null when not known).
   unbinned?: number | null;
+  // Units to pick and orders to pack here, for Pick's and Pack's tiles (null when not known).
+  outbound?: Outbound | null;
   // A new version is downloaded and Restart switches to it (use-app-update.ts).
   update?: { ready: boolean; restart: () => void };
   // A strip under the pills that applies to the whole board (a developer previewing another role).
@@ -57,6 +59,7 @@ export function BoardView({
   sections,
   openWork,
   unbinned = null,
+  outbound = null,
   update,
   notice,
   location,
@@ -170,7 +173,7 @@ export function BoardView({
                       label={workflow.label}
                       icon={workflow.icon}
                       family={workflow.family}
-                      badge={tileBadge(workflow.id, openWork, unbinned)}
+                      badge={tileBadge(workflow.id, openWork, unbinned, outbound)}
                       onPress={() => onJob(workflow)}
                     />
                   </View>

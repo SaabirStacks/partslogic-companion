@@ -8,9 +8,14 @@ import { readAddresses, readContacts, type PartyAddress, type PartyContact } fro
 import { readDeliveryTerms, type DeliveryTerms } from './delivery-terms';
 import { readSupplierMerge, readSupplierMerges, type SupplierMerge } from './supplier-merge';
 import { readSupplierUpload, type SupplierUpload } from './supplier-options';
+import type { StatusState } from '../core/status';
 
 export const SUPPLIER_STATUSES = ['active', 'on_hold', 'archived'] as const;
 export type SupplierStatus = (typeof SUPPLIER_STATUSES)[number];
+
+// A supplier's badge state (docs/design-checks/status-colours.md): active can be ordered from, on hold stops orders,
+// archived has ended. A list shows no badge for Active (owner, 23 November 2026).
+export const SUPPLIER_STATUS_STATES: Record<SupplierStatus, StatusState> = { active: 'ready', on_hold: 'blocked', archived: 'ended' };
 
 export function isSupplierStatus(value: unknown): value is SupplierStatus {
   return typeof value === 'string' && (SUPPLIER_STATUSES as readonly string[]).includes(value);

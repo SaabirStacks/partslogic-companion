@@ -4,7 +4,8 @@ import { vars } from 'nativewind';
 // near-black text. Colour has three jobs:
 //   action (PartsLogic blue)  the button you're meant to press; action-soft is a second button's tint
 //   ok / warn / stop          a state: done or sent, check it or waiting, stopped or refused
-//   inbound / control / parts which family a job belongs to (teal, violet, plum), on its tile and header
+//   inbound / control / parts / outbound which family a job belongs to (teal, violet, plum, copper), on its
+//                             tile and header
 // label is the darker grey for headings and field labels, so they read at arm's length.
 // Each state has a soft fill for chips, an ink for its words on white or on the soft fill, and a strong
 // fill (with on-*) for the rare moment that must be seen across the room, such as a done screen.
@@ -29,6 +30,9 @@ const light = {
   'control-soft': '236 231 248',
   parts: '142 47 111',
   'parts-soft': '246 228 240',
+  // A deep brown-orange (#8B5A2B), kept clear of warn's amber and stop's red (owner, 25 November 2026).
+  outbound: '139 90 43',
+  'outbound-soft': '246 237 226',
   ok: '35 127 82',
   'on-ok': '255 255 255',
   'ok-soft': '227 242 232',
@@ -66,6 +70,8 @@ const dark: Record<ColourName, string> = {
   'control-soft': '38 30 62',
   parts: '232 160 207',
   'parts-soft': '56 24 46',
+  outbound: '226 178 128',
+  'outbound-soft': '54 38 22',
   ok: '35 127 82',
   'on-ok': '255 255 255',
   'ok-soft': '20 52 35',

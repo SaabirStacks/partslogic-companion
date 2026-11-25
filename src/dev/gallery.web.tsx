@@ -44,13 +44,12 @@ import { BinChip } from '@/ui/bin-chip';
 import { Button } from '@/ui/button';
 import { ConfirmScanCard } from '@/ui/confirm-scan-card';
 import { ConfirmSheet } from '@/ui/confirm-sheet';
-import { Icon } from '@/ui/icon';
 import { JobBanner } from '@/ui/job-banner';
 import { JobScreen } from '@/ui/job-screen';
 import { LineRow } from '@/ui/line-row';
 import { Quantity } from '@/ui/quantity';
 import { themeVars, type Tone } from '@/ui/palette';
-import { Card, PressableCard, TEXT_ON } from '@/ui/surface';
+import { Card, TEXT_ON } from '@/ui/surface';
 import { ScanResultCard } from '@/ui/scan-result-card';
 import { StatusStrip } from '@/ui/status-strip';
 import { SectionLabel } from '@/ui/section-label';
@@ -64,6 +63,8 @@ import { useBinBrowse } from '@/features/bins/use-bin-browse';
 import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 import { NetworkContext } from '@/lib/network';
 
+import { OUTBOUND_SCREENS } from './outbound-screens';
+import { StackHeader } from './stack-header';
 import { DEVELOPER, DEVELOPER_MEMBER, Fixtures, OIL_FILTER, PEOPLE, OIL_FILTER_LOW, OIL_FILTER_OUT, OIL_FILTER_STATUSES, OUTBOX_ITEMS, RECENT } from './fixtures';
 
 // Dev-only: every screen of the redesign drawn from fixture data, so it can be captured in a browser at
@@ -72,22 +73,6 @@ import { DEVELOPER, DEVELOPER_MEMBER, Fixtures, OIL_FILTER, PEOPLE, OIL_FILTER_L
 
 const noop = () => {};
 const startedAt = new Date(new Date().setHours(9, 14, 0, 0)).toISOString();
-
-function StackHeader({ title, quickLookUp = true }: { title: string; quickLookUp?: boolean }) {
-  return (
-    <View className="h-14 flex-row items-center gap-3 bg-ground px-3">
-      <Icon name="back" size={24} />
-      <Txt variant="title" className="flex-1">
-        {title}
-      </Txt>
-      {quickLookUp ? (
-        <PressableCard accessibilityLabel="Look up a part" onPress={noop} className="h-11 w-11 items-center justify-center">
-          <Icon name="lookup" size={22} />
-        </PressableCard>
-      ) : null}
-    </View>
-  );
-}
 
 // A scan Receive is holding for a decision, as the gallery shows it.
 const HELD_PART: PendingScan<ScanCheck> = {
@@ -1062,6 +1047,7 @@ const SCREENS: Record<string, () => ReactNode> = {
       onShare={noop}
     />
   ),
+  ...OUTBOUND_SCREENS,
 };
 
 export function Gallery() {

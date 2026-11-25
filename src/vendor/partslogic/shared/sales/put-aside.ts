@@ -45,10 +45,19 @@ export function readyToTell(order: {
 }
 
 // The first name to greet: the account's contact, or the retail card's or caller's name.
-export function greetingName(customer: Pick<EnquiryCustomer, 'kind' | 'name' | 'contactName'>): string | null {
-  const name = customer.kind === 'account' ? customer.contactName : customer.kind === 'card' || customer.kind === 'caller' ? customer.name : null;
+export function greetingName(customer: Pick<EnquiryCustomer, 'kind' | 'name' | 'contactName' | 'mainContact'>): string | null {
+  // A person is greeted by first name: the order's contact, else the account's main contact. An account with no contact
+  // on file gets a plain "Hello", never its company name ("Hello Hill Street Garage" reads as a mail merge).
+  const name = customer.kind === 'account' ? (customer.contactName ?? customer.mainContact ?? null) : customer.kind === 'card' || customer.kind === 'caller' ? customer.name : null;
   const first = name?.trim().split(/\s+/)[0];
   return first ? first : null;
+}
+
+// Who to ring and on what number: the order's contact (or the typed caller), else the account's main contact.
+export function customerToRing(customer: Pick<EnquiryCustomer, 'kind' | 'name' | 'contactName' | 'phone' | 'mainContact' | 'mainPhone'>): { name: string | null; phone: string } | null {
+  if (customer.phone) return { name: customer.kind === 'account' ? (customer.contactName ?? null) : customer.name, phone: customer.phone };
+  if (customer.kind === 'account' && customer.mainPhone) return { name: customer.mainContact ?? null, phone: customer.mainPhone };
+  return null;
 }
 
 // The message Copy message puts on the clipboard: "Hello Priya, the parts for YJ20 KLM on order SO-000051 (ARG-7781)
@@ -69,7 +78,7 @@ export function readyMessage(order: {
 
 // The toast after copying: "Message copied. Paste it into WhatsApp or a text to Priya."
 export function readyCopiedWords(customer: Pick<EnquiryCustomer, 'kind' | 'name' | 'contactName'>): string {
-  return `Message copied. Paste it into WhatsApp or a text to ${greetingName(customer) ?? 'the customer'}.`;
+  return `Message copied. Paste it into WhatsApp or a text to ${greetingName(customer) ?? (customer.name?.trim() || 'the customer')}.`;
 }
 
 // A ready order's need line and the words after its pills.

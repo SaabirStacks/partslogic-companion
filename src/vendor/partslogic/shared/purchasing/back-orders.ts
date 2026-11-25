@@ -9,7 +9,9 @@ import { call } from './documents';
 // how each supplier performs. Every rule is in SQL (20261112120000: purchasing.back_orders, supplier_performance); this
 // file reads it and sends the choices.
 
-export const BACK_ORDER_REASONS = ['discontinued', 'no_stock', 'too_slow', 'mistake', 'not_needed'] as const;
+// In the order the database lists them: three count against the supplier (Out of stock, Lead time too long, No longer
+// stocks it), then the maker discontinuing a part and our own reasons, which don't (owner, 21 November 2026).
+export const BACK_ORDER_REASONS = ['no_stock', 'too_slow', 'discontinued', 'maker_discontinued', 'mistake', 'not_needed'] as const;
 export type BackOrderReasonCode = (typeof BACK_ORDER_REASONS)[number];
 export type BackOrderReason = { code: BackOrderReasonCode; label: string; supplierFault: boolean };
 
@@ -35,7 +37,53 @@ export type BackOrderRow = {
   backOrder: boolean;
   // Past the date that counts, or no date at all.
   toChase: boolean;
+  // The customers waiting on the line (S4b part three b): each sales order, what was promised, and what the customer
+  // was last told. Lines for customers come first in the list.
+  forCustomers: WaitingCustomer[];
 };
+
+export type WaitingCustomer = {
+  orderId: string;
+  number: string;
+  customer: string | null;
+  units: number;
+  expectedOn: string | null;
+  expectedFrom: string | null;
+  expectedBy: string | null;
+  late: boolean;
+  toldAt: string | null;
+  toldKind: 'late' | 'new_day' | null;
+  toldDue: string | null;
+  // The counter's step still to take: tell the customer it is late, or the new day.
+  need: 'tell_late' | 'tell_new_day' | null;
+  // What the account does if the part can't be supplied (Accept substitute says what will happen).
+  ifCannotSupply: 'same_part' | 'equivalent' | 'ask' | 'take_off';
+};
+
+function readWaitingCustomers(value: Json | undefined): WaitingCustomer[] {
+  return readArray(value).flatMap((item) => {
+    const w = readRecord(item);
+    const orderId = readString(w?.order_id);
+    if (!w || !orderId) return [];
+    const kind = readString(w.told_kind);
+    const need = readString(w.need);
+    return [{
+      orderId,
+      number: readString(w.number) ?? '',
+      customer: readString(w.customer),
+      units: readNumber(w.units) ?? 0,
+      expectedOn: readString(w.expected_on),
+      expectedFrom: readString(w.expected_from),
+      expectedBy: readString(w.expected_by),
+      late: readBoolean(w.late) ?? false,
+      toldAt: readString(w.told_at),
+      toldKind: kind === 'late' || kind === 'new_day' ? kind : null,
+      toldDue: readString(w.told_due),
+      need: need === 'tell_late' || need === 'tell_new_day' ? need : null,
+      ifCannotSupply: (['same_part', 'equivalent', 'ask', 'take_off'] as const).find((v) => v === w.if_cannot_supply) ?? 'ask',
+    }];
+  });
+}
 
 export type BackOrderList = {
   rows: BackOrderRow[];
@@ -46,7 +94,36 @@ export type BackOrderList = {
 export type BackOrderQuery = { supplierId?: number | null; locationId?: number | null; toChase?: boolean };
 
 // What cancelling returns: enough to order the part elsewhere.
-export type CancelledLine = { orderId: string; partId: number; locationId: number | null; qty: number; supplierId: number };
+export type CancelledLine = {
+  orderId: string;
+  partId: number;
+  locationId: number | null;
+  qty: number;
+  supplierId: number;
+  // The customers who were waiting on the units (S4b part three): each sales order, and whether the units are now
+  // Cannot supply on it with who acts next (purchasing reorders, the counter asks, replaces or takes it off), or back
+  // to order for a reason of ours.
+  forCustomers: CancelledForCustomer[];
+};
+export type CancelledForCustomer = {
+  orderId: string;
+  number: string;
+  customer: string | null;
+  cannotSupply: boolean;
+  step: 'reorder' | 'ask' | 'answer' | 'replace' | 'take_off' | null;
+};
+
+function readCancelledForCustomers(value: Json | undefined): CancelledForCustomer[] {
+  const steps = ['reorder', 'ask', 'answer', 'replace', 'take_off'] as const;
+  return readArray(value).flatMap((item) => {
+    const row = readRecord(item);
+    const orderId = readString(row?.order_id);
+    const number = readString(row?.number);
+    if (!row || !orderId || !number) return [];
+    const step = steps.find((s) => s === row.step) ?? null;
+    return [{ orderId, number, customer: readString(row.customer), cannotSupply: readBoolean(row.cannot_supply) ?? false, step }];
+  });
+}
 
 export type PerformanceMiss = {
   order: string;
@@ -75,7 +152,79 @@ export type PerformanceWindow = {
   misses: PerformanceMiss[];
 };
 
-export type SupplierPerformance = { current: PerformanceWindow; previous: PerformanceWindow; minLines: number };
+// The customer lines a supplier let down in the last 90 days (S4b part three b, slice three c; board 6r line 34):
+// counted, those the maker discontinued (shown, not counted), by reason, and the sales orders affected, newest first.
+// A supplier on hold is an account matter and isn't listed (owner, 22 November 2026).
+export type SupplierLetDowns = {
+  counted: number;
+  notCounted: number;
+  byReason: { reason: string; label: string; lines: number }[];
+  orders: { orderId: string; number: string; customer: string | null; label: string; counted: boolean }[];
+  // Every order affected; `orders` holds the five newest.
+  orderCount: number;
+};
+
+export type SupplierPerformance = { current: PerformanceWindow; previous: PerformanceWindow; minLines: number; letDown: SupplierLetDowns };
+
+export function readSupplierLetDowns(value: Json | undefined): SupplierLetDowns {
+  const row = readRecord(value);
+  const orders = readArray(row?.orders).flatMap((item) => {
+    const o = readRecord(item);
+    const orderId = readString(o?.order_id);
+    const number = readString(o?.number);
+    return o && orderId && number
+      ? [{ orderId, number, customer: readString(o.customer), label: readString(o.label) ?? 'Closed short', counted: readBoolean(o.counted) ?? true }]
+      : [];
+  });
+  return {
+    counted: readNumber(row?.counted) ?? 0,
+    notCounted: readNumber(row?.not_counted) ?? 0,
+    byReason: readArray(row?.by_reason).flatMap((item) => {
+      const r = readRecord(item);
+      const reason = readString(r?.reason);
+      const label = readString(r?.label);
+      return r && reason && label ? [{ reason, label, lines: readNumber(r.lines) ?? 0 }] : [];
+    }),
+    orders,
+    // Before 20261122170000 every order came back and there was no count.
+    orderCount: Math.max(readNumber(row?.order_count) ?? orders.length, orders.length),
+  };
+}
+
+// Standard terms (Shopify, Cal.com, Steep say "Cancelled"; owner, 22 November 2026, after the copy review).
+export const LET_DOWN_LABEL = 'Lines cancelled for customers';
+
+// The tile's sub-line: what isn't counted, or nothing.
+export function letDownSubWords(letDown: Pick<SupplierLetDowns, 'notCounted'>): string | null {
+  return letDown.notCounted > 0 ? `${letDown.notCounted} discontinued by the maker, not counted` : null;
+}
+
+// One reason and its count, kept together: "Out of stock 2".
+export function letDownReasonWords(reason: Pick<SupplierLetDowns['byReason'][number], 'label' | 'lines'>): string {
+  return `${reason.label} ${reason.lines}`;
+}
+
+// Under the heading, a list read as one: "Out of stock 2, Lead time too long 1" (a comma, which a line may end on and a
+// screen reader pauses at).
+export function letDownReasonsWords(letDown: Pick<SupplierLetDowns, 'byReason'>): string {
+  return letDown.byReason.map(letDownReasonWords).join(', ');
+}
+
+// After the five newest orders: "2 more orders".
+export function letDownMoreWords(more: number): string | null {
+  return more > 0 ? `${more} more ${more === 1 ? 'order' : 'orders'}` : null;
+}
+
+// One sales order's reason, kept whole on the screen: "Out of stock", "Discontinued by the maker, not counted".
+export function letDownOrderReason(order: Pick<SupplierLetDowns['orders'][number], 'label' | 'counted'>): string {
+  return `${order.label}${order.counted ? '' : ', not counted'}`;
+}
+
+// One sales order's detail after its link: "Hillside Garage · Out of stock", or "… · Discontinued by the maker, not
+// counted".
+export function letDownOrderWords(order: Pick<SupplierLetDowns['orders'][number], 'customer' | 'label' | 'counted'>): string {
+  return [order.customer, letDownOrderReason(order)].filter(Boolean).join(' · ');
+}
 
 function isReason(value: unknown): value is BackOrderReasonCode {
   return typeof value === 'string' && (BACK_ORDER_REASONS as readonly string[]).includes(value);
@@ -138,6 +287,7 @@ export function readBackOrderRows(value: Json | undefined): BackOrderRow[] {
           : null,
         backOrder: readBoolean(r.back_order) ?? true,
         toChase: readBoolean(r.to_chase) ?? false,
+        forCustomers: readWaitingCustomers(r.for_customers),
       },
     ];
   });
@@ -196,7 +346,12 @@ function readWindow(value: Json | undefined): PerformanceWindow {
 
 export function readSupplierPerformance(value: Json | undefined): SupplierPerformance {
   const row = readRecord(value);
-  return { current: readWindow(row?.current), previous: readWindow(row?.previous), minLines: readNumber(row?.min_lines) ?? 10 };
+  return {
+    current: readWindow(row?.current),
+    previous: readWindow(row?.previous),
+    minLines: readNumber(row?.min_lines) ?? 10,
+    letDown: readSupplierLetDowns(row?.let_down),
+  };
 }
 
 // A share as a whole percentage, or null when there's nothing to share.
@@ -242,7 +397,14 @@ export async function cancelBackOrderLine(
     const partId = readNumber(row?.part_id);
     const supplierId = readNumber(row?.supplier_id);
     if (!orderId || partId == null || supplierId == null) throw new DataError('The cancelled line could not be read.', 'P0002');
-    return { orderId, partId, locationId: readNumber(row?.location_id), qty: readNumber(row?.qty) ?? 0, supplierId };
+    return {
+      orderId,
+      partId,
+      locationId: readNumber(row?.location_id),
+      qty: readNumber(row?.qty) ?? 0,
+      supplierId,
+      forCustomers: readCancelledForCustomers(row?.for_customers),
+    };
   });
 }
 

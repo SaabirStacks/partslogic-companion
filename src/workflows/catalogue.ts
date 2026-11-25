@@ -77,6 +77,9 @@ const LIVE = {
     onBoard: false,
   },
   transfer: { family: 'stock', label: 'Transfer stock', minRole: 'counter', availability: 'live', icon: 'move', href: '/move' },
+  // Outbound (S5b): a claimed batch of confirmed orders picked by scanning each unit, then the deliveries packed.
+  pick: { family: 'outbound', label: 'Pick', minRole: 'counter', availability: 'live', icon: 'pick', href: '/pick' },
+  pack: { family: 'outbound', label: 'Pack', minRole: 'counter', availability: 'live', icon: 'pack', href: '/pack' },
 } as const satisfies Record<string, LiveWorkflow>;
 
 const FUTURE = {
@@ -89,8 +92,6 @@ const FUTURE = {
   },
   'customer-return': { family: 'inbound', label: 'Customer return', minRole: 'counter', availability: 'planned', needs: 'A returns document (the customer_return movement reason exists)' },
   adjust: { family: 'stock', label: 'Adjust stock', minRole: 'editor', availability: 'server-ready', needs: 'A screen for adjust_stock' },
-  pick: { family: 'outbound', label: 'Pick', minRole: 'counter', availability: 'planned', needs: 'Orders and pick lists' },
-  pack: { family: 'outbound', label: 'Pack', minRole: 'counter', availability: 'planned', needs: 'Orders and packages' },
   'outbound-staging': { family: 'outbound', label: 'Outbound staging', minRole: 'counter', availability: 'planned', needs: 'Dispatch staging areas' },
   dispatch: { family: 'outbound', label: 'Dispatch', minRole: 'counter', availability: 'planned', needs: 'Shipments and carriers' },
   'supplier-return': { family: 'outbound', label: 'Return to supplier', minRole: 'counter', availability: 'planned', needs: 'A returns document (the supplier_return movement reason exists)' },

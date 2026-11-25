@@ -5,7 +5,8 @@ retail contact cards (never accounts). Built on the module pattern: its own `cus
 entry points. Sales (next) reads it to price, check credit and invoice.
 
 ## Files here
-- `accounts.ts`: trade accounts: `listCustomers` (with counts and totals; each row's `partyId` is how other modules
+- `accounts.ts`: `CUSTOMER_STATUS_STATES` (each account status's badge state; Active shows no badge on list rows).
+  Trade accounts: `listCustomers` (with counts and totals; each row's `partyId` is how other modules
   point at an account), `getCustomer`, `createCustomerAccount`,
   `saveCustomerAccount`, `setCustomerStatus`, `checkCustomerSale` (whether an amount may go on account), the readers,
   `TRADE_TYPES`, `CUSTOMER_STATUSES`, `SALE_BLOCKS`.
@@ -16,6 +17,14 @@ entry points. Sales (next) reads it to price, check credit and invoice.
   and retail cards, matched on a name, a contact, an account number, a phone number or a postcode.
 - `retail.ts`: retail cards: `listRetailCustomers`, `saveRetailCustomer`, `eraseRetailCustomer`,
   `clearOldRetailCustomers`.
+- `cannot-supply.ts`: what to do when a supplier can't supply a part for an account (S4b part three, docs/SALES.md
+  13.14): `CANNOT_SUPPLY_PREFERENCES` (`same_part`, `equivalent`, `ask`, `take_off`), their labels and help,
+  `isCannotSupplyPreference`, `setCustomerCannotSupply` (`set_customer_cannot_supply`, editors; logged as
+  `if_cannot_supply`). The account carries `ifCannotSupply`, and `customer_briefs` hands it to sales. Screen: Settings ›
+  Ordering (`CustomerOrderingCard` in `blocks/customers/customer-settings.tsx`); action `saveCannotSupplyPreference`.
+  Column `customers.accounts.if_cannot_supply` (migration `20261122090000_sales_cannot_supply_columns.sql`). Sales
+  reads it with `customer_cannot_supply` (no role check, no API grants: an internal reader in guard test 129), since
+  its trigger also runs for the background receipt job.
 
 ## Elsewhere
 - Pages: `app/customers/page.tsx` (trade accounts by status, and the Retail cards tab), `app/customers/new/page.tsx`,

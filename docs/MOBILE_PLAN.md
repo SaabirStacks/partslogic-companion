@@ -226,6 +226,14 @@ pointing at the SQL and has a test.
   stock take, and it sends the **latest** `sessionLines()` when it runs. This is safe because a resent
   total replaces the earlier one. Order per stream: `open_bin_count` → lines → `commit_bin_count`
   (`confirmEmpty` when no lines are visible).
+- **Pick jobs (S5b):** each row of a job is its own stream (`pick:<job>:<line>:<bin>`), and the job's
+  end is a stream after them (`pick:<job>`). `sales_order_pick` adds each call to the row's pick and
+  takes no id made on the phone, so a call resent after a lost reply would pick a unit twice. The phone
+  therefore queues each row's **total so far** by scan and by tap (`pick_row`; a newer total waiting to
+  send replaces the older), and the handler reads the job (`pick_job`) and sends only the difference:
+  more picks it, fewer takes it back (`pick_job_unscan`), the same sends nothing. A short pick
+  (`pick_short`) is sent once, unless the job already has one for the row with that reason. Packed
+  (`pack_order`) sent twice finds the order packed, which counts as done.
 - **Shared phones:** each item stores `user_id`, and only the signed-in user's items run. Signing out
   with items still pending shows a warning first.
 - **Results come back to the screens:** refused, void and unresolved receipt lines, partial or
@@ -260,7 +268,11 @@ pointing at the SQL and has a test.
 | 5 | Bin count | Scan or pick a bin, open the count, scan with running totals, ± corrections, commit (confirm empty), result summary (put away, returned, found, partial) | counter |
 | 6 | Quick add | From an unknown scan: brand picker (`brandOptions`) and number → `quickAddPart`; show conflicts with the holder, never retry them | counter |
 
-**Built after the plan:** move stock, from a bin row on the part card (counters and up). It's online only
+**Built after the plan:** Pick and Pack (S5b, PartsLogic `docs/design-checks/phone-picking.md`): the
+outbound family in copper. Start picking needs signal (it claims the orders); scans, taps and short
+picks are counted on the phone and queued, so a job carries on without signal; Finish or Stop ends it
+on the phone at once and in PartsLogic once every row has been sent. Pack needs signal for its list;
+Packed is queued. Move stock, from a bin row on the part card (counters and up). It's online only
 and never queued or retried: `transfer_stock` takes no id made on the phone, so a move resent after a
 lost reply could happen twice. After a lost reply the app says the move may or may not have happened.
 

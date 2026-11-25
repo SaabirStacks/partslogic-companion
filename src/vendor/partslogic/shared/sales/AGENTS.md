@@ -35,6 +35,8 @@ of `docs/SALES.md` is built. On the module pattern: its own `sales` schema behin
   lookup's picture of the model while its link works. `sourcing.ts` also has the Autodoc search from Find parts:
   `logAutodocSearch`, `autodocOfferWords`, `AutodocSearchOffer`; the enquiry carries `canSearchAutodoc`.
 - `words.ts`: pure wording the web and the phone share: labels for views, statuses, groups, channels and outcomes;
+  `ENQUIRY_STATUS_STATES` and `REQUEST_STATE_STATES` (badge states; `orders.ts` holds `ORDER_FULFILMENT_STATES` and
+  `ORDER_PAYMENT_STATES`);
   `enquiryStepLine` (the line under a status), `dayAndTime`, `durationWords`, `agoWords` (UK time, from the
   database's clock), `logEntryCaption`, `lastContactLine`, `enquiryEventText`, `deliveryWords`, `foundAvailability`,
   `offerAvailability`, `offerChangedWords`, `matchWords`, `requestSummary`, `moneyWords`, `marginWords`, `PART_FIT_WORDS`,
@@ -53,13 +55,29 @@ of `docs/SALES.md` is built. On the module pattern: its own `sales` schema behin
   `readSupplyLinks` (a line's `supplyLinks`: drafted, awaiting approval, approved, ordered, arrived, done),
   `readLinkedPurchaseOrders` (the order's `purchaseOrders`), `readPaymentTaken`, `readOrderInOptions`; the words
   `supplyWhere`, `supplyNeedWords` (one need per purchase order), `linkedPurchaseOrderWords`, `orderedInWords`,
-  `orderInDestinationWords`, `orderInRunWords`, `orderInHelpWords`, `paymentTakenWords`. A line carries `onPo`,
+  `orderInDestinationWords` ("joins draft PO-000007"), `orderInRunWords`, `supplierMenuWords` (a choice in the shared
+  supplier menu), `arrivesWords`, `orderInHelpWords`, `paymentTakenWords`; `readOrderInSuppliers` and
+  `readTypedPurchaseLines` are shared with Customer lines. A line carries `onPo`,
   `arrived` and `stillToOrder`; the order's `figures` carry `stillToOrder`, `drafted`, `ordered`, `arrived`, and the
   order `canOrderIn`, `canOrderInUnpaid`, `canPlaceOrders`, `canApproveOrders`. Fulfilment adds `drafted`, `ordered`
   and `arrived`.
+- `customer-lines.ts`: Purchase orders › Customer lines (S4b part two, docs/SALES.md 13.13, boards 6o and 6p):
+  `getCustomerLinesQueue` (`purchase_orders_customer_lines`: lines, blocked with `why`, inStock, drafts to place),
+  `addCustomerLines` (`purchase_orders_add_customer_lines`; each sales order through its own Order in rules; returns
+  orders per draft with `cutoffAt`, links per sales order for Undo, and `failed`), `undoCustomerLines`. Grouping:
+  `groupQueue` (one group per supplier and branch, or per typed line's purchase order; soonest order time first),
+  `queueChoice`/`defaultQueueChoice`, `queueAddChoices`, `usableSuppliers`, `queueDeliveries`. Words: `queueRunWords`
+  (order time, time left, urgency, missed), `queueGroupWords`, `queueForWords`, `queueBlockedWords`, `queueBand`,
+  `queueDraftNeeds`, `queueSelectionWords`, `queuePartSelected`, `queueAddedWords`, `queueNextToPlace`,
+  `queueMovedWords`, `queueSplitNote`, `queuePromisedWords`, `queuePromiseNote`, `timeLeftWords`, `placeByWords`.
+  `CUSTOMER_LINES` is the tab's name in the address bar. Screen: `blocks/purchasing/customer-lines.tsx`; actions
+  `addLinesForCustomers`, `undoLinesForCustomers` in `app/purchase-orders/actions.ts`. SQL tests: suite 172; unit tests
+  `tests/shared/sales/customer-lines.test.ts`, `tests/purchasing/customer-lines.test.ts`.
 - `put-aside.ts`: goods in for customers (S4b part one, docs/SALES.md 13.12, boards 6m and 6n): `readPutAsideReceipts`
   (the order's `putAsideReceipts`), `readyLabel`, `readyToTell` (a ready collection not told since the last part was
-  put aside), `readyMessage` (the text Copy message puts on the clipboard), `readyCopiedWords`, `readyNeedWords`,
+  put aside), `readyMessage` (the text Copy message puts on the clipboard), `greetingName` and `customerToRing` (the
+  order's contact, else the account's main contact: `EnquiryCustomer.mainContact` and `mainPhone`), `readyCopiedWords`,
+  `readyNeedWords`,
   `putAsideEventText` (history lines `put_aside`, `put_aside_undone`, `ready_message_copied`) and
   `markReadyMessageCopied`. `orders.ts` adds fulfilment `ready`, `fulfilmentLabel`, `readyStateWords`, a line's and the
   figures' `onShelf`, the row's `onShelf`, the detail's `putAsideAt` and `readyMessageAt`, and the groups `on_order`
@@ -68,6 +86,144 @@ of `docs/SALES.md` is built. On the module pattern: its own `sales` schema behin
   `sales.order_put_aside`; `sales.put_aside_receipt`, `sales.receipt_reversing`, `sales.shift_stock`,
   `sales.order_on_shelf`; entry point `sales_order_ready_copied`); SQL test `171_sales_goods_in.sql`; demo seed
   `11-goods-in.sql`; screens `sales-order-ready` and `purchase-order-receive`.
+
+- `late.ts`: a late line (S4b part three b, docs/SALES.md 13.16, board 6r): `readLateLines` (the order's `late`),
+  `readOrderLateSummary` (the list row's `late`), `lateLinesToTell`; words `lateDueWords` (one wording: "↑ Due today
+  …", then "↑ Overdue N days"), `lateToldWords`, `lateNeedWords`, `latePurchasingWords`, `lateMessage` (the customer's
+  words, no supplier), `orderLateWords`, `lateEventText` (history `customer_told_late`); wrapper `tellLate`. Screen
+  `blocks/sales/order-late.tsx` (`lateNeeds`, `TellLateDialog`, sharing `MessageDialog` with Cannot supply); action
+  `tellLateAbout`. Database: table `sales.late_tells`; `sales.late_rows`, `late_json`, `order_late_summary`,
+  `po_line_waiting_json`, `back_order_rows`; entry point `sales_order_tell_late`. Migration
+  `20261122110000_sales_late_lines.sql`; SQL test `174_sales_late_lines.sql`.
+
+- `substitutes.ts`: Substitutes to return (S4b part three b, docs/SALES.md 13.18, board 6r): `readSubstitutesQueue`,
+  `groupSubstitutes` (by supplier), `isPastReturnBy`, words `substituteWhyWords`, `returnByWords`,
+  `substitutesReturnedWords`; wrappers `getSubstitutesQueue`, `returnSubstitutes`, `keepSubstitutes`; `SUBSTITUTES` (the
+  tab). `cannot-supply.ts` reads a failure's held `substitute` (`readHeldSubstitute`, `substituteToAgree`), words it,
+  and asks with fixed reply numbers (`ANSWER_NUMBERS`, `answerChoices`, `answerHelp`); history `substitute_held`,
+  `substitute_returned`, `substitute_stocked`. `orders.ts` adds the line group `substitute` (Substitute to agree).
+  Screens: `blocks/purchasing/substitutes-to-return.tsx` (Purchase orders tab), the confirm in
+  `blocks/purchasing/order-extras.tsx` (`substituteAcceptWords`, purchasing's `order-extras.ts`), the order page's group
+  and need (`order-page.tsx`, `order-cannot-supply.tsx`); actions `returnSubstitutesToSupplier`, `keepSubstitutesInStock`
+  (`app/purchase-orders/actions.ts`). Database: `sales.substitute_holds`; `sales.substitute_hold`, `substitute_use`,
+  `replace_core`, `substitutes_follow_preference`, `substitutes_answered`, `substitute_json`, `substitute_return_by`,
+  `substitutes_to_return`; entry points `purchase_orders_substitutes`, `return_substitutes`, `keep_substitutes`.
+  Migration `20261122130000_sales_substitutes.sql`; SQL test `176_sales_substitutes.sql`.
+- A supplier on hold (S4b part three b, slice three a, docs/SALES.md 13.19, board 6r), in `cannot-supply.ts`: a failure
+  with no purchase order, reason `supplier_on_hold` (`SUPPLIER_ON_HOLD`, `onSupplierHold`), its `hold` (`SupplierHold`:
+  the supplier, since when, the day to ask again) and `askAgainOn`; the answer `wait`, numbered 4 (`ANSWER_NUMBERS`,
+  `answerChoices`, `answerHelp`, `CUSTOMER_ANSWER_LABELS`); step `wait`; history `supplier_held`. `orders.ts` keeps the
+  units in To order (`confirmedLineWhere`: "Supplier on hold", "Waiting for …"), says them in `orderStateWords` and
+  `orderStepWords` (summary `onHold`). Screens: the need rows in `order-cannot-supply.tsx`, the To order row in
+  `order-page.tsx`. Database: `sales.line_held_sources`, `line_on_hold`, `line_hold_json`, `ask_again_on`, `line_held`,
+  `supplier_hold_sync` (from Confirm, the order line trigger and `suppliers_hold_follow` on a supplier's status).
+  Migrations `20261122140000_sales_supplier_hold_columns.sql`, `20261122141000_sales_supplier_hold.sql`; SQL test
+  `177_sales_supplier_hold.sql`.
+- The customer's steps (docs/SALES.md 13.20): the stages `to_agree` and `waiting` (`ORDER_FULFILMENTS`; an order with an
+  answer due is never Ready), `customerStepWords` behind `orderStateWords` (the line after the pills, with the customer's
+  name) and the timed list words in `orderStepWords(row, now)`; a failure's `answerOverdue`; the summary's `askedAt`,
+  `answerOverdue`, `askAgainOn`, `heldSupplier`; `undoAskCustomer` (action `undoAskAbout`); `undoSubstitutes` and
+  `returnConfirmWords` in `substitutes.ts` (action `putSubstitutesBack`). Database: `sales.answer_overdue`, entry points
+  `sales_order_undo_ask` and `undo_substitutes`; migration `20261122142000_sales_customer_steps.sql`; SQL test
+  `178_sales_customer_steps.sql`.
+- `replace.ts`: Replace part (S4b part three b, docs/SALES.md 13.17, board 6r): the customer pays the lower of the two
+  prices. `readLineReplaced` (what `sales_order_replace_line` returns), `replacementPrice` (the one price rule the
+  window and the database share), words `replacePriceWords`, `replaceMarginWords`, `replaceWhereWords`,
+  `replaceAgreedWords`, `replacedToastWords`, `replaceEventText` (history `part_replaced`, `replace_undone`); wrappers
+  `replaceOrderLine`, `undoReplaceOrderLine`. `cannot-supply.ts` reads a failure's `replaced` (`readReplacedPart`) and
+  words the telling (`replacedWords`, `replacedSentence`, inside `tellMessage`). Screen
+  `blocks/sales/order-replace.tsx` (`ReplaceStep`, `ReplaceConfirmDialog`), opened through `OrderFindPartsDialog`'s
+  `replacing`; actions `replacePart`, `undoReplacePart`. Database: `sales.line_failures.replaced_by`;
+  `sales.order_line_insert` (Add line's new line), `sales.replaced_tell_due`; entry points `sales_order_replace_line`,
+  `sales_order_undo_replace`. Migrations `20261122120000_sales_replace_part_columns.sql`,
+  `20261122121000_sales_replace_part.sql`; SQL test `175_sales_replace_part.sql`.
+- `cannot-supply.ts`: Cannot supply (S4b part three a, docs/SALES.md 13.14, board 6q): `readLineFailures` (the
+  order's `failures`), `readOrderPreference` (`ifCannotSupply`: value and whether it comes from the order, the account
+  or a walk-in sale), `readOrderFailureSummary` (the list row's `cannotSupply`), `openFailures`, `failuresToTell`,
+  `failureHolder`; words `failureWords`, `failureStepWords`, `failureNeedStep` and `failureNeedWords` (a need row is
+  the fact and one detail: where the ask stands, else the reason; shared by the order page and the list preview),
+  `reorderedWords`, `askMessage` (numbered to match Record answer), `tellMessage`, `cannotSupplyEventText` (history `cannot_supply`, `customer_asked`, `customer_answered`,
+  `customer_told`, `cannot_supply_preference`, `held` for this reason, `hold_lifted`); wrappers `askCustomer`,
+  `recordCustomerAnswer`, `tellCustomer`, `setOrderCannotSupply`. The preferences themselves are customers'
+  (`customers/cannot-supply.ts`). `orders.ts` adds the hold reason `cannot_supply`, a line's `cannotSupply`, the
+  detail's `orderInUnits` and `canEditAccount`, the group `cannot_supply` in `orderLineGroups`, and no Order in on a
+  line with units that can't be supplied. Screen `blocks/sales/order-cannot-supply.tsx` (needs, Ask customer, Record
+  answer, Tell customer, the Customer card's line); actions `askCustomerAbout`, `recordAnswer`, `tellCustomerAbout`,
+  `saveOrderCannotSupply`. Database: table `sales.line_failures`; `sales.order_preference`, `failure_step`,
+  `line_failed`, `line_waiting`, `line_has_supplier`, `source_failed`, `failures_settle`, `cannot_supply_check`,
+  `order_in_units`, `failures_json`, `order_failure_summary`; entry points `sales_order_ask_customer`,
+  `sales_order_record_answer`, `sales_order_tell_customer`, `sales_order_set_cannot_supply`. Migrations
+  `20261122090000_sales_cannot_supply_columns.sql`, `20261122091000_sales_cannot_supply.sql`,
+  `20261122100000_sales_cannot_supply_background.sql` (the same with nobody signed in); SQL test
+  `173_sales_cannot_supply.sql`; unit test `tests/shared/sales/cannot-supply.test.ts`; demo seed
+  `13-cannot-supply.sql`. Undo of a reorder (`sales_order_undo_order_in`, which Customer lines' Undo calls) opens the
+  let-downs that reorder closed, so the customer is waited on again (`20261122150000`, docs/SALES.md 13.21).
+- `enquiry-line.ts`: the enquiry line (S4b part three b, slice three c, docs/SALES.md 13.22): `enquiryNeedWords` (the
+  enquiry page's need row), `enquiryOrderStepWords` (the list's step line, the sales order list's own lead's first
+  words), `requestSupplyWords` (an accepted offer's availability when its own line can't be supplied: "2 of 6 can’t
+  be supplied"), `OPEN_ORDER`. The readers `readEnquiryOrderNeed` and `readEnquiryRequestFailures` live in
+  `cannot-supply.ts` (enquiries read them); the fields are `orderNeed` on every enquiry row and detail, and
+  `requestFailures` on the detail (per request, never per order). Database: `sales.enquiry_order_need`,
+  `sales.enquiry_request_failures`. SQL tests `180_sales_enquiry_line_and_figures.sql`,
+  `181_sales_enquiry_line_per_request.sql`; unit test `tests/shared/sales/enquiry-line.test.ts`; demo seed
+  `18-enquiry-line-and-figures.sql`; design check `scripts/design-checks/enquiry-line-and-figures.mjs`.
+- `reorder-elsewhere.ts`: Reorder elsewhere on the purchase order that let a customer down (S4b part three b, slice
+  three b, docs/SALES.md 13.21; copy deck `docs/design-checks/reorder-elsewhere.md`): `letDownLine`,
+  `letDownStateWords` (with `named` on the cancelled line), `reorderChoices` (cheapest first, Lowest price only when
+  every cost shows), `belowCost`, `eachWords`, `belowCostConfirmWords`, `addedToWords`, `takenOffWords` and the panel's
+  labels. Screen `blocks/purchasing/reorder-elsewhere.tsx`; action `loadCustomerLinesQueue`. SQL test
+  `179_purchasing_reorder_elsewhere.sql`; unit test `tests/shared/sales/reorder-elsewhere.test.ts`; demo seed
+  `17-reorder-elsewhere.sql`; design check `scripts/design-checks/reorder-elsewhere.mjs`.
+- `picking.ts`: picking (S5a-1, docs/SALES.md 13.15, sheet `docs/design-checks/fulfilment.md`): `getPickingList`
+  (views `to_pick`, `not_found`, `picked_today`; a branch, else the one the page opens on), `pickLine` (found less than
+  the quantity is a short pick with a reason: `bin_empty`, `damaged`, `wrong_part`), `undoPick`, `setOrderUrgent`; the
+  readers `readPickingList`, `readNotFound` (a line's open short pick, also on the order's lines as `notFound`, with
+  `picked` and the detail's `urgent`); grouping `groupPickingRows` (urgent first, then each bin as the database walked
+  them); words `pickingSubline`, `pickingViewSubline` (each view's line), `unitsCount`, `binLabel`, `pickRowPart`,
+  `pickingCustomer`, `pickingGroupWords`, `shortPickLine`, `shortPickProblem` (what is wrong with the Here box, one
+  thing at a time), `shortPickTooMany`, `pickedToastWords`, `notFoundWords` and `orderNotFoundWords` (with when it was
+  flagged, given now), `COUNT_BIN`, `COUNT_FIRST`, `pickingEmptyWords`, `pickListTitle` (names one order printed alone),
+  `pickingEventText` (history `picked`, `pick_undone`, `marked_urgent`, `not_urgent`). Page `app/picking/page.tsx`
+  (view and branch in the address), actions `app/picking/actions.ts` (`pickRow`, `undoPickRow`; `markUrgent` in
+  `app/sales-orders/actions.ts`), the printed list `app/picking/pdf/route.ts` with `lib/documents/pick-list-pdf.tsx`.
+  Screens `blocks/sales/picking-page.tsx`; the order page's filled Pick, need row (Count bin for Bin empty) and ticked
+  Urgent item; the Sales orders list's To pick view says its units (`toPickUnits`, `to_pick_units`) and links to it;
+  the side menu counts it (`menu_counts` key `picking`). A Bin empty or Wrong part short pick raises a count request
+  (reason `not_in_bin`, the bin in its note; `countRequestLine` and `countRequestReason` in `floor/count-requests.ts`
+  word it), withdrawn only when the short pick is undone (`sales.order_release` keeps it when a line is cancelled).
+  `orderHasPartsToPick` and `pickingOrderHref` (`orders.ts`) give the order page's filled Pick and the Sales orders
+  preview's the same rule and address. Database: `sales.orders.urgent`,
+  table `sales.order_picks`; `sales.line_picked`, `line_on_shelf`, `line_short`, `bin_walk_key`, `picking_rows`,
+  `picking_location`, `picking_count`, `picks_released` (picks give way first when a line holds less); purchase orders
+  for customers take our reference from their lines (`sales.po_lines_reference`, `refresh_po_reference`,
+  `purchasing.purchase_orders.our_reference_auto`); entry points `picking_list`, `sales_order_pick`,
+  `sales_order_undo_pick`, `sales_order_set_urgent`. Migration `20261125100000_sales_picking.sql`; SQL test
+  `186_sales_picking.sql`; unit test `tests/shared/sales/picking.test.ts`; demo seed `22-picking.sql`; design check
+  `scripts/design-checks/picking.mjs`.
+- Pick jobs and packing (S5b-1, sheet `docs/design-checks/phone-picking.md`): `picking.ts` adds the view `to_pack`
+  (deliveries and courier orders with every unit on the shelf, as orders: `PackingOrder`, `packing` on the list,
+  `counts.toPack`), each to-pick row's `picker` (who holds it on a phone, `pickerWords`), a pick's `method` (`web`,
+  `scan`, `tap`; `PICK_METHODS`) and Can't scan reason (`CANT_SCAN_REASONS`: `label`, `wont_scan`), `pickLine`'s
+  `jobId`, `method`, `cantScan`, `readPickingRow`, and words `packingOrderLine`, `packingPlace`, `packingLineWords`.
+  `pick-jobs.ts`: the phone's claimed batch: `getPickJobStatus`, `startPickJob` (resumes the picker's own job, else
+  claims up to 10 orders, urgent first), `getPickJob`, `endPickJob` (Finish or Stop), `unscanPick`; readers
+  `readPickJobStatus`, `readPickJob`. `packing.ts`: `packOrder`, `unpackOrder`, `readOrderPack` (the order's standing
+  pack, `pack` on the detail with `picker`), words `parcelsWords`, `parcelsProblem`, `packTitle`, `packedWords`,
+  `PACKED_TOAST`, `UNPACKED_TOAST`, `packFailedLine`, `packingEventText` (history `packed`, `unpacked`). `address.ts`:
+  the delivery address reader (`readSalesOrderAddress`, `addressLines`, `deliveryPlace`), its names still exported from
+  `orders.ts`. `orders.ts`: the view and stage `to_pack`, the trail's `packed` (deliveries only), `orderToPack` (the
+  order as the Pack window lists it), `readyStateWords` saying the parcels once packed. Actions
+  `app/picking/actions.ts` (`packOrderAction`, `unpackOrderAction`) and `app/sales-orders/actions.ts`
+  (`unpackSalesOrder`). Screens: `blocks/sales/pack-dialog.tsx` (the Pack window, used by Picking's To pack and the order
+  page's filled Pack), Picking's fourth view, the order page's More actions › Unpack, the Sales orders list's To pack
+  view. Database: tables `sales.pick_jobs`, `sales.pick_job_orders`, `sales.order_packs`; `order_picks.job_id`,
+  `method`, `cant_scan`, `logged` (a job's scans go into the history when the job ends: the history is append-only);
+  `sales.order_picker`, `pick_job_json`, `pick_job_close`, `order_packed`, `order_pack_json`, `packing_orders`,
+  `packing_count`; entry points `pick_job_status`, `pick_job_start`, `pick_job`, `pick_job_end`, `pick_job_unscan`,
+  `sales_order_pack`, `sales_order_unpack` (and `sales_order_pick`, `sales_order_undo_pick`, `picking_list`,
+  `sales_order_list`, `sales_order_detail` and `sales.order_facts` changed). Migration
+  `20261125200000_sales_pick_jobs_packing.sql`; SQL test `187_sales_pick_jobs_packing.sql`; unit test
+  `tests/shared/sales/packing.test.ts`; demo seed `23-pick-jobs-packing.sql`.
 
 ## Elsewhere
 - Pages: `app/enquiries/page.tsx` (the worklist; view, filter, group and page live in the address; `?new=1` opens
@@ -174,7 +330,10 @@ of `docs/SALES.md` is built. On the module pattern: its own `sales` schema behin
 
 ## Rules
 - Apps call only the `public` entry points. Sales names no other module's schema: customers are read through
-  `customer_briefs` and `customer_find` (guard test 156). A new entry point goes in that test's allowlist.
+  `customer_briefs` and `customer_find` (guard test 156), and, in what also runs for the background jobs (nobody
+  signed in), through `customer_cannot_supply`, which checks no role and no API role may call.
+- A function a trigger or a background job can reach never calls one that asks for a role (`require_role`):
+  receiving, for one, runs with nobody signed in. A new entry point goes in that test's allowlist.
 - Where an enquiry stands (its group, and the reason under its status) is decided only in `sales.standing`; screens
   put it in words with `enquiryStepLine` and never work it out.
 - The status moves because of what staff do. Screens never set a closed status: a request is closed with an outcome

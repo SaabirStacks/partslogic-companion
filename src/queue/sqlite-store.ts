@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
+import type { QueueItem } from './items';
 
 import type { OutboxStore } from './store';
 import { streamKeyOf } from './stream';

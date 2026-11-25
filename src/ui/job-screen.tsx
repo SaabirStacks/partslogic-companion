@@ -31,6 +31,7 @@ export function JobScreen({
   result,
   children,
   action,
+  offlineText,
 }: {
   onScan: (code: string) => void;
   // Typed codes go here when they mean something different from a scan (Look up searches them).
@@ -47,6 +48,8 @@ export function JobScreen({
   result?: ReactNode;
   children?: ReactNode;
   action?: ReactNode;
+  // The job's own words for working without signal, in place of the app's.
+  offlineText?: string;
 }) {
   const { height } = useWindowDimensions();
   const [typing, setTyping] = useState(typeFirst);
@@ -54,7 +57,7 @@ export function JobScreen({
 
   return (
     <KeyboardScreen>
-      <OfflineBanner />
+      <OfflineBanner text={offlineText} />
       {banner}
       <View style={{ height: keyboard ? CAMERA_WHILE_TYPING : Math.max(200, Math.round(height * 0.34)) }}>
         <CameraScanner enabled={scanEnabled} onScan={onScan} onResume={onResume} />

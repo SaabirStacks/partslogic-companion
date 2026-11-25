@@ -3,6 +3,7 @@ import type { Json } from '@partslogic/db-types';
 import type { Client } from '../core/client';
 import { dataError } from '../core/errors';
 import { readArray, readNumber, readRecord, readString } from '../core/read';
+import type { StatusState } from '../core/status';
 import type { ExtrasAction } from './order-extras';
 import { readPurchaseOrder, type PurchaseOrderDetail } from './orders';
 
@@ -123,8 +124,10 @@ export async function receivePurchaseOrder(supabase: Client, orderId: string, in
   return readPurchaseOrder(data as Json);
 }
 
-export async function closePurchaseOrderShort(supabase: Client, orderId: string, reason: string): Promise<PurchaseOrderDetail> {
-  const { data, error } = await supabase.rpc('close_purchase_order_short', { p_order: orderId, p_reason: reason });
+// Closes an order short. A reason from the Cancel list (code) tells a supplier's failure from one of ours for the
+// customers waiting on the units; the typed reason may then be left out. Without a code it is the supplier's failure.
+export async function closePurchaseOrderShort(supabase: Client, orderId: string, reason: string, code: string | null = null): Promise<PurchaseOrderDetail> {
+  const { data, error } = await supabase.rpc('close_purchase_order_short', { p_order: orderId, p_reason: reason, p_code: code });
   if (error) throw dataError(error);
   return readPurchaseOrder(data as Json);
 }
@@ -221,6 +224,23 @@ export async function listOpenOrderLines(supabase: Client, supplierId: number, l
 // ---------------------------------------------------------------------------------------------------------------
 
 export type CountedPart = { partId: number; qty: number };
+
+// A delivery check's verdict as a badge (docs/design-checks/status-colours.md): matched is settled; short and not arrived
+// wait on the supplier; over and not on the order are ours to deal with.
+export const DELIVERY_CHECK_LABELS: Record<DeliveryCheckRow['verdict'], string> = {
+  matched: 'Matched',
+  short: 'Short',
+  over: 'Over',
+  not_ordered: 'Not ordered',
+  not_arrived: 'Not arrived',
+};
+export const DELIVERY_CHECK_STATES: Record<DeliveryCheckRow['verdict'], StatusState> = {
+  matched: 'ready',
+  short: 'waiting',
+  over: 'active',
+  not_ordered: 'active',
+  not_arrived: 'waiting',
+};
 
 export type DeliveryCheckRow = {
   partId: number;

@@ -49,3 +49,6 @@ export const binViewPref = pref<BinView>('bin-view');
 
 // Whether the app makes sounds (scans, warnings, finished jobs). Unset means on; haptics stay either way.
 export const soundsPref = pref<boolean>('sounds');
+// The delivery being packed on this phone, with what is in the box so far (src/features/pack/pack.ts), so leaving the
+// screen or closing the app loses nothing. Kept as plain JSON so this file needs no feature's types.
+export const packBoxPref = pref<unknown>('pack-box');

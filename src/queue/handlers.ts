@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
+import { sendPackOrder } from '@/features/pack/pack-queue';
+import { sendPickJobEnd, sendPickRow, sendPickShort } from '@/features/pick/pick-queue';
 import { conflictMessage } from '@/features/quick-add/wording';
-import type { QueueItem } from '@/vendor/partslogic/shared/bin-session';
+import type { QueueItem } from './items';
 import { classifyQueueError, DataError } from '@/vendor/partslogic/shared/errors';
 import {
   closeStockDocument,
@@ -51,6 +53,14 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
       return sendQuickAdd(item);
     case 'opening_stock_done':
       return markOpeningStockDone(supabase, item.locationId);
+    case 'pick_row':
+      return sendPickRow(supabase, item);
+    case 'pick_short':
+      return sendPickShort(supabase, item);
+    case 'pick_job_end':
+      return sendPickJobEnd(supabase, item);
+    case 'pack_order':
+      return sendPackOrder(supabase, item);
   }
 }
 

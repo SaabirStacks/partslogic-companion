@@ -11,6 +11,7 @@ import { readOrderExtras, type OrderExtra } from './order-extras';
 import { readOrderTrail, type OrderTrail } from './order-trail';
 import { isPlacedVia, type PlacedVia } from './placed-via';
 import { isSupplierStatus, type SupplierStatus } from './suppliers';
+import type { StatusState } from '../core/status';
 
 export { PLACED_VIA, isPlacedVia, type PlacedVia } from './placed-via';
 
@@ -20,6 +21,17 @@ export { PLACED_VIA, isPlacedVia, type PlacedVia } from './placed-via';
 
 export const PURCHASE_ORDER_STATUSES = ['draft', 'placed', 'part_received', 'received', 'closed_short', 'cancelled'] as const;
 export type PurchaseOrderStatus = (typeof PURCHASE_ORDER_STATUSES)[number];
+
+// Each status's badge state (docs/design-checks/status-colours.md): placed and part received wait on the supplier,
+// received is done, a cancelled or closed-short order has ended (grey, not red: nothing is stopped).
+export const PURCHASE_ORDER_STATUS_STATES: Record<PurchaseOrderStatus, StatusState> = {
+  draft: 'not_started',
+  placed: 'waiting',
+  part_received: 'waiting',
+  received: 'ready',
+  closed_short: 'ended',
+  cancelled: 'ended',
+};
 // The reference most orders carry: bought for the shelf, not for one job.
 export const STOCK_REFERENCE = 'STOCK';
 
@@ -30,7 +42,7 @@ export function isPurchaseOrderStatus(value: unknown): value is PurchaseOrderSta
 // Why a line or an order needs a look. None of them stops the order.
 export type LineWarning =
   | 'not_on_sheet'
-  // The supplier stopped listing the part (a full price list delisted it, step 3c).
+  // The supplier stopped listing the part (a full price sheet delisted it, step 3c).
   | 'delisted'
   | 'not_multiple'
   | 'below_minimum'
@@ -172,6 +184,8 @@ export type PurchaseOrderDetail = {
   backOrders: BackOrderRow[];
   backOrderReasons: BackOrderReason[];
   cancellations: OrderCancellation[];
+  // The customers still waiting on units it let down, for Reorder elsewhere (S4b part three b).
+  letDowns: PurchaseLetDown[];
   can: {
     edit: boolean;
     place: boolean;
@@ -191,6 +205,13 @@ export type PurchaseOrderDetail = {
 
 export const ORDER_APPROVAL_STATES = ['requested', 'approved', 'rejected'] as const;
 export type OrderApprovalState = (typeof ORDER_APPROVAL_STATES)[number];
+
+// A draft sent for approval waits on the approver; an approved one is the buyer's move again; a rejected one stops.
+export const ORDER_APPROVAL_BADGE_STATES: Record<OrderApprovalState, StatusState> = {
+  requested: 'waiting',
+  approved: 'active',
+  rejected: 'blocked',
+};
 
 function readApprovalState(value: Json | undefined): OrderApprovalState | null {
   return (ORDER_APPROVAL_STATES as readonly Json[]).includes(value ?? null) ? (value as OrderApprovalState) : null;
@@ -228,6 +249,50 @@ function readApproval(value: Json | undefined): OrderApproval {
     myLimit: readNumber(row?.my_limit),
     needed: readBoolean(row?.needed) ?? false,
   };
+}
+
+// A customer still waiting on units this order let down (S4b part three b): the sales order, who acts next
+// (sales.failure_step: reorder, ask, answer, replace, take_off) and a reorder still on a draft.
+export type PurchaseLetDown = {
+  poLineId: number;
+  orderId: string;
+  number: string;
+  customer: string | null;
+  salesLineId: number;
+  units: number;
+  step: string | null;
+  // When the customer was asked and how, and whether the reply is overdue (for the sales order's own words).
+  askedAt: string | null;
+  askedVia: string | null;
+  answerOverdue: boolean;
+  reordered: { poId: string; poNumber: string; supplier: string | null } | null;
+};
+
+export function readPurchaseLetDowns(value: Json | undefined): PurchaseLetDown[] {
+  return readArray(value).flatMap((item) => {
+    const row = readRecord(item);
+    const poLineId = readNumber(row?.po_line_id);
+    const orderId = readString(row?.order_id);
+    const number = readString(row?.number);
+    const salesLineId = readNumber(row?.sales_line_id);
+    if (!row || poLineId == null || !orderId || !number || salesLineId == null) return [];
+    const again = readRecord(row.reordered);
+    const poId = readString(again?.po_id);
+    const poNumber = readString(again?.po_number);
+    return [{
+      poLineId,
+      orderId,
+      number,
+      customer: readString(row.customer),
+      salesLineId,
+      units: readNumber(row.units) ?? 0,
+      step: readString(row.step),
+      askedAt: readString(row.asked_at),
+      askedVia: readString(row.asked_via),
+      answerOverdue: readBoolean(row.answer_overdue) ?? false,
+      reordered: again && poId && poNumber ? { poId, poNumber, supplier: readString(again.supplier) } : null,
+    }];
+  });
 }
 
 // Units of a line cancelled: why (the label), a note, and for a substitute the part that came instead.
@@ -596,6 +661,7 @@ export function readPurchaseOrder(value: Json | null | undefined): PurchaseOrder
     extras: readOrderExtras(row.extras),
     backOrders: readBackOrderRows(row.back_orders),
     backOrderReasons: readBackOrderReasons(row.back_order_reasons),
+    letDowns: readPurchaseLetDowns(row.let_downs),
     cancellations: readArray(row.cancellations).flatMap((item) => {
       const c = readRecord(item);
       const lineId = readNumber(c?.line_id);
@@ -663,7 +729,9 @@ export async function listPurchaseOrders(supabase: Client, query: PurchaseOrderQ
 }
 
 // Orders by status, and the drafts waiting for approval (a view of the drafts, not a status).
-export type PurchaseOrderCounts = Record<PurchaseOrderStatus, number> & { awaitingApproval: number };
+// customerLines: sales order lines that can be added to purchase orders now (the Customer lines tab).
+// substitutes: substitutes to return to the supplier or accept into stock (the Substitutes to return tab).
+export type PurchaseOrderCounts = Record<PurchaseOrderStatus, number> & { awaitingApproval: number; customerLines: number; substitutes: number };
 
 export async function purchaseOrderCounts(supabase: Client): Promise<PurchaseOrderCounts> {
   return call(supabase.rpc('purchase_order_counts'), (data) => {
@@ -671,6 +739,8 @@ export async function purchaseOrderCounts(supabase: Client): Promise<PurchaseOrd
     return {
       ...(Object.fromEntries(PURCHASE_ORDER_STATUSES.map((status) => [status, readNumber(row?.[status]) ?? 0])) as Record<PurchaseOrderStatus, number>),
       awaitingApproval: readNumber(row?.awaiting_approval) ?? 0,
+      customerLines: readNumber(row?.customer_lines) ?? 0,
+      substitutes: readNumber(row?.substitutes) ?? 0,
     };
   });
 }
