@@ -189,6 +189,7 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
   ),
   'pick-ready': () => <Start status={STATUS} />,
   'pick-nothing': () => <Start status={{ ...STATUS, toPick: 0, orders: 0, freeOrders: 0 }} />,
+  'pick-all-claimed': () => <Start status={{ ...STATUS, freeOrders: 0 }} />,
   'pick-own-job': () => <Start status={{ ...STATUS, job: { id: 'j1', picked: 6, toPick: 8 } }} />,
   'pick-no-signal': () => <Start status={undefined} online={false} />,
   'pick-job': () => <Pick job={midway()} card={{ kind: 'added', row: midwayRow(), complete: false }} />,

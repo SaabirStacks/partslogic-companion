@@ -11,6 +11,8 @@ export const units = (count: number) => plural(count, 'unit', 'units');
 
 // Before a job.
 export const NOTHING_TO_PICK = { title: 'Nothing to pick', line: 'Confirmed orders with stock set aside appear here.' };
+// Units to pick, but every order is on another picker's job.
+export const ALL_CLAIMED = { title: 'Nothing to pick', line: 'The orders to pick are on other pickers’ jobs.' };
 export const NO_SIGNAL_TO_START = { title: 'No signal', line: 'Start picking when it’s back.' };
 export const readyToPick = (toPick: number, orders: number, location: string | null) =>
   `${units(toPick)} for ${plural(orders, 'order', 'orders')}${location ? ` at ${location}` : ''}`;

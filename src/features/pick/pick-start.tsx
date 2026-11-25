@@ -3,7 +3,7 @@ import { Notice } from '@/ui/notice';
 import { StatusStrip } from '@/ui/status-strip';
 import type { PickJobStatus } from '@/vendor/partslogic/shared/sales/pick-jobs';
 
-import { NO_SIGNAL_TO_START, NOTHING_TO_PICK, readyToPick, yourJob } from './words';
+import { ALL_CLAIMED, NO_SIGNAL_TO_START, NOTHING_TO_PICK, readyToPick, yourJob } from './words';
 
 // Before a job: what the branch has to pick, with Start picking; the picker's own job (from another phone) to carry
 // on; nothing to pick; or no signal, since starting claims the orders.
@@ -36,8 +36,9 @@ export function PickStart({
     );
   }
   if (status.freeOrders <= 0) {
+    const words = status.toPick > 0 ? ALL_CLAIMED : NOTHING_TO_PICK;
     return (
-      <Notice icon="sent" tone="neutral" title={NOTHING_TO_PICK.title} line={NOTHING_TO_PICK.line}>
+      <Notice icon="sent" tone="neutral" title={words.title} line={words.line}>
         {status.toPack > 0 ? <Button label="Pack" icon="pack" variant="tinted" onPress={onPack} /> : null}
       </Notice>
     );
