@@ -1,4 +1,4 @@
-import { partNumber, plural } from '@/lib/format';
+import { partNumber, plural, unbroken } from '@/lib/format';
 import { binLabel, SHORT_PICK_REASON_LABELS, CANT_SCAN_REASON_LABELS } from '@/vendor/partslogic/shared/sales/picking';
 import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 
@@ -8,6 +8,9 @@ import { left, picked, type JobRow, type JobTotals } from './job';
 // the owner, 25 November 2026). The web's words for the same things come from the shared code, so both say them alike.
 
 export const units = (count: number) => plural(count, 'unit', 'units');
+
+// The job's strip with no signal (the copy deck).
+export const PICK_OFFLINE = 'No signal · Picks send when it’s back';
 
 // Before a job.
 export const NOTHING_TO_PICK = { title: 'Nothing to pick', line: 'Confirmed orders with stock set aside appear here.' };
@@ -22,15 +25,17 @@ export const yourJob = (done: number, of: number) => `${quantityWords(done)} of 
 export const partName = (row: Pick<JobRow, 'part'>) => partNumber(row.part);
 
 // The banner: the bin to go to, large, then what comes after it.
-export function bannerTitle(now: string | null): string {
-  return now ? binLabel(now) : 'All picked';
+// Once every row is picked or short: "All picked", or "Nothing left to pick" when some were short.
+export function bannerTitle(now: string | null, total?: Pick<JobTotals, 'short'>): string {
+  if (now) return binLabel(now);
+  return total && total.short > 0 ? 'Nothing left to pick' : 'All picked';
 }
-export function bannerDetail(next: string | null, now: string | null, total: Pick<JobTotals, 'orders' | 'units'>): string {
-  const after = now ? (next ? `Next: ${binLabel(next)}` : 'Last bin') : null;
+export function bannerDetail(next: string | null, now: string | null, total: Pick<JobTotals, 'orders' | 'units'> & Partial<Pick<JobTotals, 'short'>>): string {
+  const after = now ? (next ? `Next: ${binLabel(next)}` : 'Last bin') : total.short ? `${quantityWords(total.short)} short` : null;
   return [after, plural(total.orders, 'order', 'orders'), units(total.units)].filter(Boolean).join(' · ');
 }
 
-export const putWith = (row: Pick<JobRow, 'order'>) => `Put with ${row.order}`;
+export const putWith = (row: Pick<JobRow, 'order'>) => `Put with ${unbroken(row.order)}`;
 export const countOf = (row: JobRow) => `${quantityWords(picked(row))} of ${quantityWords(row.want)}`;
 
 // Under a row's part: where it stands, once it has moved.
@@ -51,12 +56,15 @@ export function rowState(row: JobRow): { text: string; tone: 'ok' | 'warn' | 'ne
 export const spareLine = (want: number) => `All ${quantityWords(want)} picked`;
 export const SPARE_BACK = 'Put the spare back';
 export const NOT_ON_PICK = 'Not on this pick';
+// A code this phone has never seen, with no signal to ask: every part's codes are kept on the phone, so this is rare.
+export const OFFLINE_UNKNOWN = 'Not on this phone’s list · scan it again with signal, or use Can’t scan';
 export const thisBin = (row: Pick<JobRow, 'part'> | null) => (row ? `This bin: ${partName(row)}` : null);
 
 // Finish and Stop.
 export const finishLabel = (count: number) => `Finish · ${units(count)}`;
-export const goBack = (count: number) => `${units(count)} not picked go${count === 1 ? 'es' : ''} back to To pick.`;
-export const STOP = { title: 'Stop picking?', note: 'Picked units stay picked; the rest go back to To pick.', confirm: 'Stop picking' };
+const TO_PICK = unbroken('To pick');
+export const goBack = (count: number) => `${units(count)} not picked go${count === 1 ? 'es' : ''} back to ${TO_PICK}.`;
+export const STOP = { title: 'Stop picking?', note: `Picked units stay picked; the rest go back to ${TO_PICK}.`, confirm: 'Stop picking' };
 
 // The receipt: "12 picked · 2 short · 4 orders".
 export function receiptLine(total: JobTotals): string {
@@ -65,4 +73,4 @@ export function receiptLine(total: JobTotals): string {
     .join(' · ');
 }
 // A pick PartsLogic refused when the signal came back: "Not picked · SO-000021 · Only 0 in D-01 on the books…".
-export const refusedLine = (order: string, reason: string) => `Not picked · ${order} · ${reason}`;
+export const refusedLine = (order: string, reason: string) => `Not picked · ${unbroken(order)} · ${reason}`;

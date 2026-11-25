@@ -32,6 +32,8 @@ describe('a pick job on the phone', () => {
     expect(bannerDetail('C-02', 'B-02', totals(local))).toBe('Next: C-02 · 2 orders · 4 units');
     expect(bannerDetail(null, 'C-02', totals(local))).toBe('Last bin · 2 orders · 4 units');
     expect(bannerTitle(null)).toBe('All picked');
+    expect(bannerTitle(null, { short: 3 })).toBe('Nothing left to pick');
+    expect(bannerDetail(null, null, { ...totals(local), short: 3 })).toBe('3 short · 2 orders · 4 units');
   });
 
   it('adds each scan to the first row still to pick, then the next order', () => {
@@ -62,8 +64,8 @@ describe('a pick job on the phone', () => {
     expect(shortRow(local, '2:2', 1, 'damaged').rows[1].short).toBeNull();
     expect(totals(local)).toEqual({ units: 4, picked: 1, short: 1, left: 2, orders: 2 });
     expect(receiptLine(totals(local))).toBe('1 picked · 1 short · 2 orders');
-    expect(goBack(2)).toBe('2 units not picked go back to To pick.');
-    expect(goBack(1)).toBe('1 unit not picked goes back to To pick.');
+    expect(goBack(2)).toBe('2 units not picked go back to To\u00a0pick.');
+    expect(goBack(1)).toBe('1 unit not picked goes back to To\u00a0pick.');
   });
 
   it('carries on a job from PartsLogic, each row counting what it picked', () => {

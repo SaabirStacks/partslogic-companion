@@ -17,5 +17,6 @@ export const boxCount = (line: BoxLine) => `${quantityWords(inBox(line))} of ${q
 export const linePart = (line: Pick<BoxLine, 'part'>) => partNumber(line.part);
 export const allInBox = (qty: number) => `All ${quantityWords(qty)} in the box`;
 export const NOT_ON_ORDER = 'Not on this order';
-export const EACH_PART_FIRST = 'Scan each part into the box first.';
+// Packed's place until every unit is in: "1 of 3 in the box".
+export const boxProgress = (inBox: number, units: number) => `${quantityWords(inBox)} of ${quantityWords(units)} in the box`;
 export const PARCELS_QUESTION = 'How many parcels?';

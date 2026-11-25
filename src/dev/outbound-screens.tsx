@@ -132,11 +132,11 @@ const ORDERS: PackingOrder[] = [
 const halfBox = (): Box => scanIntoBox(openBox(ORDER), 6).box;
 const fullBox = (): Box => stepLine(scanIntoBox(halfBox(), 6).box, 32, 1);
 
-function PackJob({ box, card = null, asking = false, asked = false }: { box: Box; card?: PackCard | null; asking?: boolean; asked?: boolean }) {
+function PackJob({ box, card = null, asking = false }: { box: Box; card?: PackCard | null; asking?: boolean }) {
   return (
     <View className="flex-1">
       <StackHeader title="Pack" />
-      <PackJobView box={box} card={card ? { key: 'k', card } : null} onScan={noop} onStep={noop} onSet={noop} onPacked={noop} onClose={noop} asking={asking} asked={asked} />
+      <PackJobView box={box} card={card ? { key: 'k', card } : null} onScan={noop} onStep={noop} onSet={noop} onPacked={noop} onClose={noop} asking={asking} />
     </View>
   );
 }
@@ -219,7 +219,7 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
       <PickReceipt
         receipt={{
           state: 'check',
-          line: '12 picked · 1 short · 4 orders',
+          line: '11 picked · 1 short · 4 orders',
           orders: ORDER_STAGES,
           refused: [{ key: 'r', order: 'SO-000023', reason: 'Only 0 in B-02 on the books. Count the bin, then pick.' }],
         }}
@@ -244,7 +244,6 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
     </Screen>
   ),
   'pack-job': () => <PackJob box={halfBox()} card={{ kind: 'added', line: halfBox().lines[0], complete: false }} />,
-  'pack-not-ready': () => <PackJob box={halfBox()} asked />,
   'pack-not-on-order': () => <PackJob box={halfBox()} card={{ kind: 'not_on_order', scanned: 'NGK BKR6E' }} />,
   'pack-parcels': () => <PackJob box={fullBox()} asking />,
   'pack-receipt': () => (

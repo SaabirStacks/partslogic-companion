@@ -16,7 +16,7 @@ import { PickRowSheet } from './pick-row-sheet';
 import { PickRows } from './pick-rows';
 import type { PickReceipt } from './receipt';
 import type { PickCard as Card } from './scan-card';
-import { bannerDetail, bannerTitle, finishLabel, goBack, refusedLine, STOP } from './words';
+import { bannerDetail, bannerTitle, finishLabel, goBack, PICK_OFFLINE, refusedLine, STOP } from './words';
 
 type SheetState = { key: string; start: 'menu' | 'short' } | null;
 
@@ -65,7 +65,8 @@ export function PickJobView({
       <JobScreen
         placeholder="Barcode or part number"
         onScan={onScan}
-        banner={<JobBanner size={now ? 'display' : 'headline'} family="outbound" title={bannerTitle(now)} detail={bannerDetail(next, now, totals)} />}
+        offlineText={PICK_OFFLINE}
+        banner={<JobBanner size={now ? 'display' : 'headline'} family="outbound" title={bannerTitle(now, totals)} detail={bannerDetail(next, now, totals)} />}
         result={card ? <PickCard key={card.key} card={card.card} onShortPick={(row) => setSheet({ key: row.key, start: 'short' })} onDismiss={onDismissCard} /> : null}
         action={
           <ActionBar
@@ -73,6 +74,8 @@ export function PickJobView({
             icon="check"
             // Everything picked or short finishes at once; units still to pick are said first.
             onPress={() => (totals.left > 0 ? setConfirming('finish') : end('finished'))}
+            // Nothing picked or short yet: nothing to finish (Stop picking lets the orders go).
+            disabled={totals.picked === 0 && totals.short === 0}
             secondary={lastRow && !lastRow.short && lastRow.scanned + lastRow.tapped > 0 ? { label: 'Undo the last scan', icon: 'undo', onPress: onUndo } : undefined}
           />
         }>
@@ -111,7 +114,10 @@ export function PickJobView({
       <ConfirmSheet
         visible={confirming === 'stop'}
         title={STOP.title}
-        facts={[{ value: quantityWords(totals.picked), label: 'Picked' }]}
+        facts={[
+          { value: quantityWords(totals.picked), label: 'Picked' },
+          { value: quantityWords(totals.left), label: 'Not picked', tone: 'warn' },
+        ]}
         note={STOP.note}
         confirm={{ label: STOP.confirm, onPress: () => end('stopped') }}
         cancelLabel="Keep picking"

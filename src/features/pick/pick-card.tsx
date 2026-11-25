@@ -7,7 +7,7 @@ import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 
 import { picked, type JobRow } from './job';
 import type { PickCard as Card } from './scan-card';
-import { NOT_ON_PICK, partName, putWith, SPARE_BACK, spareLine, thisBin } from './words';
+import { NOT_ON_PICK, OFFLINE_UNKNOWN, partName, putWith, SPARE_BACK, spareLine, thisBin } from './words';
 
 // The answer to a scan in a pick job, over the camera's edge: the part and which order it goes with, or why the
 // scan didn't count. Nothing waits on it: the next scan replaces it (P6).
@@ -18,8 +18,9 @@ export function PickCard({ card, onShortPick, onDismiss }: { card: Card; onShort
         <ScanResultCard
           tone="ok"
           status={card.complete ? { icon: 'sent', label: 'Row picked' } : { icon: 'sent', label: 'Picked' }}
-          title={partName(card.row)}
-          detail={putWith(card.row)}
+          // Which order it goes with is the instruction; the part is already in the hand (critique A, F2).
+          title={putWith(card.row)}
+          detail={partName(card.row)}
           quantity={{ value: quantityWords(picked(card.row)), label: `of ${quantityWords(card.row.want)}` }}
         />
       );
@@ -29,14 +30,14 @@ export function PickCard({ card, onShortPick, onDismiss }: { card: Card; onShort
       return (
         <ScanResultCard tone="warn" status={{ icon: 'warning', label: NOT_ON_PICK }} title={card.scanned} detail={thisBin(card.here)}>
           <View className="flex-row gap-2">
+            <View className="flex-1">
+              <Button label="Scan again" variant="tinted" compact onPress={onDismiss} />
+            </View>
             {card.here ? (
               <View className="flex-1">
-                <Button label="Short pick" variant="tinted" compact onPress={() => onShortPick(card.here!)} />
+                <Button label="Short pick" variant="secondary" compact onPress={() => onShortPick(card.here!)} />
               </View>
             ) : null}
-            <View className="flex-1">
-              <Button label="Scan again" variant="secondary" compact onPress={onDismiss} />
-            </View>
           </View>
         </ScanResultCard>
       );
@@ -44,7 +45,7 @@ export function PickCard({ card, onShortPick, onDismiss }: { card: Card; onShort
       return <ScanResultCard tone="warn" status={{ icon: 'bin', label: 'A bin label' }} title={binLabel(card.bin)} detail="Scan the part" />;
     case 'offline':
       return (
-        <ScanResultCard tone="neutral" status={{ icon: 'offline', label: 'Not checked' }} title={card.code} detail="No signal · use Can’t scan on its row" />
+        <ScanResultCard tone="neutral" status={{ icon: 'offline', label: 'Not checked' }} title={card.code} detail={OFFLINE_UNKNOWN} />
       );
     case 'error':
       return <ScanResultCard tone="stop" status={{ icon: 'stop', label: 'Not checked' }} title={card.code} detail={card.message} />;

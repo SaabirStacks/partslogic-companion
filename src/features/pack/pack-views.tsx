@@ -108,10 +108,7 @@ export function ParcelsSheet({ visible, onPacked, onClose }: { visible: boolean;
   const clamp = (value: number) => Math.max(PARCELS_MIN, Math.min(PARCELS_MAX, Math.round(value)));
   return (
     <Sheet visible={visible} title={PARCELS_QUESTION} onClose={onClose}>
-      <View className="flex-row items-center justify-between gap-3">
-        <Txt variant="label" className="font-bold">
-          Parcels
-        </Txt>
+      <View className="items-center">
         <Quantity total={parcels} name="parcels" onStep={(change) => setParcels((now) => clamp(now + change))} onSet={(target) => setParcels(clamp(target))} />
       </View>
       <View className="gap-2">

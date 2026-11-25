@@ -26,7 +26,14 @@ export function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-// A part as the floor reads it off the label: "MANN-FILTER C 35 154" (the description goes on its own line).
+// A code that must never break across lines (a part number, an order number, B-02): its spaces and hyphens become
+// ones a line never breaks at, so "C 35 154" can't leave "154" alone on a line where it reads as a quantity.
+export function unbroken(text: string): string {
+  return text.replace(/ /g, '\u00a0').replace(/-/g, '\u2011');
+}
+
+// A part as the floor reads it off the label: "MANN-FILTER C 35 154" (the description goes on its own line). A line
+// breaks only between the brand and the number.
 export function partNumber(part: { brand: string; number: string }): string {
-  return `${part.brand} ${part.number}`.trim();
+  return [part.brand, part.number].filter(Boolean).map(unbroken).join(' ');
 }

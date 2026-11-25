@@ -11,10 +11,10 @@ import { Txt } from './text';
 // How long "Back online" stays before the strip lifts away.
 const BACK_MS = 2400;
 
-// A soft yellow strip, never a dialog: the app keeps working offline and says so in four words. It drops in
-// when signal goes. When signal comes back it turns green and says so (whatever was saved starts sending
+// A soft yellow strip, never a dialog: the app keeps working offline and says so in four words (a job may say
+// it in its own: a pick job's "No signal · Picks send when it's back"). It drops in when signal goes. When signal comes back it turns green and says so (whatever was saved starts sending
 // then), and lifts away a moment later. A screen opened with no signal just shows it.
-export function OfflineBanner() {
+export function OfflineBanner({ text = 'Offline · saving on this phone' }: { text?: string }) {
   const online = useOnline();
   // Coming back online is a change from offline (React's "storing information from previous renders"
   // pattern); going offline again cancels it.
@@ -36,7 +36,7 @@ export function OfflineBanner() {
       {!online || back ? (
         <Animated.View entering={BANNER_IN} exiting={BANNER_OUT}>
           <View className="border-b border-edge bg-warn-soft">
-            <Line icon="offline" ink="warn-ink" text="Offline · saving on this phone" />
+            <Line icon="offline" ink="warn-ink" text={text} />
             {back ? (
               // The green fades in over the yellow; classes go on a plain View inside the animated one.
               <Animated.View entering={APPEAR} style={StyleSheet.absoluteFill}>

@@ -7,6 +7,7 @@ import { SectionLabel } from '@/ui/section-label';
 import { Txt } from '@/ui/text';
 import { binLabel } from '@/vendor/partslogic/shared/sales/picking';
 import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
+import { unbroken } from '@/lib/format';
 
 import { done, left, pickable, picked, type JobRow } from './job';
 import { countOf, partName, rowState } from './words';
@@ -71,26 +72,30 @@ function Row({ row, onMenu }: { row: JobRow; onMenu?: () => void }) {
       </Txt>
     </View>
   );
-  return (
+  const line = (
     <LineRow
       name={partName(row)}
-      code={[row.order, row.urgent ? 'Urgent' : null, row.part.description].filter(Boolean).join(' · ')}
+      code={[unbroken(row.order), row.urgent ? 'Urgent' : null, row.part.description].filter(Boolean).join(' · ')}
       status={state ? { text: state.text, tone: state.tone, icon: STATE_ICON[state.tone] } : null}
       quantity={
-        onMenu && left(row) > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${partName(row)}, ${countOf(row)} for ${row.order}. Can’t scan or short pick`}
-            onPress={onMenu}
-            hitSlop={8}
-            className="min-h-12 flex-row items-center gap-2 active:opacity-60">
-            {count}
-            <Icon name="more" size={22} colour="action-ink" />
-          </Pressable>
-        ) : (
-          count
-        )
+        <View className="flex-row items-center gap-2">
+          {count}
+          {onMenu && left(row) > 0 ? <Icon name="more" size={24} colour="action-ink" /> : null}
+        </View>
       }
     />
+  );
+  // A row still to pick opens its menu from anywhere on it: a glove can't aim at the count (critique A, F7).
+  return onMenu && left(row) > 0 ? (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${partName(row)}, ${countOf(row)} for ${row.order}`}
+      accessibilityHint="Can’t scan or short pick"
+      onPress={onMenu}
+      className="active:opacity-70">
+      {line}
+    </Pressable>
+  ) : (
+    line
   );
 }

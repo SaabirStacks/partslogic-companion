@@ -9,6 +9,7 @@ import { StatusStrip } from '@/ui/status-strip';
 
 import type { PickReceipt as Receipt } from './receipt';
 import { refusedLine } from './words';
+import { unbroken } from '@/lib/format';
 
 const CHIP: Record<Receipt['state'], ChipState> = {
   sending: { tone: 'neutral', icon: 'waiting', label: 'Sending' },
@@ -27,7 +28,12 @@ export function PickReceipt({ receipt, onPack, onDone }: { receipt: Receipt; onP
           chip={CHIP[receipt.state]}
           reference="Pick job"
           line={receipt.line}
-          rows={receipt.orders.map((order) => ({ label: order.number, value: order.stage ?? 'Sending' }))}
+          // Each order's stage once PartsLogic has the end; until then one row, not "Sending" on every order.
+          rows={
+            receipt.orders.every((order) => order.stage)
+              ? receipt.orders.map((order) => ({ label: unbroken(order.number), value: order.stage! }))
+              : [{ label: 'Orders', value: receipt.orders.length }]
+          }
         />
         {receipt.refused.map((refusal) => (
           <StatusStrip key={refusal.key} tone="stop" icon="stop" text={refusedLine(refusal.order, refusal.reason)} />

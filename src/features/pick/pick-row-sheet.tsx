@@ -128,7 +128,8 @@ function RowSheet({
         </Txt>
         <Quantity total={qty} name={partName(row)} onStep={(change) => setQty((now) => clamp(now + change, most))} onSet={(target) => setQty(clamp(target, most))} />
       </View>
-      <View className="gap-2" accessibilityRole="radiogroup" accessibilityLabel="Why aren't the rest here?">
+      <View className="gap-2" accessibilityRole="radiogroup" accessibilityLabel="Why?">
+        <SectionLabel>Why?</SectionLabel>
         {SHORT_PICK_REASONS.map((value) => (
           <Choice key={value} pick="reason" title={SHORT_PICK_REASON_LABELS[value]} selected={reason === value} onPress={() => setReason(value)} />
         ))}
