@@ -24,14 +24,25 @@ import { allInBox, linePart, NO_SIGNAL_TO_PACK, NOT_ON_ORDER, NOTHING_TO_PACK, P
 
 // The branch's deliveries to pack, urgent first as PartsLogic lists them: "SO-000015 · Northway Fleet Services ·
 // 3 units · Shipley BD18". Each opens its packing.
-export function PackList({ pack }: { pack: PackState }) {
-  if (!pack.online) return <Notice icon="offline" tone="warn" title={NO_SIGNAL_TO_PACK.title} line={NO_SIGNAL_TO_PACK.line} />;
-  const orders = pack.list.data?.packing;
+export function PackList({
+  online,
+  orders,
+  problem,
+  onRetry,
+  onOpen,
+}: {
+  online: boolean;
+  // Undefined while the list is loading, or when it couldn't be read (problem says why).
+  orders: PackingOrder[] | undefined;
+  problem: string | null;
+  onRetry: () => void;
+  onOpen: (order: PackingOrder) => void;
+}) {
+  if (!online) return <Notice icon="offline" tone="warn" title={NO_SIGNAL_TO_PACK.title} line={NO_SIGNAL_TO_PACK.line} />;
   if (!orders) {
-    const problem = pack.list.error instanceof Error ? pack.list.error.message : null;
     return (
       <Notice icon="pack" tone={problem ? 'stop' : 'neutral'} title={problem ? 'Not checked' : 'Checking what to pack'} line={problem}>
-        {problem ? <Button label="Try again" icon="retry" variant="tinted" onPress={pack.list.reload} /> : null}
+        {problem ? <Button label="Try again" icon="retry" variant="tinted" onPress={onRetry} /> : null}
       </Notice>
     );
   }
@@ -40,7 +51,7 @@ export function PackList({ pack }: { pack: PackState }) {
     <Scroll toEdge contentContainerClassName="gap-2 px-4 pt-3">
       <SectionLabel>{`To pack · ${orders.length} ${orders.length === 1 ? 'order' : 'orders'}`}</SectionLabel>
       {orders.map((order) => (
-        <OrderRow key={order.orderId} order={order} onPress={() => pack.open(order)} />
+        <OrderRow key={order.orderId} order={order} onPress={() => onOpen(order)} />
       ))}
     </Scroll>
   );

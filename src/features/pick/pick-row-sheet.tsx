@@ -88,9 +88,7 @@ function RowSheet({
     const missingUnits = asked && !!why && qty < 1;
     return (
       <Sheet visible title="Can’t scan" onClose={onClose}>
-        <Txt variant="caption" numbers>
-          {`${partName(row)} · ${where}`}
-        </Txt>
+        <Where row={row} where={where} />
         <View className="gap-2" accessibilityRole="radiogroup" accessibilityLabel="Why?">
           <SectionLabel>Why?</SectionLabel>
           {CANT_SCAN_REASONS.map((value) => (
@@ -123,9 +121,7 @@ function RowSheet({
   const most = Math.max(0, rest - 1);
   return (
     <Sheet visible title="Short pick" onClose={onClose}>
-      <Txt variant="caption" numbers>
-        {`${partName(row)} · ${where}`}
-      </Txt>
+      <Where row={row} where={where} />
       <View className="flex-row items-center justify-between gap-3">
         <Txt variant="label" className="flex-1 font-bold">
           How many are here?
@@ -150,5 +146,20 @@ function RowSheet({
         <Button label="Cancel" variant="secondary" onPress={onClose} />
       </View>
     </Sheet>
+  );
+}
+
+// The part the sheet is about, then where it is and what's left: "B-02 · SO-000019 · 1 to pick", each on a line that
+// never breaks inside a number.
+function Where({ row, where }: { row: JobRow; where: string }) {
+  return (
+    <View className="gap-0.5">
+      <Txt variant="label" className="font-bold">
+        {partName(row)}
+      </Txt>
+      <Txt variant="caption" numbers>
+        {where}
+      </Txt>
+    </View>
   );
 }

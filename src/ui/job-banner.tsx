@@ -18,7 +18,8 @@ export function JobBanner({
 }: {
   title: string;
   detail?: string | null;
-  size?: 'title' | 'headline';
+  // display: the one thing to read from across the aisle (the bin a pick goes to next).
+  size?: 'title' | 'headline' | 'display';
   family?: WorkflowFamily;
 }) {
   return (

@@ -1,5 +1,5 @@
-import { plural } from '@/lib/format';
-import { binLabel, pickRowPart, SHORT_PICK_REASON_LABELS, CANT_SCAN_REASON_LABELS } from '@/vendor/partslogic/shared/sales/picking';
+import { partNumber, plural } from '@/lib/format';
+import { binLabel, SHORT_PICK_REASON_LABELS, CANT_SCAN_REASON_LABELS } from '@/vendor/partslogic/shared/sales/picking';
 import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 
 import { left, picked, type JobRow, type JobTotals } from './job';
@@ -17,7 +17,7 @@ export const readyToPick = (toPick: number, orders: number, location: string | n
 export const yourJob = (done: number, of: number) => `${quantityWords(done)} of ${units(of)}`;
 
 // The part, as the rows and the card name it: "MANN-FILTER C 35 154".
-export const partName = (row: Pick<JobRow, 'part'>) => pickRowPart(row.part);
+export const partName = (row: Pick<JobRow, 'part'>) => partNumber(row.part);
 
 // The banner: the bin to go to, large, then what comes after it.
 export function bannerTitle(now: string | null): string {

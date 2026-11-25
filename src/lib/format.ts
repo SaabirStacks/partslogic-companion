@@ -25,3 +25,8 @@ export function when(iso: string, now = new Date()): string {
 export function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
+
+// A part as the floor reads it off the label: "MANN-FILTER C 35 154" (the description goes on its own line).
+export function partNumber(part: { brand: string; number: string }): string {
+  return `${part.brand} ${part.number}`.trim();
+}

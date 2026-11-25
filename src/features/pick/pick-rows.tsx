@@ -74,7 +74,7 @@ function Row({ row, onMenu }: { row: JobRow; onMenu?: () => void }) {
   return (
     <LineRow
       name={partName(row)}
-      code={row.urgent ? `${row.order} · Urgent` : row.order}
+      code={[row.order, row.urgent ? 'Urgent' : null, row.part.description].filter(Boolean).join(' · ')}
       status={state ? { text: state.text, tone: state.tone, icon: STATE_ICON[state.tone] } : null}
       quantity={
         onMenu && left(row) > 0 ? (

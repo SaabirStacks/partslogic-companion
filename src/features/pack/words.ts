@@ -1,4 +1,5 @@
-import { packingPlace, pickingCustomer, pickRowPart, type PackingOrder } from '@/vendor/partslogic/shared/sales/picking';
+import { partNumber } from '@/lib/format';
+import { packingPlace, pickingCustomer, type PackingOrder } from '@/vendor/partslogic/shared/sales/picking';
 import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 
 import { inBox, type BoxLine } from './pack';
@@ -13,7 +14,7 @@ export const NO_SIGNAL_TO_PACK = { title: 'No signal', line: 'Pack when it’s b
 export const packingDetail = (order: PackingOrder) => [pickingCustomer(order.customer), packingPlace(order)].filter(Boolean).join(' · ');
 
 export const boxCount = (line: BoxLine) => `${quantityWords(inBox(line))} of ${quantityWords(line.qty)} in the box`;
-export const linePart = (line: Pick<BoxLine, 'part'>) => pickRowPart(line.part);
+export const linePart = (line: Pick<BoxLine, 'part'>) => partNumber(line.part);
 export const allInBox = (qty: number) => `All ${quantityWords(qty)} in the box`;
 export const NOT_ON_ORDER = 'Not on this order';
 export const EACH_PART_FIRST = 'Scan each part into the box first.';
