@@ -53,6 +53,9 @@ export type EnrichmentState = {
   updatedAt: string | null;
   lastError: string | null;
   creditsSpent: number;
+  // A part skipped because a part on the same OE number was filled: that part (20261124150000). Null otherwise, and
+  // on a database older than that.
+  coveredBy: { id: number; brand: string; number: string } | null;
 };
 
 export type PartCounts = {
@@ -64,6 +67,15 @@ export type PartCounts = {
   kit: number;
   movements: number;
   images: number;
+  barcodes: number;
+};
+
+// How many of the counted OE numbers, vehicles, specs and barcodes a person has confirmed (state verified). Photos and
+// the category carry no claim state. Zero when the database is older than 20261124120000.
+export type PartConfirmed = {
+  oe: number;
+  vehicles: number;
+  specs: number;
   barcodes: number;
 };
 
@@ -106,9 +118,17 @@ export type PartDetail = {
   oeNumbers: OeNumber[];
   enrichment: EnrichmentState | null;
   counts: PartCounts;
+  confirmed: PartConfirmed;
   gaps: PartGaps;
   openIssues: number;
 };
+
+function readCoveredBy(row: JsonRecord | null): EnrichmentState['coveredBy'] {
+  const id = readNumber(row?.id);
+  const brand = readString(row?.brand);
+  const number = readString(row?.number);
+  return id != null && brand && number ? { id, brand, number } : null;
+}
 
 // One part with its inventory row, prices, OE numbers, images, barcodes, enrichment state, per-tab counts and
 // the gaps enrichment could fill. Null when the part does not exist; a merged part returns the survivor.
@@ -126,6 +146,7 @@ export async function getPartDetail(supabase: Client, partId: number): Promise<P
   if (id == null || brandId == null || !brand || !number || !kind) return null;
 
   const counts = readRecord(detail?.counts);
+  const confirmed = readRecord(detail?.confirmed);
   const gaps = readRecord(detail?.gaps);
   const enrichment = readRecord(detail?.enrichment);
   const targetId = readNumber(enrichment?.target_id);
@@ -213,6 +234,7 @@ export async function getPartDetail(supabase: Client, partId: number): Promise<P
             updatedAt: readString(enrichment?.updated_at),
             lastError: readString(enrichment?.last_error),
             creditsSpent: readNumber(enrichment?.credits_spent) ?? 0,
+            coveredBy: readCoveredBy(readRecord(enrichment?.covered_by)),
           }
         : null,
     counts: {
@@ -225,6 +247,12 @@ export async function getPartDetail(supabase: Client, partId: number): Promise<P
       movements: readNumber(counts?.movements) ?? 0,
       images: readNumber(counts?.images) ?? 0,
       barcodes: readNumber(counts?.barcodes) ?? 0,
+    },
+    confirmed: {
+      oe: readNumber(confirmed?.oe) ?? 0,
+      vehicles: readNumber(confirmed?.vehicles) ?? 0,
+      specs: readNumber(confirmed?.specs) ?? 0,
+      barcodes: readNumber(confirmed?.barcodes) ?? 0,
     },
     gaps: {
       photo: readBoolean(gaps?.photo) ?? true,

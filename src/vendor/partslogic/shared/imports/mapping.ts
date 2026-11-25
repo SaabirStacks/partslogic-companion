@@ -171,7 +171,7 @@ const DEFAULT_TRANSFORMS: { [K in CopyField | FactKey]: ImportTransform[] } = {
   supplier_rank: ['digitsOnly'],
 };
 
-// Header spellings seen in supplier price lists, compared after lower-casing and dropping punctuation.
+// Header spellings seen in supplier price sheets, compared after lower-casing and dropping punctuation.
 const SYNONYMS: { [K in Exclude<ImportTarget, 'ignore'>]: string[] } = {
   part_number: ['part number', 'part no', 'part num', 'partno', 'part', 'item number', 'item no', 'product code',
     'manufacturer part number', 'mfr part number', 'mpn', 'article number', 'article no', 'catalogue number', 'cat no'],

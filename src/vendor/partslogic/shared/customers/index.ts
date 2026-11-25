@@ -5,6 +5,7 @@ export {
   createCustomerAccount,
   CUSTOMER_FILTERS,
   CUSTOMER_STATUSES,
+  CUSTOMER_STATUS_STATES,
   getCustomer,
   isCustomerChangeKey,
   isCustomerFilter,
@@ -33,6 +34,14 @@ export {
   type SaleBlock,
   type TradeType,
 } from './accounts';
+export {
+  CANNOT_SUPPLY_PREFERENCE_HELP,
+  CANNOT_SUPPLY_PREFERENCE_LABELS,
+  CANNOT_SUPPLY_PREFERENCES,
+  isCannotSupplyPreference,
+  setCustomerCannotSupply,
+  type CannotSupplyPreference,
+} from './cannot-supply';
 export {
   DISCOUNT_KINDS,
   DISCOUNT_SCOPES,

@@ -3,6 +3,7 @@ import type { Json } from '@partslogic/db-types';
 import { call } from '../core/call';
 import type { Client } from '../core/client';
 import { readArray, readBoolean, readNumber, readRecord, readString, type JsonRecord } from '../core/read';
+import type { StatusState } from '../core/status';
 
 // Exchange cores (docs/RETURNS_AND_CORES.md, step 16): surcharges paid to suppliers, owed back to us, and the old units
 // that settle them. Every rule lives in SQL (core_list, book_in_cores, send_cores and the rest); this file shapes what
@@ -18,6 +19,18 @@ export const CORE_STATUSES = [
   'rejected',
 ] as const;
 export type CoreStatus = (typeof CORE_STATUSES)[number];
+
+// Each core's badge state (docs/design-checks/status-colours.md): to check or on our shelf is our move, on a return or
+// with the supplier is waiting, credited is done, failed or rejected stops it.
+export const CORE_STATUS_STATES: Record<CoreStatus, StatusState> = {
+  received: 'active',
+  refused: 'blocked',
+  accepted: 'active',
+  on_return: 'waiting',
+  with_supplier: 'waiting',
+  credited: 'ready',
+  rejected: 'blocked',
+};
 
 export const CORE_VIEWS = ['to_check', 'on_shelf', 'sent', 'done', 'open', 'all'] as const;
 export type CoreView = (typeof CORE_VIEWS)[number];

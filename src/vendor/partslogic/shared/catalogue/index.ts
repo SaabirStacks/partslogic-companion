@@ -19,6 +19,23 @@ export {
   type BrandSuggestion,
 } from './brands';
 export {
+  CATALOGUE_DETAILS,
+  asSentence,
+  catalogueData,
+  catalogueDetails,
+  creditUnit,
+  credits,
+  namesProvider,
+  runFailureReason,
+  type CatalogueData,
+  type CatalogueDataInput,
+  type CatalogueDetail,
+  type CatalogueDetailKey,
+  type CatalogueRunOutcome,
+  type CatalogueStateKind,
+  type CatalogueTone,
+} from './catalogue-data';
+export {
   listEngineSettings,
   type EngineSetting,
 } from './engine-settings';
@@ -36,6 +53,7 @@ export {
   type EnrichmentState,
   type EnrichmentStatus,
   type OeNumber,
+  type PartConfirmed,
   type PartCounts,
   type PartDetail,
   type PartGaps,

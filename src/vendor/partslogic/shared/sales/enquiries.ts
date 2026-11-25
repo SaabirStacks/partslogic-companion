@@ -3,6 +3,7 @@ import type { Json } from '@partslogic/db-types';
 import { call, readHistoryEvents } from '../core/call';
 import type { Client } from '../core/client';
 import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from '../core/read';
+import { readEnquiryOrderNeed, readEnquiryRequestFailures, type EnquiryOrderNeed, type EnquiryRequestFailure } from './cannot-supply';
 import { ENQUIRY_CHANNELS, isEnquiryChannel, type EnquiryChannel } from './channels';
 import { readEnquiryOffer, readEnquiryQuote, type EnquiryOffer, type EnquiryQuote, type PriceBasis } from './offers';
 import { readRequestPhotos, type RequestPhoto } from './photos';
@@ -64,6 +65,10 @@ export type EnquiryCustomer = {
   orderRefRequired: boolean;
   // The account's note for the counter ("Only Dee or Marcus can order on account").
   counterNote: string | null;
+  // The account's main contact and their number (the primary one, else the first): who to greet and ring when the
+  // order names no one.
+  mainContact?: string | null;
+  mainPhone?: string | null;
 };
 
 export type EnquiryOwner = { id: string; name: string };
@@ -96,6 +101,8 @@ type Standing = {
   closedAt: string | null;
   customer: EnquiryCustomer;
   owner: EnquiryOwner | null;
+  // The sales order it led to that can't be supplied, while it can't (slice three c).
+  orderNeed: EnquiryOrderNeed | null;
 };
 
 export type EnquiryRow = Standing & {
@@ -282,6 +289,8 @@ export type EnquiryDetail = Standing & {
   contacts: EnquiryContact[];
   vehicles: EnquiryVehicle[];
   requests: EnquiryRequest[];
+  // Per request, the units on its own order lines that can't be supplied (slice three c).
+  requestFailures: EnquiryRequestFailure[];
   // Messages, calls, notes and what the system did, oldest first.
   log: EnquiryLogEntry[];
   // Other open enquiries from the same customer for the same plate, opened the same day.
@@ -329,6 +338,8 @@ export function readEnquiryCustomer(value: Json | undefined): EnquiryCustomer {
     retailContactId: readNumber(row.retail_contact_id),
     orderRefRequired: readBoolean(row.order_ref_required) ?? false,
     counterNote: readString(row.counter_note),
+    mainContact: readString(row.main_contact),
+    mainPhone: readString(row.main_phone),
   };
 }
 
@@ -368,6 +379,7 @@ function readStanding(row: JsonRecord): Standing | null {
     closedAt: readString(row.closed_at),
     customer: readEnquiryCustomer(row.customer),
     owner: readEnquiryOwner(row.owner),
+    orderNeed: readEnquiryOrderNeed(row.order_need),
   };
 }
 
@@ -518,6 +530,7 @@ export function readEnquiryDetail(data: Json): EnquiryDetail | null {
       ];
     }),
     vrmProvider: readString(body.vrm_provider),
+    requestFailures: readEnquiryRequestFailures(body.request_failures),
     quote: readEnquiryQuote(body.quote),
     priceBasis: oneOf(['account', 'trade', 'retail'] as const, body.price_basis, 'trade'),
     vatRate: readNumber(body.vat_rate) ?? 0,

@@ -3,6 +3,7 @@ import type { Json } from '@partslogic/db-types';
 import type { Client } from '../core/client';
 import { DataError, dataError } from '../core/errors';
 import { readArray, readBoolean, readNumber, readRecord, readString, readStrings } from '../core/read';
+import type { StatusState } from '../core/status';
 import { call, readDocumentEvents, type DocumentEvent } from './documents';
 import type { OrderAddress } from './orders';
 import { isReturnLineReason, isReturnReason, type ReturnLineReason, type ReturnReason } from './return-terms';
@@ -15,6 +16,14 @@ import { isSupplierStatus, type SupplierStatus } from './suppliers';
 
 export const SUPPLIER_RETURN_STATUSES = ['draft', 'ready', 'sent', 'settled'] as const;
 export type SupplierReturnStatus = (typeof SUPPLIER_RETURN_STATUSES)[number];
+// A return's badge state (docs/design-checks/status-colours.md, owner 23 November 2026): a draft has not started, one on
+// the returns shelf is our move, a sent one waits on the supplier's credit, a settled one is done.
+export const SUPPLIER_RETURN_STATUS_STATES: Record<SupplierReturnStatus, StatusState> = {
+  draft: 'not_started',
+  ready: 'active',
+  sent: 'waiting',
+  settled: 'ready',
+};
 
 export function isSupplierReturnStatus(value: unknown): value is SupplierReturnStatus {
   return typeof value === 'string' && (SUPPLIER_RETURN_STATUSES as readonly string[]).includes(value);

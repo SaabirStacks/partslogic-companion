@@ -8,3 +8,10 @@ export {
   type ValuationLine,
   type ZeroResultSearch,
 } from './reports';
+export {
+  getMenuCounts,
+  MENU_COUNT_KEYS,
+  readMenuCounts,
+  type MenuCountKey,
+  type MenuCounts,
+} from './menu-counts';

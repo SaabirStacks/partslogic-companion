@@ -5075,7 +5075,7 @@ export type Database = {
         Returns: undefined
       }
       close_purchase_order_short: {
-        Args: { p_order: string; p_reason: string }
+        Args: { p_order: string; p_reason: string; p_code?: string | null }
         Returns: Json
       }
       close_stale_receipts: { Args: never; Returns: number }
@@ -5318,7 +5318,36 @@ export type Database = {
       sales_order_order_in_preview: { Args: { p_id: string; p_line?: number }; Returns: Json }
       sales_order_order_in: { Args: { p_id: string; p: Json }; Returns: Json }
       sales_order_undo_order_in: { Args: { p_id: string; p_links: number[] }; Returns: Json }
+      sales_order_ask_customer: { Args: { p_id: string; p: Json }; Returns: Json }
+      sales_order_record_answer: { Args: { p_id: string; p: Json }; Returns: Json }
+      sales_order_tell_customer: { Args: { p_id: string; p: Json }; Returns: Json }
+      sales_order_tell_late: { Args: { p_id: string; p: Json }; Returns: Json }
+      sales_order_replace_line: { Args: { p_line: number; p: Json }; Returns: Json }
+      sales_order_undo_replace: { Args: { p_line: number }; Returns: undefined }
+      purchase_orders_substitutes: { Args: { p?: Json }; Returns: Json }
+      return_substitutes: { Args: { p: Json }; Returns: Json }
+      keep_substitutes: { Args: { p: Json }; Returns: Json }
+      undo_substitutes: { Args: { p: Json }; Returns: Json }
+      sales_order_undo_ask: { Args: { p_id: string }; Returns: Json }
+      picking_list: { Args: { p?: Json }; Returns: Json }
+      sales_order_pick: { Args: { p: Json }; Returns: Json }
+      sales_order_undo_pick: { Args: { p_pick: number }; Returns: Json }
+      sales_order_set_urgent: { Args: { p_id: string; p_urgent: boolean }; Returns: Json }
+      pick_job_status: { Args: { p?: Json }; Returns: Json }
+      pick_job_start: { Args: { p?: Json }; Returns: Json }
+      pick_job: { Args: { p_job: string }; Returns: Json }
+      pick_job_end: { Args: { p: Json }; Returns: Json }
+      pick_job_unscan: { Args: { p: Json }; Returns: Json }
+      sales_order_pack: { Args: { p: Json }; Returns: Json }
+      sales_order_unpack: { Args: { p_order: string }; Returns: Json }
+      sales_order_set_cannot_supply: { Args: { p_id: string; p_value: string | null }; Returns: Json }
       part_set_aside: { Args: { p_part: number }; Returns: Json }
+      part_stock_glance: { Args: { p_part: number }; Returns: Json }
+      part_below_reorder: { Args: { p_part: number }; Returns: boolean }
+      saved_views: { Args: { p_list: string }; Returns: Json }
+      save_view: { Args: { p_list: string; p_name: string; p_params: Json; p_id?: number | null }; Returns: Json }
+      rename_view: { Args: { p_id: number; p_name: string }; Returns: Json }
+      delete_view: { Args: { p_id: number }; Returns: undefined }
       count_request_list: { Args: Record<PropertyKey, never>; Returns: Json }
       count_request_remove: { Args: { p_id: number }; Returns: undefined }
       sales_order_detail: { Args: { p_id: string }; Returns: Json }
@@ -5722,6 +5751,7 @@ export type Database = {
         Args: { p_alias: string; p_category: number }
         Returns: number
       }
+      menu_counts: { Args: never; Returns: Json }
       merge_suppliers: {
         Args: { p_from: number; p_into: number }
         Returns: Json
@@ -5999,6 +6029,7 @@ export type Database = {
       }
       post_stocktake: { Args: { p_stocktake: string }; Returns: Json }
       price_check_detail: { Args: { p_receipt: string }; Returns: Json }
+      price_checks_waiting: { Args: never; Returns: number }
       price_check_list: {
         Args: { p_checked?: boolean; p_limit?: number }
         Returns: {
@@ -6018,6 +6049,9 @@ export type Database = {
         }[]
       }
       purchase_order_counts: { Args: never; Returns: Json }
+      purchase_orders_customer_lines: { Args: { p?: Json }; Returns: Json }
+      purchase_orders_add_customer_lines: { Args: { p: Json }; Returns: Json }
+      purchase_orders_undo_customer_lines: { Args: { p: Json }; Returns: Json }
       purchase_order_detail: { Args: { p_order: string }; Returns: Json }
       my_access: { Args: never; Returns: Json }
       people_access: { Args: never; Returns: Json }
@@ -6430,6 +6464,7 @@ export type Database = {
         Args: { p_credit_limit: number; p_provider: string }
         Returns: undefined
       }
+      set_customer_cannot_supply: { Args: { p_account: number; p_value: string }; Returns: Json }
       set_customer_status: {
         Args: { p_account: number; p_reason?: string; p_status: string }
         Returns: Json

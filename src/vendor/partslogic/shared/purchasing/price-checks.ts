@@ -138,6 +138,14 @@ export function readPriceCheck(value: Json | null | undefined): PriceCheckDetail
   };
 }
 
+// How many deliveries wait for a price check, however many there are (the list stops at 100). The To check tab and the
+// side menu show this number (public.price_checks_waiting).
+export async function countPriceChecksWaiting(supabase: Client): Promise<number> {
+  const { data, error } = await supabase.rpc('price_checks_waiting');
+  if (error) throw dataError(error);
+  return readNumber(data) ?? 0;
+}
+
 export async function listPriceChecks(supabase: Client, checked = false): Promise<PriceCheckRow[]> {
   const { data, error } = await supabase.rpc('price_check_list', { p_checked: checked });
   if (error) throw dataError(error);

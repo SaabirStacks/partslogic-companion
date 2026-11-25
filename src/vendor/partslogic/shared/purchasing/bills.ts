@@ -4,6 +4,7 @@ import { call, readHistoryEvents, type HistoryEvent } from '../core/call';
 import type { Client } from '../core/client';
 import { DataError, dataError } from '../core/errors';
 import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from '../core/read';
+import type { StatusState } from '../core/status';
 
 // Supplier bills (docs/SUPPLIER_BILLS.md; purchasing step 17a). A draft is entered by picking the deliveries it covers,
 // whose lines fill in at the prices we expected; lines are corrected to what the bill says, and recording needs their
@@ -16,6 +17,23 @@ export type SupplierBillStatus = (typeof SUPPLIER_BILL_STATUSES)[number];
 // The list's groups: a recorded bill with differences still to decide is "to review".
 export const SUPPLIER_BILL_GROUPS = ['draft', 'to_review', 'recorded'] as const;
 export type SupplierBillGroup = (typeof SUPPLIER_BILL_GROUPS)[number];
+
+// A bill's badge state (docs/design-checks/status-colours.md): a draft has not started, one to review is our move, a
+// recorded bill is on the books.
+// A bill's badge word (owner, 23 November 2026): Draft, To review while differences wait, then Unpaid until nothing is
+// open and Paid after: the order trail's words, so no screen shows green for a bill still owed. A screen that doesn't
+// know what is open (no figure) shows no badge for a recorded bill. The state comes from STATUS_WORD_STATES.
+export function billBadgeWord(group: SupplierBillGroup, open: number | null | undefined): 'Draft' | 'To review' | 'Unpaid' | 'Paid' | null {
+  if (group === 'draft') return 'Draft';
+  if (group === 'to_review') return 'To review';
+  if (open == null) return null;
+  return open > 0 ? 'Unpaid' : 'Paid';
+}
+
+// A bill line's decision as a badge: a price accepted, or a query credited, is settled; a query with money still open
+// waits on the supplier's credit.
+export type BillLineDecisionBadge = 'accepted' | 'credited' | 'open';
+export const BILL_LINE_DECISION_STATES: Record<BillLineDecisionBadge, StatusState> = { accepted: 'ready', credited: 'ready', open: 'waiting' };
 
 export function isSupplierBillGroup(value: unknown): value is SupplierBillGroup {
   return typeof value === 'string' && (SUPPLIER_BILL_GROUPS as readonly string[]).includes(value);

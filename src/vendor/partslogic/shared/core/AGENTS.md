@@ -11,11 +11,16 @@ What every domain uses. No database functions of its own.
 - `read.ts`: readers that narrow untyped JSON from the database (`readRecord`, `readString`, `readNumber`...)
   and `requireRecord` (throws a `DataError` when a function returns no object).
 - `page.ts`: `Page<T>` and `PageInfo` for paged lists.
+- `status.ts`: the six badge states (`STATUS_STATES`: not started, ended, our move, waiting, ready, stops work),
+  `BadgeTone` (a state or `plain` for a data pill) and `STATUS_FAMILY` (the colour each state draws in). Each
+  domain maps its own statuses to a state (`*_STATUS_STATES`); the web draws them with `StatusBadge`
+  (`components/shadcn-studio/blocks/records/status-badge.tsx`). See `docs/design-checks/status-colours.md`.
 
 ## Elsewhere
 - Web: `lib/supabase/` (server, browser and admin clients), `lib/action-result.ts` (server action results),
   `lib/api/http.ts` and `lib/api/params.ts` (API route helpers and body and query readers), `lib/utils.ts`.
-- Tests: `tests/api/http.test.ts`, `tests/api/params.test.ts`; `tests/support/fake-supabase.ts` is the test
+- Tests: `tests/api/http.test.ts`, `tests/api/params.test.ts`, `tests/shared/core/status.test.ts` (every domain's
+  state map); `tests/support/fake-supabase.ts` is the test
   double every wrapper test uses.
 
 ## Rules

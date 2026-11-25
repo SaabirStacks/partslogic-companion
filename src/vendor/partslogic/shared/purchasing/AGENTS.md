@@ -7,6 +7,9 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
 
 ## Files here
 - `suppliers.ts`: the Suppliers pages: `listSuppliers`, `getSupplier`, `saveSupplier`, `setSupplierStatus`.
+- Badge states (docs/design-checks/status-colours.md): `SUPPLIER_STATUS_STATES` (`suppliers.ts`),
+  `PURCHASE_ORDER_STATUS_STATES` and `ORDER_APPROVAL_BADGE_STATES` (`orders.ts`), `CORE_STATUS_STATES` (`cores.ts`),
+  `billBadgeWord` (`bills.ts`: Draft, To review, Unpaid, Paid); returns and credits below.
 - `supplier-merge.ts`: merging a duplicate supplier into the one kept (step 2f, admins): `previewSupplierMerge` (what
   would move, and what refuses it), `mergeSuppliers`, `mergeMoveLines` (the confirmation's lines), `readSupplierMerge`
   (also read into `SupplierDetail.mergedInto` and `.merges`). Screen: `blocks/purchasing/merge-supplier-dialog.tsx`,
@@ -19,7 +22,8 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
   `createSupplier`.
 - `catalogue.ts`: the supplier catalogue: `searchSupplierCatalogue` (one search over every supplier's lines and
   your range), `getPriceComparison` (a part beside its equivalents), the readers, `bestOffer`, `savingRatio`.
-- `orders.ts`: purchase orders: `listPurchaseOrders`, `purchaseOrderCounts`, `getPurchaseOrder`, `createPurchaseOrder`,
+- `orders.ts`: purchase orders: `listPurchaseOrders`, `purchaseOrderCounts` (with `customerLines`, the count of the
+  Customer lines tab, whose queue lives in `sales/customer-lines.ts`), `getPurchaseOrder`, `createPurchaseOrder`,
   `addPurchaseOrderLines`, `addToOrders` (the catalogue's Add to order), `savePurchaseOrderLine`,
   `removePurchaseOrderLine`, `movePurchaseOrderLine` (a draft line to another supplier's draft, step 3c), `savePurchaseOrder`, `savePurchaseOrderVehicle`, `removePurchaseOrderVehicle`,
   `placePurchaseOrder`, `cancelPurchaseOrder`, `deleteDraftPurchaseOrder`, `vehicleOptions`, `readPurchaseOrder`.
@@ -28,7 +32,9 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
 - `goods-in.ts`: the Expected list, receiving and closing short on the web, a receipt's order matches.
 - `price-checks.ts`: Price checks (`listPriceChecks`, `getPriceCheck`, `savePriceCheck`, `priceFlagged`).
 - `reorder.ts`: the reorder list and the part's Order (`listReorderSuggestions`, `getPartReorder`,
-  `setPreferredSupplier`, `addReorderLines`, `groupReorder`).
+  `setPreferredSupplier`, `addReorderLines`, `groupReorder`); the Reorder window's cards and words
+  (`groupReorderByDraft`: one card per supplier and location; `REORDER_REASON_WORDS`, `reorderLevelWords`,
+  `reorderPackWords`, `reorderLinesWord`, `reorderOfferNote`; `reorderLevel`, the level bar's segments).
 - `cost-history.ts`: the part's cost history (`getCostHistory`: what was paid per delivery, supplier price changes).
 - `return-terms.ts`: return reasons (`RETURN_REASONS`: NR, WAR, DI, WS; `RETURN_LINE_REASONS` adds CORE, which only
   the cores page puts on a return) and their terms for the company or a supplier (`getReturnTerms`, `saveReturnTerms`,
@@ -37,9 +43,11 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
   `returnToSupplier`, `addSupplierReturnLines`, `saveSupplierReturnLine`, `removeSupplierReturnLine`,
   `saveSupplierReturn`, `deleteDraftSupplierReturn`, `moveSupplierReturn` for Ready, back to draft, Sent and undo;
   once sent, each line's balance, `settleSupplierReturnLine` and `undoSupplierReturnOutcome`).
+  `SUPPLIER_RETURN_STATUS_STATES`: each return status's badge state.
 - `credits.ts`: supplier credit notes (`listSupplierCredits`, `getSupplierCredit`, `createSupplierCredit` (the quick
   credit records at once), `saveSupplierCredit`, `addSupplierCreditLines`, `saveSupplierCreditLine`,
   `removeSupplierCreditLine`, `deleteDraftSupplierCredit`, `moveSupplierCredit` for Record and back to draft).
+  `creditBadgeWord`: a credit note's one badge (Draft, To review, Recorded).
 - `documents.ts`: what orders, returns and credits share: `call` and `readDocumentEvents`, now kept in the core
   (`core/call.ts`) and re-exported here under the same names.
 - `supplier-overview.ts`: the supplier page's figures and the Suppliers list's money columns (`getSupplierOverview`,
@@ -53,8 +61,16 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
 - `order-trail.ts`: the order as the hub: `readOrderTrail` (an order's stages, deliveries with their price check and
   bill, bills, payments, money and next step, read into `PurchaseOrderDetail.trail`), `createBillFromOrder`.
 - `back-orders.ts`: back-orders and supplier performance (step 14): `listBackOrders`, `chaseBackOrderLines`,
+  each row's `forCustomers` (S4b part three b, docs/SALES.md 13.16: who waits on the line, what was promised and
+  whether the customer was told, and the account's `ifCannotSupply`; read by sales through `back_order_lines` and the
+  order's `back_orders` in `purchase_order_detail`, lines for customers first, shown as the For column in
+  `blocks/purchasing/back-order-bits.tsx`),
   `cancelBackOrderLine`, `saveSupplierBackOrders`, `getSupplierPerformance`, `supplierScores`, `percentOf`; the
-  substitute is `acceptSubstitute` in `goods-in.ts`.
+  substitute is `acceptSubstitute` in `goods-in.ts`. Cannot supply (S4b part three, docs/SALES.md 13.14): reasons in
+  two groups (`BACK_ORDER_REASONS` adds `maker_discontinued`; `ReasonSelect` in `blocks/purchasing/back-order-bits.tsx`
+  is shared by Cancel and Close short), a cancel returns `forCustomers` (which sales orders were waiting and what
+  happens next), and `closePurchaseOrderShort` takes a reason code. Purchasing says why it closed units through the
+  transaction setting `purchasing.close_reason`, which `sales.supply_line_changed` reads.
 - `supplier-lines.ts`: a supplier's Catalogue tab (step 11; the `delisted` view, No longer listed, from step 3c): `getSupplierLines` (their current lines with the price each
   replaced, views, search, sort, paging), `setPreferredSupplierLines`, and the export's `SUPPLIER_LINE_CSV_HEADERS` and
   `supplierLineCsvRows` (up to `SUPPLIER_LINE_EXPORT_MAX` lines).
@@ -81,6 +97,8 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
   stocked parts that moved more than 10%), `saveSupplierSheetSchedule`, `readSheetFreshness` (shared with
   `supplier-overview.ts`).
 - `order-extras.ts`: extra units on an order: `readOrderExtras` (into `PurchaseOrderDetail.extras`),
+  `substituteAcceptWords` (the window before a substitute is accepted for a line customers wait on, S4b part three b:
+  hold, use at once or send to Substitutes to return, by each account's preference; docs/SALES.md 13.18),
   `orderExtrasToDeal` (the order list's mark); the choice is sent by `dealWithOrderExtras` in `goods-in.ts`.
 - `payments.ts`: paying suppliers (step 17b): `listSupplierPayables` (aged, per supplier), `getPayOptions`,
   `recordSupplierPayment` (credit notes used first), `getSupplierPayment`, `listSupplierPayments`, `voidSupplierPayment`.
@@ -141,7 +159,9 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
   block and legal footer in `pdf-bits.tsx` and the logo and response in `pdf-files.ts`.
 - API: `app/api/v1/suppliers/`.
 - Database: entry points `create_supplier`, `supplier_options`, `supplier_list`, `supplier_detail`,
-  `save_supplier`, `set_supplier_status`, `supplier_catalogue`, `part_price_comparison`; schema `purchasing`
+  `save_supplier`, `set_supplier_status` (putting a supplier on hold, or taking it off, fires sales'
+  `suppliers_hold_follow`: confirmed sales lines only it lists wait on it, docs/SALES.md 13.19), `supplier_catalogue`,
+  `part_price_comparison`; schema `purchasing`
   (`suppliers`, `supplier_activity`, `supplier_last_upload`, `supplier_name`, `part_offers`,
   `catalogue_facts`). SQL tests: `supabase/tests/104_purchasing_boundary.sql` (the entry point allowlist),
   `105_purchasing_suppliers.sql`, `106_purchasing_supplier_pages.sql`, `114_purchasing_catalogue.sql`,
@@ -164,7 +184,7 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
   `set_preferred_supplier_lines`, `supplier_price_sheets`, `save_supplier_sheet_schedule`, internal
   `sheet_freshness`, the need `price_sheet_overdue`). The full entry point list is in 104.
 - Tests: `tests/shared/purchasing/suppliers.test.ts`, `tests/shared/purchasing/catalogue.test.ts`,
-  `tests/shared/purchasing/orders.test.ts`, `delivery-terms.test.ts`, `goods-in.test.ts`, `reorder.test.ts`,
+  `tests/shared/purchasing/orders.test.ts`, `delivery-terms.test.ts`, `goods-in.test.ts`, `reorder.test.ts`, `reorder-window.test.ts`,
   `cost-history.test.ts`, `returns.test.ts`, `return-terms.test.ts`, `credits.test.ts`, `supplier-overview.test.ts`,
   `cores.test.ts`, `tests/purchasing/cores.test.ts` (input readers), `bills.test.ts` and `payments.test.ts` (fixtures
   `tests/support/supplier-*.json`), `tests/purchasing/bills.test.ts`, `tests/purchasing/payments.test.ts`,
@@ -194,6 +214,14 @@ the module pattern: its own `purchasing` schema behind thin `public` entry point
   `released_for`, the order `customer_orders`, and each vehicle its `sales_order`; fit is checked against that
   order's lines only. A draft started by ordering in has origin `sales`. Words: `customerLineCount`,
   `customerLinesWords`.
+- A supplier's performance lists the customer lines it let down in 90 days (`supplier_performance.let_down`,
+  `readSupplierLetDowns`; words `letDownReasonsWords`, `letDownSubWords`, `letDownOrderWords`, `LET_DOWN_LABEL`):
+  counted, those the maker discontinued (listed, not counted), by reason, and the five newest sales orders affected
+  with `orderCount` for all of them (`letDownMoreWords`). A supplier on
+  hold isn't listed. Read from sales through `sales.supplier_let_downs` (docs/SALES.md 13.22).
+- A purchase order that let customers down lists them (`purchase_order_detail.let_downs`, `readPurchaseLetDowns`):
+  who acts next and a reorder while it is a draft. Reorder elsewhere adds through Customer lines' own entry point,
+  never a new one, so nothing can buy the part twice (docs/SALES.md 13.21).
 
 ## Depends on
 - `parties` (contacts and addresses); `inventory` (the `PartKind` type). In SQL the catalogue reuses the

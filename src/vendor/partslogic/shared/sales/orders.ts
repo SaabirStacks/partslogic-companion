@@ -1,5 +1,7 @@
 import type { Json } from '@partslogic/db-types';
 
+import type { StatusState } from '../core/status';
+
 import { call, readHistoryEvents, type HistoryEvent } from '../core/call';
 import type { Client } from '../core/client';
 import { readArray, readBoolean, readNumber, readRecord, readString, readStrings, type JsonRecord } from '../core/read';
@@ -26,13 +28,31 @@ import {
   orderedInShortWords,
 } from './order-in';
 import { putAsideEventText, readPutAsideReceipts, readyLabel, readyNeedWords, readyToTell, type PutAsideReceipt } from './put-aside';
-import { clockTime, dateWords, dayAndTime, deliveryWords, moneyWords, quantityWords } from './words';
+import {
+  CUSTOMER_CHANNEL_PHRASE,
+  cannotSupplyEventText,
+  failuresToTell,
+  readLineFailures,
+  readOrderFailureSummary,
+  onSupplierHold,
+  readOrderPreference,
+  substituteToAgree,
+  type LineFailure,
+  type OrderFailureSummary,
+  type OrderPreference,
+} from './cannot-supply';
+import { lateEventText, readLateLines, readOrderLateSummary, type LateLine, type OrderLateSummary } from './late';
+import { addressLines, deliveryPlace, readSalesOrderAddress, type SalesOrderAddress } from './address';
+import { notFoundWords, pickingEventText, readNotFound, type NotFound, type PackingOrder } from './picking';
+import { packingEventText, parcelsWords, readOrderPack, type OrderPack } from './packing';
+import { replaceEventText } from './replace';
+import { clockTime, dateWords, dayAndTime, daysFromToday, deliveryWords, moneyWords, nearDayWords, PART_FIT_WORDS, quantityWords } from './words';
 
 // Sales orders (docs/SALES.md, sections 6, 13.7 and 13.8). An order is made from the accepted offers on an enquiry
 // and starts as a draft, which holds no stock. Confirming it runs the credit check and sets stock aside; what is
 // short is to order. The database makes every decision; these wrappers hand it the words and read its answers.
 
-export const SALES_ORDER_VIEWS = ['mine', 'drafts', 'to_order', 'to_pick', 'on_hold', 'all_open', 'completed'] as const;
+export const SALES_ORDER_VIEWS = ['mine', 'drafts', 'to_order', 'to_pick', 'to_pack', 'on_hold', 'action_required', 'all_open', 'completed'] as const;
 export type SalesOrderView = (typeof SALES_ORDER_VIEWS)[number];
 export function isSalesOrderView(value: string): value is SalesOrderView {
   return (SALES_ORDER_VIEWS as readonly string[]).includes(value);
@@ -42,7 +62,11 @@ export const SALES_ORDER_VIEW_LABELS: Record<SalesOrderView, string> = {
   drafts: 'Drafts',
   to_order: 'To order',
   to_pick: 'To pick',
+  // Deliveries with every unit picked, not yet packed (S5b-1).
+  to_pack: 'To pack',
   on_hold: 'On hold',
+  // The orders where the counter must act now on a part a supplier let down (Faire's "Action required").
+  action_required: 'Action required',
   all_open: 'All open',
   completed: 'Completed',
 };
@@ -50,12 +74,12 @@ export const SALES_ORDER_VIEW_LABELS: Record<SalesOrderView, string> = {
 export const SALES_ORDER_STATUSES = ['draft', 'open', 'on_hold', 'completed', 'cancelled'] as const;
 export type SalesOrderStatus = (typeof SALES_ORDER_STATUSES)[number];
 // The pill an order wears until its lines have stages of their own. On hold is the only one that blocks work.
-export const SALES_ORDER_STATUS_WORDS: Record<SalesOrderStatus, { label: string; tone: 'neutral' | 'done' | 'blocked' }> = {
-  draft: { label: 'Draft', tone: 'neutral' },
-  open: { label: 'Open', tone: 'neutral' },
+export const SALES_ORDER_STATUS_WORDS: Record<SalesOrderStatus, { label: string; tone: StatusState }> = {
+  draft: { label: 'Draft', tone: 'not_started' },
+  open: { label: 'Open', tone: 'active' },
   on_hold: { label: 'On hold', tone: 'blocked' },
-  completed: { label: 'Completed', tone: 'done' },
-  cancelled: { label: 'Cancelled', tone: 'neutral' },
+  completed: { label: 'Completed', tone: 'ready' },
+  cancelled: { label: 'Cancelled', tone: 'ended' },
 };
 
 export const DELIVERY_METHODS = ['collection', 'delivery', 'courier'] as const;
@@ -67,6 +91,8 @@ export const DELIVERY_METHOD_SHORT: Record<DeliveryMethod, string> = { collectio
 export const ORDER_PAYMENTS = ['on_account', 'not_invoiced'] as const;
 export type OrderPayment = (typeof ORDER_PAYMENTS)[number];
 export const ORDER_PAYMENT_LABELS: Record<OrderPayment, string> = { on_account: 'On account', not_invoiced: 'Not invoiced' };
+// Nothing is invoiced yet, so payment has not started (docs/design-checks/status-colours.md).
+export const ORDER_PAYMENT_STATES: Record<OrderPayment, StatusState> = { on_account: 'not_started', not_invoiced: 'not_started' };
 
 // What became of a cancelled order's requests: returned to the enquiry, still accepted, or lost with a reason.
 // returned: back to its enquiry. lost: a lost sale, with a reason. error: made in error (an order made with New sale;
@@ -80,15 +106,42 @@ export type OrderCancelled = { outcome: CancelOutcome; reason: string | null; en
 // Where a confirmed order's stock stands, the furthest behind first: parts still to order, then on a draft purchase
 // order, ordered, arrived and waiting to be set aside, all set aside to pick, and every unit on the collection and
 // delivery shelf (Ready, S4b: "Ready for collection" or "Ready for delivery", by the order's method).
-export const ORDER_FULFILMENTS = ['to_order', 'drafted', 'ordered', 'arrived', 'to_pick', 'ready'] as const;
+// to_agree: the counter's move after a supplier let the customer down (ask, act on the answer, or chase a reply past
+// the next working day); awaiting_reply: asked, and the reply isn't due yet; waiting: the customer chose to wait for a
+// supplier on hold. An order with an answer due is never Ready, nor Ordered.
+// to_pack (S5b-1): a delivery or courier order with every unit on the shelf and not yet packed; packed, it is Ready.
+export const ORDER_FULFILMENTS = ['to_order', 'drafted', 'ordered', 'arrived', 'to_agree', 'awaiting_reply', 'waiting', 'to_pick', 'to_pack', 'ready'] as const;
 export type OrderFulfilment = (typeof ORDER_FULFILMENTS)[number];
 export const ORDER_FULFILMENT_LABELS: Record<OrderFulfilment, string> = {
   to_order: 'To order',
   drafted: 'Drafted',
-  ordered: 'Ordered',
+  // "On order", the order page's own word for units on a placed purchase order: "Ordered" is an enquiry's settled sale.
+  ordered: 'On order',
   arrived: 'Arrived',
+  // Named for who holds the next move, in the words Enquiries already uses for them (NEXT_MOVE_LABELS): the counter's
+  // (Needs action: ask, act on the answer, chase a late reply), or the order is waiting on the customer's reply, or on
+  // a supplier on hold.
+  to_agree: 'Needs action',
+  awaiting_reply: 'Waiting on customer',
+  waiting: 'Waiting on supplier',
   to_pick: 'To pick',
+  to_pack: 'To pack',
   ready: 'Ready',
+};
+
+// Each stage's badge state (docs/design-checks/status-colours.md): our move blue, waiting on a supplier or the
+// customer amber, ready green.
+export const ORDER_FULFILMENT_STATES: Record<OrderFulfilment, StatusState> = {
+  to_order: 'active',
+  drafted: 'active',
+  ordered: 'waiting',
+  arrived: 'active',
+  to_agree: 'active',
+  awaiting_reply: 'waiting',
+  waiting: 'waiting',
+  to_pick: 'active',
+  to_pack: 'active',
+  ready: 'ready',
 };
 
 // The stage pill's words: a ready order says how it reaches the customer.
@@ -98,9 +151,11 @@ export function fulfilmentLabel(fulfilment: OrderFulfilment, method: DeliveryMet
 
 // Why a confirmed order cannot move. The credit check sets on_stop and over_limit; a person sets customer (waiting
 // for the customer), with a note saying what would release it.
-export const HOLD_REASONS = ['on_stop', 'over_limit', 'customer'] as const;
+// Cannot supply (S4b part three): every unit left on the order can't be supplied, so nothing on it can move; the hold
+// lifts by itself.
+export const HOLD_REASONS = ['on_stop', 'over_limit', 'customer', 'cannot_supply'] as const;
 export type HoldReason = (typeof HOLD_REASONS)[number];
-export type CreditHoldReason = Exclude<HoldReason, 'customer'>;
+export type CreditHoldReason = Exclude<HoldReason, 'customer' | 'cannot_supply'>;
 export type OrderHold = {
   reason: HoldReason;
   at: string | null;
@@ -116,6 +171,11 @@ export type OrderHold = {
   since: string | null;
   limit: number | null;
   overBy: number | null;
+  // Cannot supply: the part, the purchase order and its supplier.
+  part: string | null;
+  po: string | null;
+  poId: string | null;
+  supplier: string | null;
 };
 
 // Why a short line was confirmed as in stock here (the stock figure is wrong).
@@ -128,7 +188,8 @@ export const SHELF_REASON_LABELS: Record<ShelfReason, string> = {
   other: 'Other',
 };
 
-export type SalesOrderAddress = { id: number; kind: string; name: string | null; lines: string; town: string | null; county: string | null; postcode: string | null };
+// The delivery address lives in address.ts (S5b), read by picking too; its names stay exported here.
+export { addressLines, type SalesOrderAddress } from './address';
 
 export type SalesOrderRow = {
   id: string;
@@ -139,9 +200,12 @@ export type SalesOrderRow = {
   // Once confirmed: how far its stock has got, and the units on each side.
   fulfilment: OrderFulfilment | null;
   toOrder: number;
-  // Set aside in bins, to pick; and put aside on the collection and delivery shelf by goods in (S4b).
+  // Set aside in bins, to pick; and on the collection and delivery shelf, put there by goods in (S4b) or picked
+  // (S5a-1, of which `picked`); and the order marked urgent.
   toPick: number;
   onShelf: number;
+  picked: number;
+  urgent: boolean;
   hold: OrderHold | null;
   registrations: string[];
   lineCount: number;
@@ -159,15 +223,21 @@ export type SalesOrderRow = {
   owner: EnquiryOwner | null;
   location: { id: number; name: string } | null;
   cancelled: OrderCancelled | null;
+  // Units that can't be supplied and the next step, or a reordered part the customer is still to be told about.
+  cannotSupply: OrderFailureSummary | null;
+  // A part bought for the customer that is late, or has a new day from the supplier (S4b part three b).
+  late: OrderLateSummary | null;
 };
 
 export type SalesOrderList = {
   view: SalesOrderView;
   rows: SalesOrderRow[];
   total: number;
+  // Units still to pick across the list's branch (or every branch), counted as the Picking page counts them (S5a-1).
+  toPickUnits: number;
   // The rows in each view, whatever is typed in the filter.
-  views: { mine: number; drafts: number; toOrder: number; toPick: number; onHold: number; allOpen: number };
-  summary: { open: number; needsAction: number; drafts: number; onHold: number };
+  views: { mine: number; drafts: number; toOrder: number; toPick: number; toPack: number; onHold: number; actionRequired: number; allOpen: number };
+  summary: { open: number; needsAction: number; drafts: number; onHold: number; withCustomer: number; actionRequired: number };
   locations: { id: number; name: string }[];
   // The people who own an open order, for the Owner filter.
   owners: EnquiryOwner[];
@@ -202,6 +272,8 @@ export type SalesOrderLine = {
   toOrder: number;
   withoutStock: number;
   cancelled: boolean;
+  // Units taken off the line after the order was confirmed (shown in the Removed group).
+  removed: number;
   // The branch its stock is set aside at, with what that shelf holds and can still sell, and the bin holding most.
   place: string | null;
   onHand: number;
@@ -210,19 +282,25 @@ export type SalesOrderLine = {
   binQty: number | null;
   // Units of a line that is to order which the shelf can now give it.
   canSetAside: number;
-  // Of the set-aside units, those goods in moved onto the collection and delivery shelf (S4b).
+  // Of the set-aside units, those on the collection and delivery shelf: goods in's (S4b) and picked (S5a-1).
   onShelf: number;
+  // Of those, the units picked from bins, and a short pick still open (S5a-1).
+  picked: number;
+  notFound: NotFound | null;
   // Of the units to order: on purchase orders, arrived and waiting to be set aside, and still to order (ordering in).
   onPo: number;
   arrived: number;
   stillToOrder: number;
+  // Units a supplier let the customer down on (S4b part three): not to order until the customer or the account says.
+  cannotSupply: number;
   supplyLinks: SupplyLink[];
   // Only for a person allowed to see cost and margin.
   unitCost: number | null;
   margin: number | null;
 };
 
-export const ORDER_TRAIL_STAGES = ['confirmed', 'stock', 'picked', 'supplied', 'invoiced', 'paid'] as const;
+// Packed (S5b-1) is on a delivery's or courier order's trail only; a collection has no such step.
+export const ORDER_TRAIL_STAGES = ['confirmed', 'stock', 'picked', 'packed', 'supplied', 'invoiced', 'paid'] as const;
 export type OrderTrailStage = (typeof ORDER_TRAIL_STAGES)[number];
 export type OrderTrailNode = { key: OrderTrailStage; state: 'done' | 'now' | 'todo'; done: number | null; of: number | null; at: string | null };
 
@@ -316,11 +394,25 @@ export type SalesOrderDetail = {
   putAsideReceipts: PutAsideReceipt[];
   putAsideAt: string | null;
   readyMessageAt: string | null;
+  // Picked first (S5a-1).
+  urgent: boolean;
+  // Packed (S5b-1): the standing pack, and who holds the order in a pick job on a phone.
+  pack: OrderPack | null;
+  picker: string | null;
   canOrderIn: boolean;
+  // Units the counter may order in: still to order, leaving out parts that can't be supplied (purchasing reorders those).
+  orderInUnits: number;
   canOrderInUnpaid: boolean;
   canBuildOrders: boolean;
   canPlaceOrders: boolean;
   canApproveOrders: boolean;
+  // Cannot supply (S4b part three): each failure, what the order does when a part can't be supplied, and whether this
+  // person may save an answer as the account's preference.
+  failures: LineFailure[];
+  // Parts bought for this order that are late or have a new day (S4b part three b), and what the customer was told.
+  late: LateLine[];
+  ifCannotSupply: OrderPreference;
+  canEditAccount: boolean;
   now: string;
 };
 
@@ -382,7 +474,19 @@ export type OrderOpened =
 // A part's stock as sales sees it: per branch, and each order holding it.
 export type PartSetAside = {
   places: { locationId: number; location: string; onHand: number; setAside: number; available: number }[];
-  orders: { id: string; number: string; quantity: number; withoutStock: number; location: string | null; confirmedAt: string | null; customer: EnquiryCustomer }[];
+  orders: SetAsideOrder[];
+};
+
+// An order holding a part: a confirmed line's allocation, or a substitute held while the customer decides.
+export type SetAsideOrder = {
+  id: string;
+  number: string;
+  quantity: number;
+  withoutStock: number;
+  substitute: boolean;
+  location: string | null;
+  confirmedAt: string | null;
+  customer: EnquiryCustomer;
 };
 
 // What Create order would make from an enquiry, before it is made.
@@ -431,26 +535,15 @@ function readHold(value: Json | undefined): OrderHold | null {
     since: readString(row.since),
     limit: readNumber(row.limit),
     overBy: readNumber(row.over_by),
+    part: readString(row.part),
+    po: readString(row.po),
+    poId: readString(row.po_id),
+    supplier: readString(row.supplier),
   };
 }
 
 function readFulfilment(value: Json | undefined): OrderFulfilment | null {
   return typeof value === 'string' && (ORDER_FULFILMENTS as readonly string[]).includes(value) ? (value as OrderFulfilment) : null;
-}
-
-function readAddress(value: Json | undefined): SalesOrderAddress | null {
-  const row = readRecord(value);
-  const id = readNumber(row?.id);
-  if (!row || id == null) return null;
-  return {
-    id,
-    kind: readString(row.kind) ?? 'main',
-    name: readString(row.name),
-    lines: readString(row.lines) ?? '',
-    town: readString(row.town),
-    county: readString(row.county),
-    postcode: readString(row.postcode),
-  };
 }
 
 export function readSalesOrderRow(value: Json | undefined): SalesOrderRow | null {
@@ -467,6 +560,8 @@ export function readSalesOrderRow(value: Json | undefined): SalesOrderRow | null
     toOrder: readNumber(row.to_order) ?? 0,
     toPick: readNumber(row.to_pick) ?? 0,
     onShelf: readNumber(row.on_shelf) ?? 0,
+    picked: readNumber(row.picked) ?? 0,
+    urgent: readBoolean(row.urgent) ?? false,
     hold: readHold(row.hold),
     registrations: readStrings(row.registrations),
     lineCount: readNumber(row.line_count) ?? 0,
@@ -482,6 +577,8 @@ export function readSalesOrderRow(value: Json | undefined): SalesOrderRow | null
     owner: readEnquiryOwner(row.owner),
     location: readPlace(row.location),
     cancelled: readCancelled(row.cancelled),
+    cannotSupply: readOrderFailureSummary(row.cannot_supply),
+    late: readOrderLateSummary(row.late),
   };
 }
 
@@ -493,12 +590,15 @@ export function readSalesOrderList(data: Json): SalesOrderList {
     view: oneOf(SALES_ORDER_VIEWS, body.view, 'all_open'),
     rows: readArray(body.rows).flatMap((item) => readSalesOrderRow(item) ?? []),
     total: readNumber(body.total) ?? 0,
+    toPickUnits: readNumber(body.to_pick_units) ?? 0,
     views: {
       mine: readNumber(views.mine) ?? 0,
       drafts: readNumber(views.drafts) ?? 0,
       toOrder: readNumber(views.to_order) ?? 0,
       toPick: readNumber(views.to_pick) ?? 0,
+      toPack: readNumber(views.to_pack) ?? 0,
       onHold: readNumber(views.on_hold) ?? 0,
+      actionRequired: readNumber(views.action_required) ?? 0,
       allOpen: readNumber(views.all_open) ?? 0,
     },
     summary: {
@@ -506,6 +606,8 @@ export function readSalesOrderList(data: Json): SalesOrderList {
       needsAction: readNumber(summary.needs_action) ?? 0,
       drafts: readNumber(summary.drafts) ?? 0,
       onHold: readNumber(summary.on_hold) ?? 0,
+      withCustomer: readNumber(summary.with_customer) ?? 0,
+      actionRequired: readNumber(summary.action_required) ?? 0,
     },
     locations: readArray(body.locations).flatMap((item) => readPlace(item) ?? []),
     owners: readArray(body.owners).flatMap((item) => readEnquiryOwner(item) ?? []),
@@ -543,6 +645,7 @@ function readLine(value: Json | undefined): SalesOrderLine | null {
     toOrder: readNumber(row.to_order) ?? 0,
     withoutStock: readNumber(row.without_stock) ?? 0,
     cancelled: readBoolean(row.cancelled) ?? false,
+    removed: readNumber(row.removed) ?? 0,
     place: readString(row.place),
     onHand: readNumber(row.on_hand) ?? 0,
     available: readNumber(row.available) ?? 0,
@@ -550,9 +653,12 @@ function readLine(value: Json | undefined): SalesOrderLine | null {
     binQty: readNumber(row.bin_qty),
     canSetAside: readNumber(row.can_set_aside) ?? 0,
     onShelf: readNumber(row.on_shelf) ?? 0,
+    picked: readNumber(row.picked) ?? 0,
+    notFound: readNotFound(row.not_found),
     onPo: readNumber(row.on_po) ?? 0,
     arrived: readNumber(row.arrived) ?? 0,
     stillToOrder: readNumber(row.still_to_order) ?? readNumber(row.to_order) ?? 0,
+    cannotSupply: readNumber(row.cannot_supply) ?? 0,
     supplyLinks: readSupplyLinks(row.supply_links),
     unitCost: readNumber(row.unit_cost),
     margin: readNumber(row.margin),
@@ -588,8 +694,8 @@ export function readSalesOrderDetail(data: Json): SalesOrderDetail | null {
     poRequired: readBoolean(body.po_required) ?? false,
     terms: terms ? { name: readString(terms.name) ?? '', kind: readString(terms.kind) ?? '', days: readNumber(terms.days) ?? 0 } : null,
     registrations: readStrings(body.registrations),
-    delivery: { method: oneOf(DELIVERY_METHODS, delivery.method, 'collection'), address: readAddress(delivery.address), addressText: readString(delivery.address_text) },
-    addresses: readArray(body.addresses).flatMap((item) => readAddress(item) ?? []),
+    delivery: { method: oneOf(DELIVERY_METHODS, delivery.method, 'collection'), address: readSalesOrderAddress(delivery.address), addressText: readString(delivery.address_text) },
+    addresses: readArray(body.addresses).flatMap((item) => readSalesOrderAddress(item) ?? []),
     enquiry:
       enquiry && readString(enquiry.id)
         ? {
@@ -663,11 +769,19 @@ export function readSalesOrderDetail(data: Json): SalesOrderDetail | null {
     putAsideReceipts: readPutAsideReceipts(body.put_aside_receipts),
     putAsideAt: readString(body.put_aside_at),
     readyMessageAt: readString(body.ready_message_at),
+    urgent: readBoolean(body.urgent) ?? false,
+    pack: readOrderPack(body.pack),
+    picker: readString(body.picker),
     canOrderIn: readBoolean(body.can_order_in) ?? false,
+    orderInUnits: readNumber(body.order_in_units) ?? readNumber(figures.still_to_order) ?? 0,
     canOrderInUnpaid: readBoolean(body.can_order_in_unpaid) ?? false,
     canBuildOrders: readBoolean(body.can_build_orders) ?? false,
     canPlaceOrders: readBoolean(body.can_place_orders) ?? false,
     canApproveOrders: readBoolean(body.can_approve_orders) ?? false,
+    failures: readLineFailures(body.failures),
+    late: readLateLines(body.late),
+    ifCannotSupply: readOrderPreference(body.if_cannot_supply),
+    canEditAccount: readBoolean(body.can_edit_account) ?? false,
     now: readString(body.now) ?? new Date().toISOString(),
   };
 }
@@ -750,23 +864,28 @@ export function readPartSetAside(data: Json): PartSetAside {
       if (!row || locationId == null) return [];
       return [{ locationId, location: readString(row.location) ?? '', onHand: readNumber(row.on_hand) ?? 0, setAside: readNumber(row.set_aside) ?? 0, available: readNumber(row.available) ?? 0 }];
     }),
-    orders: readArray(body.orders).flatMap((item) => {
-      const row = readRecord(item);
-      const id = readString(row?.id);
-      if (!row || !id) return [];
-      return [
-        {
-          id,
-          number: readString(row.number) ?? '',
-          quantity: readNumber(row.quantity) ?? 0,
-          withoutStock: readNumber(row.without_stock) ?? 0,
-          location: readString(row.location),
-          confirmedAt: readString(row.confirmed_at),
-          customer: readEnquiryCustomer(row.customer),
-        },
-      ];
-    }),
+    orders: readSetAsideOrders(body.orders),
   };
+}
+
+export function readSetAsideOrders(value: Json | undefined): SetAsideOrder[] {
+  return readArray(value).flatMap((item) => {
+    const row = readRecord(item);
+    const id = readString(row?.id);
+    if (!row || !id) return [];
+    return [
+      {
+        id,
+        number: readString(row.number) ?? '',
+        quantity: readNumber(row.quantity) ?? 0,
+        withoutStock: readNumber(row.without_stock) ?? 0,
+        substitute: readBoolean(row.substitute) ?? false,
+        location: readString(row.location),
+        confirmedAt: readString(row.confirmed_at),
+        customer: readEnquiryCustomer(row.customer),
+      },
+    ];
+  });
 }
 
 export function readEnquiryOrderPreview(data: Json): EnquiryOrderPreview {
@@ -1075,11 +1194,11 @@ export function getPartSetAside(supabase: Client, partId: number): Promise<PartS
 
 // ------------------------------------------------------------------------------------------- words
 
-// Under the order number in the list: "YK19 HNC · 3 lines", "2 vehicles · 4 lines", "No vehicle · 1 line".
+// Under the order number in the list: "YK19 HNC · 3 lines", "2 vehicles · 4 lines", or just "1 line" with no vehicle.
 export function orderRowSub(row: Pick<SalesOrderRow, 'registrations' | 'lineCount'>): string {
   const plates = row.registrations.length;
-  const vehicle = plates === 0 ? 'No vehicle' : plates === 1 ? row.registrations[0] : `${plates} vehicles`;
-  return `${vehicle} · ${row.lineCount} ${row.lineCount === 1 ? 'line' : 'lines'}`;
+  const vehicle = plates === 0 ? null : plates === 1 ? row.registrations[0] : `${plates} vehicles`;
+  return [vehicle, `${row.lineCount} ${row.lineCount === 1 ? 'line' : 'lines'}`].filter(Boolean).join(' · ');
 }
 
 // Under the customer's name in the list: "Account C00014 · customer PO HG-2291", "Retail card · 07700 900412". It
@@ -1108,11 +1227,54 @@ export function orderStockWords(toOrder: number, toPick: number, joiner = ' · '
 
 // The line after the pills on the order page: "Needs action · 2 units on draft PO-000007, 2 to pick". An order on
 // hold says why in its alert, not here. Ordered units that are on time ask nothing: the order waits for the delivery.
-export function orderStateWords(order: Pick<SalesOrderDetail, 'status' | 'cancelled' | 'figures'> & { purchaseOrders?: LinkedPurchaseOrder[] }): string {
+// Units only suppliers on hold list (slice three a) are said as that, not as to order: "Needs action · 1 unit waits on
+// a supplier on hold"; once the customer chose to wait, "Waiting for Calder Parts to come off hold · ask Hill Street
+// Garage again Tue 24 Nov". The counter's step leads and the stock words follow after a dot: "Needs action · ask Hill
+// Street Garage: 1 substitute to agree · 1 put aside".
+// What is on the collection and delivery shelf, by how it got there (Picking critique round 2: picked units read as
+// goods in's "put aside"): "2 picked", "1 put aside", "2 picked, 1 put aside"; withUnit names the unit on the first.
+export function shelfWords(onShelf: number, picked: number, withUnit = false): string {
+  const byPick = Math.min(Math.max(picked, 0), onShelf);
+  const byGoodsIn = onShelf - byPick;
+  const unit = (n: number) => (withUnit ? ` ${n === 1 ? 'unit' : 'units'}` : '');
+  const parts = [byPick > 0 ? [byPick, 'picked'] : null, byGoodsIn > 0 ? [byGoodsIn, 'put aside'] : null].filter(
+    (part): part is [number, string] => part != null,
+  );
+  return parts.map(([n, how], i) => `${quantityWords(n)}${i === 0 ? unit(n) : ''} ${how}`).join(', ');
+}
+
+export function orderStateWords(
+  order: Pick<SalesOrderDetail, 'status' | 'cancelled' | 'figures'> & { purchaseOrders?: LinkedPurchaseOrder[]; failures?: LineFailure[]; lines?: SalesOrderLine[]; hold?: OrderHold | null; now?: string },
+): string {
   if (order.status === 'draft') return 'Not confirmed · nothing set aside or ordered';
   if (order.status === 'cancelled') return order.cancelled ? `Cancelled · ${cancelledWords(order.cancelled).why}` : 'Cancelled';
+  // The list's lead words, worked out from the order's own failures, so the page and the list say the same. The page
+  // says why where the need row doesn't ("Remove 2 · customer asked"), and leaves "3 can’t be supplied" to the need row
+  // under it.
+  const failed = summariseFailures(order.failures ?? [], order.lines ?? []);
+  const { lead: stepLead } = failureLead(failed, order.now);
+  const stepFailure = (order.failures ?? []).find((f) => f.step != null && f.step === failed?.step);
+  // The customer's answer, else the account's default (one name for the setting: "default").
+  const byAnswer: Partial<Record<NonNullable<OrderFailureSummary['step']>, [LineFailure['answer'], string]>> = {
+    replace: ['equivalent', 'customer chose an equivalent'],
+    take_off: ['take_off', 'customer asked'],
+    reorder: ['same_part', 'customer chose the same part'],
+  };
+  const rule = failed?.step ? byAnswer[failed.step] : undefined;
+  const why = rule ? (stepFailure?.answer === rule[0] ? rule[1] : 'the account’s default') : null;
+  const step = failed?.step === 'ask' ? 'Ask customer' : why ? `${stepLead} · ${why}` : stepLead;
+  if (order.status === 'on_hold') return failed?.step ? step : order.hold ? holdRowWords(order.hold) : '';
   if (order.status !== 'open') return '';
-  const { stillToOrder, drafted, ordered, arrived, setAside, onShelf } = order.figures;
+  const open = (order.failures ?? []).filter((f) => f.step != null);
+  const held = open.filter((f) => f.step !== 'reorder' && onSupplierHold(f));
+  const waiting = held.filter((f) => f.step === 'wait');
+  const asking = held.filter((f) => f.step !== 'wait').reduce((sum, f) => sum + f.units, 0);
+  const waitUnits = waiting.reduce((sum, f) => sum + f.units, 0);
+  const { drafted, ordered, arrived, setAside, onShelf } = order.figures;
+  const picked = (order.lines ?? []).filter((line) => !line.cancelled).reduce((sum, line) => sum + (line.picked ?? 0), 0);
+  // A part purchasing is reordering after a let-down (Customer lines) is purchasing's step, not the counter's.
+  const reorder = open.filter((f) => f.step === 'reorder' && !onSupplierHold(f)).reduce((sum, f) => sum + f.units, 0);
+  const stillToOrder = Math.max(order.figures.stillToOrder - asking - waitUnits - reorder, 0);
   // Units goods in put on the collection shelf are set aside but not to pick (S4b): they wait for the customer.
   const toPick = Math.max(setAside - onShelf, 0);
   const drafts = (order.purchaseOrders ?? []).filter((po) => po.status === 'draft' && po.units > 0);
@@ -1124,16 +1286,24 @@ export function orderStateWords(order: Pick<SalesOrderDetail, 'status' | 'cancel
   ].filter((part): part is string => part != null);
   const first = (text: string, n: number) => text.replace(quantityWords(n), `${quantityWords(n)} ${n === 1 ? 'unit' : 'units'}`);
   const lead = [stillToOrder, drafted, arrived, toPick].find((n) => n > 0) ?? 0;
-  const shelf = onShelf > 0 ? `, ${quantityWords(onShelf)} put aside` : '';
+  const shelf = onShelf > 0 ? `, ${shelfWords(onShelf, picked)}` : '';
   const [head, ...rest] = parts;
-  if (head) return `Needs action · ${[first(head, lead), ...rest].join(', ')}${shelf}${ordered > 0 ? `, ${quantityWords(ordered)} ordered` : ''}`;
+  const tail = `${shelf}${ordered > 0 ? `, ${quantityWords(ordered)} ordered` : ''}`;
+  const stock = head
+    ? `${[first(head, lead), ...rest].join(', ')}${tail}`
+    : onShelf > 0
+      ? `${shelfWords(onShelf, picked, true)}${ordered > 0 ? `, ${quantityWords(ordered)} ordered` : ''}`
+      : tail.replace(/^, /, '');
+  if (step) return `${step}${stock ? ` · ${stock}` : ''}`;
+  // The pill says the stage; the line says what it is made of, as the list does.
+  if (head) return stock;
   return ordered > 0 ? `Waiting for delivery · ${quantityWords(ordered)} ${ordered === 1 ? 'unit' : 'units'} ordered${shelf}` : '';
 }
 
 // The line after the pills on a ready order (board 6n): a collection asks for the customer to be told until the
 // message is copied; a delivery waits for the run (S5). customerName is the name the page shows.
 export function readyStateWords(
-  order: Pick<SalesOrderDetail, 'fulfilment' | 'delivery' | 'location' | 'putAsideAt' | 'readyMessageAt'>,
+  order: Pick<SalesOrderDetail, 'fulfilment' | 'delivery' | 'location' | 'putAsideAt' | 'readyMessageAt'> & { pack?: OrderPack | null },
   customerName: string,
 ): string {
   if (order.delivery.method === 'collection') {
@@ -1142,33 +1312,138 @@ export function readyStateWords(
   const summary = deliverySummary(order);
   const to = summary.indexOf(' to ');
   const at = order.location ? ` at ${order.location.name}` : '';
-  return `Every part is put aside${at} for ${order.delivery.method === 'courier' ? 'courier' : 'delivery'}${to >= 0 ? summary.slice(to) : ''}`;
+  const kind = order.delivery.method === 'courier' ? 'courier' : 'delivery';
+  // Packed (S5b-1): "2 parcels packed at Leeds"; the header already says where the delivery goes.
+  if (order.pack?.covers) return `${parcelsWords(order.pack.parcels)} packed${at}`;
+  return `Every part is put aside${at} for ${kind}${to >= 0 ? summary.slice(to) : ''}`;
 }
 
-// The quiet words under the pill in the list.
-export function orderStepWords(row: Pick<SalesOrderRow, 'status' | 'cancelled' | 'toOrder' | 'toPick' | 'hold'> & { onShelf?: number }): string {
-  if (row.status === 'draft') return 'Not confirmed';
+// The words under the pill in the list, in two parts: the lead (the next move) and the rest (the stock words). tone
+// says how the lead is set: 'move' for the counter's own step (medium ink), 'late' for a reply past the next working
+// day (bold ink with "↑"), null for words that only report (quiet ink).
+export type OrderStepParts = { lead: string; tone: 'move' | 'late' | null; rest: string };
+
+// The lead words when a supplier let the customer down, the same on the list, the preview and the line after the pills
+// (one function, so they can't drift apart): "Ask customer · 3 can’t be supplied", "No reply yet · asked today 09:05",
+// "↑ No reply since Wed 18 Nov", "Replace part", "Remove 2" ("Cancel line" for all of it), "Calder Parts on hold · ask
+// again Tue 24 Nov", "With purchasing", "Tell customer · back on order".
+export function failureLead(failed: OrderFailureSummary | null | undefined, now?: string): { lead: string; tone: OrderStepParts['tone'] } {
+  if (!failed) return { lead: '', tone: null };
+  const agree = failed.substitutes;
+  const plain = failed.units - agree;
+  const since = failed.askedAt && now ? dayAndTime(failed.askedAt, now) : null;
+  const about = [
+    agree > 0 ? `${quantityWords(agree)} ${agree === 1 ? 'substitute' : 'substitutes'} to agree` : null,
+    failed.onHold > 0 ? `${failed.heldSupplier ?? 'a supplier'} on hold` : null,
+    plain > 0 ? `${quantityWords(plain)} can’t be supplied` : null,
+  ].filter(Boolean).join(', ');
+  switch (failed.step) {
+    case 'ask':
+      return { lead: `Ask customer${about ? ` · ${about}` : ''}`, tone: 'move' };
+    case 'answer':
+      return failed.answerOverdue
+        ? { lead: `↑ No reply since ${since ?? 'the ask'}`, tone: 'late' }
+        : { lead: `No reply yet${since ? ` · asked ${since}${failed.askedVia ? ` ${CUSTOMER_CHANNEL_PHRASE[failed.askedVia]}` : ''}` : ''}`, tone: null };
+    case 'replace':
+      return { lead: 'Replace part', tone: 'move' };
+    case 'take_off':
+      return { lead: failed.takeOffWhole || !failed.takeOffUnits ? 'Cancel line' : `Remove ${quantityWords(failed.takeOffUnits)}`, tone: 'move' };
+    case 'wait':
+      return { lead: `${failed.heldSupplier ?? 'The supplier'} on hold${failed.askAgainOn ? ` · ask again ${dateWords(failed.askAgainOn)}` : ''}`, tone: null };
+    case 'reorder':
+      return { lead: 'With purchasing', tone: null };
+    default:
+      return failed.tell ? { lead: 'Tell customer · back on order', tone: 'move' } : { lead: '', tone: null };
+  }
+}
+
+
+// The list's summary of an order's failures, worked out from the order page's own failures (the same numbers the
+// database gives the list), so the page leads with the same words.
+export function summariseFailures(failures: LineFailure[], lines: Pick<SalesOrderLine, 'id' | 'quantity'>[] = []): OrderFailureSummary | null {
+  const open = failures.filter((f) => f.step != null);
+  const tell = failuresToTell(failures).length > 0;
+  if (!open.length && !tell) return null;
+  const sum = (list: LineFailure[]) => list.reduce((n, f) => n + f.units, 0);
+  const order: NonNullable<OrderFailureSummary['step']>[] = ['ask', 'answer', 'replace', 'take_off', 'wait', 'reorder'];
+  const step = order.find((key) => open.some((f) => f.step === key)) ?? null;
+  const answering = open.filter((f) => f.step === 'answer');
+  const takeOff = open.filter((f) => f.step === 'take_off');
+  const held = open.find((f) => onSupplierHold(f));
+  return {
+    units: sum(open.filter((f) => !onSupplierHold(f))),
+    reorder: sum(open.filter((f) => f.step === 'reorder' && !onSupplierHold(f))),
+    substitutes: sum(open.filter(substituteToAgree)),
+    onHold: sum(open.filter((f) => onSupplierHold(f) && (f.step === 'ask' || f.step === 'answer' || f.step === 'wait'))),
+    step,
+    since: open.map((f) => f.createdAt).filter((at): at is string => !!at).sort()[0] ?? null,
+    tell,
+    askedAt: answering.map((f) => f.askedAt).filter((at): at is string => !!at).sort().at(-1) ?? null,
+    askedVia: [...answering].sort((a, b) => ((a.askedAt ?? '') < (b.askedAt ?? '') ? 1 : -1))[0]?.askedVia ?? null,
+    answerOverdue: open.some((f) => f.answerOverdue),
+    askAgainOn: open.filter((f) => f.step === 'wait').map((f) => f.askAgainOn).filter((d): d is string => !!d).sort()[0] ?? null,
+    heldSupplier: held?.hold?.supplier ?? held?.supplier ?? null,
+    takeOffUnits: sum(takeOff),
+    takeOffWhole: takeOff.every((f) => f.units >= (lines.find((line) => line.id === f.lineId)?.quantity ?? f.units)),
+  };
+}
+
+export function orderStepParts(
+  row: Pick<SalesOrderRow, 'status' | 'cancelled' | 'toOrder' | 'toPick' | 'hold'> & { onShelf?: number; picked?: number; cannotSupply?: OrderFailureSummary | null },
+  now?: string,
+): OrderStepParts {
+  if (row.status === 'draft') return { lead: '', tone: null, rest: 'Not confirmed' };
   if (row.status === 'open') {
     const shelf = row.onShelf ?? 0;
-    const stock = orderStockWords(row.toOrder, row.toPick);
-    if (shelf === 0) return stock;
-    // "2 units put aside" when that is all; "1 unit to pick · 1 put aside" beside the rest.
-    return stock ? `${stock} · ${quantityWords(shelf)} put aside` : `${quantityWords(shelf)} ${shelf === 1 ? 'unit' : 'units'} put aside`;
+    const failed = row.cannotSupply;
+    // A unit that can't be supplied is said once: the To order figure leaves out those purchasing is reordering.
+    // Units waiting on a supplier on hold are said as that, not as To order.
+    const held = failed?.onHold ?? 0;
+    const stock = orderStockWords(Math.max(row.toOrder - (failed?.reorder ?? 0) - held, 0), row.toPick);
+    // A supplier let the customer down (S4b part three): the next move leads, then what it is about, then the stock
+    // words. "Ask customer · 1 substitute to agree", "Ask customer · Calder Parts on hold", "No reply yet · asked today
+    // 09:05" ("↑ No reply since …" past the next working day), "Calder Parts on hold · ask again Tue 24 Nov", "Replace
+    // part", "Remove 2" (or "Cancel line" for all of it); purchasing's reorder is "1 can’t be supplied"; a part back
+    // on order, "Tell the customer · back on order".
+    const { lead, tone } = failureLead(failed, now);
+    // "2 units put aside" when that is all; "1 unit to pick · 1 picked" beside the rest.
+    const rest = shelf === 0 ? stock : stock ? `${stock} · ${shelfWords(shelf, row.picked ?? 0)}` : shelfWords(shelf, row.picked ?? 0, true);
+    return { lead, tone, rest };
   }
-  if (row.status === 'on_hold') return row.hold ? holdRowWords(row.hold) : '';
+  // On hold for a part that can't be supplied: its step leads (Replace part, Remove 2, With purchasing), as on an open
+  // order; any other hold says its reason.
+  if (row.status === 'on_hold') {
+    if (row.cannotSupply?.step) return { ...failureLead(row.cannotSupply, now), rest: '' };
+    return { lead: '', tone: null, rest: row.hold ? holdRowWords(row.hold) : '' };
+  }
   if (row.status === 'cancelled' && row.cancelled) {
     const words = cancelledWords(row.cancelled);
-    return [words.why, words.who].filter(Boolean).join(' · ');
+    return { lead: '', tone: null, rest: [words.why, words.who].filter(Boolean).join(' · ') };
   }
-  return '';
+  return { lead: '', tone: null, rest: '' };
 }
 
-export const HOLD_REASON_LABELS: Record<HoldReason, string> = { on_stop: 'Account on stop', over_limit: 'Over the credit limit', customer: 'Waiting for the customer' };
+// The same words as one line: "Ask customer · Calder Parts on hold · 1 unit to pick".
+export function orderStepWords(
+  row: Parameters<typeof orderStepParts>[0],
+  now?: string,
+): string {
+  const parts = orderStepParts(row, now);
+  return [parts.lead, parts.rest].filter(Boolean).join(' · ');
+}
+
+export const HOLD_REASON_LABELS: Record<HoldReason, string> = {
+  on_stop: 'Account on stop',
+  over_limit: 'Over the credit limit',
+  customer: 'Waiting for the customer',
+  cannot_supply: 'Cannot supply',
+};
 
 // A held order's reason in the list, never cut short: a hold put on by hand says what would release it, a credit
 // hold says who can clear it.
 export function holdRowWords(hold: OrderHold): string {
   if (hold.reason === 'customer') return hold.note ? `${HOLD_REASON_LABELS.customer}: ${hold.note}` : HOLD_REASON_LABELS.customer;
+  if (hold.reason === 'cannot_supply') return hold.part ? `${HOLD_REASON_LABELS.cannot_supply}: ${hold.part}` : HOLD_REASON_LABELS.cannot_supply;
   return `${HOLD_REASON_LABELS[hold.reason]} · an admin can override`;
 }
 
@@ -1176,7 +1451,7 @@ export function holdRowWords(hold: OrderHold): string {
 function holdKeepsWords(hold: OrderHold): string {
   if (hold.kept <= 0) return 'No stock is set aside.';
   const units = `${quantityWords(hold.kept)} ${hold.kept === 1 ? 'unit stays' : 'units stay'} set aside${hold.place ? ` at ${hold.place}` : ''}`;
-  return hold.reason === 'customer' ? `${units}.` : `${units}; nothing more is set aside.`;
+  return hold.reason === 'customer' || hold.reason === 'cannot_supply' ? `${units}.` : `${units}; nothing more is set aside.`;
 }
 
 // Why the account cannot take the order, as a sentence: "On stop since 2 Nov: invoices overdue." or "This order
@@ -1199,6 +1474,7 @@ export function holdWords(hold: OrderHold, canOverride: boolean, now?: string): 
     const who = hold.by ? ` Put on by ${hold.by}${hold.at ? `, ${dayAndTime(hold.at, now ?? new Date().toISOString())}` : ''}.` : '';
     return { strong: 'On hold: waiting for the customer.', rest: `${note}${holdKeepsWords(hold)}${who}` };
   }
+  if (hold.reason === 'cannot_supply') return { strong: 'On hold', rest: 'until the part is reordered, replaced or removed.' };
   const strong = hold.reason === 'on_stop' ? 'On hold: account on stop.' : 'On hold: over the credit limit.';
   return { strong, rest: `${creditBlockWords({ ...hold, reason: hold.reason })} ${holdKeepsWords(hold)}${canOverride ? '' : ' Ask an admin to override the hold.'}` };
 }
@@ -1305,10 +1581,17 @@ export function orderOpenedWords(number: string, opened: Extract<OrderOpened, { 
 
 // A confirmed order's lines as the page groups them, by where they stand: Ready to pick (set aside in bins), To
 // order (still to order, or on a purchase order not placed yet), On order (on a placed purchase order), Put aside
-// (on the collection and delivery shelf, S4b) and Cancelled. A line split across them shows in each group, with the
-// quantity on each side.
+// (on the collection and delivery shelf, S4b), Cannot supply (a supplier let the customer down, S4b part three),
+// Substitute to agree (the supplier sent another part, held while the customer decides) and Removed (cancelled lines,
+// and units taken off a line after confirming, as Shopify shows them). A line split
+// across them shows in each group, with the quantity on each side.
 export type OrderLinePart = { line: SalesOrderLine; quantity: number; lineTotal: number };
-export type OrderLineGroup = { key: 'to_pick' | 'to_order' | 'on_order' | 'put_aside' | 'cancelled'; label: string; sub: string; parts: OrderLinePart[] };
+export type OrderLineGroup = {
+  key: 'cannot_supply' | 'substitute' | 'to_pick' | 'to_order' | 'on_order' | 'put_aside' | 'removed';
+  label: string;
+  sub: string;
+  parts: OrderLinePart[];
+};
 
 // A link on a placed purchase order: its units are on order, no longer to order.
 function isPlacedLink(link: SupplyLink): boolean {
@@ -1320,14 +1603,19 @@ function onOrderUnits(line: SalesOrderLine): number {
   return line.supplyLinks.filter(isPlacedLink).reduce((sum, link) => sum + link.units + link.arrived, 0);
 }
 
-export function orderLineGroups(lines: SalesOrderLine[]): OrderLineGroup[] {
+export function orderLineGroups(lines: SalesOrderLine[], failures: LineFailure[] = []): OrderLineGroup[] {
   const part = (line: SalesOrderLine, quantity: number): OrderLinePart => ({ line, quantity, lineTotal: Math.round(quantity * line.unitPrice * 100) / 100 });
   const live = lines.filter((line) => !line.cancelled);
+  // units waiting on the customer to agree to a substitute held for them
+  const agreeing = (line: SalesOrderLine) => failures.filter((f) => f.lineId === line.id && substituteToAgree(f)).reduce((sum, f) => sum + f.units, 0);
+  const substitutes = live.filter((line) => agreeing(line) > 0).map((line) => part(line, agreeing(line)));
+  const failed = live.filter((line) => line.cannotSupply - agreeing(line) > 0).map((line) => part(line, line.cannotSupply - agreeing(line)));
   const pick = live.filter((line) => line.setAside - line.onShelf > 0).map((line) => part(line, line.setAside - line.onShelf));
-  const order = live.filter((line) => line.toOrder - onOrderUnits(line) > 0).map((line) => part(line, line.toOrder - onOrderUnits(line)));
+  const toOrder = (line: SalesOrderLine) => line.toOrder - onOrderUnits(line) - line.cannotSupply;
+  const order = live.filter((line) => toOrder(line) > 0).map((line) => part(line, toOrder(line)));
   const onOrder = live.filter((line) => Math.min(onOrderUnits(line), line.toOrder) > 0).map((line) => part(line, Math.min(onOrderUnits(line), line.toOrder)));
   const shelf = live.filter((line) => line.onShelf > 0).map((line) => part(line, line.onShelf));
-  const cancelled = lines.filter((line) => line.cancelled).map((line) => part(line, line.quantity));
+  const removed = [...lines.filter((line) => line.cancelled).map((line) => part(line, line.quantity)), ...live.filter((line) => line.removed > 0).map((line) => part(line, line.removed))];
   const units = (parts: OrderLinePart[]) => {
     const n = parts.reduce((sum, row) => sum + row.quantity, 0);
     return `${quantityWords(n)} ${n === 1 ? 'unit' : 'units'}`;
@@ -1336,14 +1624,62 @@ export function orderLineGroups(lines: SalesOrderLine[]): OrderLineGroup[] {
   const places = placesOf(pick);
   const shelves = placesOf(shelf);
   const groups: OrderLineGroup[] = [];
+  if (failed.length) {
+    const pos = [...new Set(failures.filter((f) => f.step != null && !onSupplierHold(f) && f.poNumber).map((f) => f.poNumber))];
+    groups.push({ key: 'cannot_supply', label: 'Cannot supply', sub: units(failed), parts: failed });
+  }
+  if (substitutes.length) {
+    const held = [...new Set(failures.filter(substituteToAgree).map((f) => f.substitute?.place).filter(Boolean))];
+    groups.push({ key: 'substitute', label: 'Substitute to agree', sub: `${units(substitutes)} held${held.length === 1 ? ` at ${held[0]}` : ''} while the customer decides`, parts: substitutes });
+  }
   if (pick.length) groups.push({ key: 'to_pick', label: 'Ready to pick', sub: `${units(pick)}, set aside${places.length === 1 ? ` at ${places[0]}` : ''}`, parts: pick });
-  if (order.length) groups.push({ key: 'to_order', label: 'To order', sub: [units(order), supplyGroupWords(order.map((row) => row.line), false)].filter(Boolean).join(' · '), parts: order });
+  if (order.length) {
+    // A part only suppliers on hold list stays To order (slice three a), but can't be ordered yet: the group says so.
+    const heldLines = new Set(failures.filter((f) => f.step != null && f.step !== 'reorder' && onSupplierHold(f)).map((f) => f.lineId));
+    const held = order.filter((row) => heldLines.has(row.line.id)).reduce((sum, row) => sum + row.quantity, 0);
+    const total = order.reduce((sum, row) => sum + row.quantity, 0);
+    // Every part here waits on a supplier on hold: "Can’t order yet"; some do: "To order · 1 can’t be ordered yet".
+    const heldWords = held === 0 || held === total ? null : `${quantityWords(held)} can’t be ordered yet`;
+    const supply = supplyGroupWords(order.filter((row) => !heldLines.has(row.line.id)).map((row) => row.line), false);
+    groups.push({ key: 'to_order', label: held > 0 && held === total ? 'Can’t order yet' : 'To order', sub: [units(order), heldWords, supply].filter(Boolean).join(' · '), parts: order });
+  }
   if (onOrder.length) groups.push({ key: 'on_order', label: 'On order', sub: [units(onOrder), supplyGroupWords(onOrder.map((row) => row.line), true)].filter(Boolean).join(' '), parts: onOrder });
   if (shelf.length) {
-    groups.push({ key: 'put_aside', label: 'Put aside', sub: `${units(shelf)} on the collection and delivery shelf${shelves.length === 1 ? ` at ${shelves[0]}` : ''}`, parts: shelf });
+    // Picked when every unit there came from a bin (S5a-1), else Put aside (goods in, S4b).
+    const allPicked = shelf.every((row) => row.line.picked > 0 && row.line.picked >= row.line.onShelf);
+    groups.push({ key: 'put_aside', label: allPicked ? 'Picked' : 'Put aside', sub: `${units(shelf)} on the collection and delivery shelf${shelves.length === 1 ? ` at ${shelves[0]}` : ''}`, parts: shelf });
   }
-  if (cancelled.length) groups.push({ key: 'cancelled', label: 'Cancelled', sub: units(cancelled), parts: cancelled });
+  if (removed.length) groups.push({ key: 'removed', label: 'Removed', sub: units(removed), parts: removed });
   return groups;
+}
+
+// Whether an open order has a part set aside here that is in a bin to pick (a part set aside without stock is counted
+// first). The order page's filled Pick and the Sales orders preview's both ask this, so they never disagree (RF4).
+export function orderHasPartsToPick(order: Pick<SalesOrderDetail, 'status' | 'staged' | 'lines' | 'failures'>): boolean {
+  if (order.status !== 'open' || !order.staged) return false;
+  return orderLineGroups(order.lines, order.failures).find((group) => group.key === 'to_pick')?.parts.some((part) => part.line.withoutStock === 0) ?? false;
+}
+
+// Picking for one order, at its branch: where every Pick for an order goes (owner, 25 November 2026).
+// The order as the Pack window shows it (S5b-1): each part on the shelf, going in the box, under the customer's name as
+// the page already words it. The database decides whether it is to pack; this only lists what is there.
+export function orderToPack(order: Pick<SalesOrderDetail, 'id' | 'number' | 'urgent' | 'delivery' | 'lines' | 'figures'>, customer: string): PackingOrder {
+  return {
+    orderId: order.id,
+    order: order.number,
+    customer,
+    urgent: order.urgent,
+    units: order.figures.onShelf,
+    address: order.delivery.address,
+    addressText: order.delivery.addressText,
+    lines: order.lines
+      .filter((line) => !line.cancelled && line.onShelf > 0)
+      .map((line) => ({ lineId: line.id, part: { id: line.partId, brand: line.brand, number: line.number, description: line.description }, qty: line.onShelf })),
+  };
+}
+
+export function pickingOrderHref(orderId: string, locationId: number | null): string {
+  return `/picking?order=${orderId}${locationId != null ? `&branch=${locationId}` : ''}`;
 }
 
 // The words after a group's units when they are on purchase orders. To order: "on draft PO-000007", "PO-000007
@@ -1386,12 +1722,6 @@ export function cancelledWords(cancelled: OrderCancelled): { why: string; who: s
   return { why, who: [dateWords(cancelled.at.slice(0, 10)), cancelled.by].filter(Boolean).join(', ') };
 }
 
-// An address in the lines it is written on, and in one line for a list or a sentence.
-export function addressLines(address: SalesOrderAddress | null, typed?: string | null): string[] {
-  if (!address) return (typed ?? '').split('\n').map((line) => line.trim()).filter(Boolean);
-  return [...address.lines.split('\n').map((line) => line.trim()), [address.town, address.postcode].filter(Boolean).join(' ')].filter(Boolean);
-}
-
 export function addressOneLine(address: SalesOrderAddress): string {
   return [address.name, ...addressLines(address)].filter(Boolean).join(', ');
 }
@@ -1400,9 +1730,7 @@ export function addressOneLine(address: SalesOrderAddress): string {
 export function deliverySummary(order: Pick<SalesOrderDetail, 'delivery' | 'location'>): string {
   const { method, address, addressText } = order.delivery;
   if (method === 'collection') return order.location ? `Collection from ${order.location.name}` : 'Collection';
-  const place = address
-    ? [address.town, address.postcode?.split(' ')[0]].filter(Boolean).join(' ')
-    : (addressLines(null, addressText).at(-1) ?? '');
+  const place = deliveryPlace(address, addressText);
   return place ? `${DELIVERY_METHOD_LABELS[method]} to ${place}` : DELIVERY_METHOD_LABELS[method];
 }
 
@@ -1422,17 +1750,75 @@ function ifOrderedWords(line: SalesOrderLine, now: string): string {
 // arrive; when the shelf can now cover it, `available` says how many, for the Set aside step.
 // With ordering in, units on a purchase order read "Drafted · PO-000007" (the number a link, `po`) with the supplier
 // and what happens next under it; units still to order offer Order in (`orderIn`, how many).
-export type ConfirmedWhere = { main: string; sub: string; available: number; po?: { id: string; number: string } | null; orderIn?: number; late?: boolean };
+// blocked: the line can't be supplied (red ink, as everything that stops work). orderIn is what the counter may order
+// in from the line's Where cell: nothing on a line with units that can't be supplied, which purchasing reorders.
+export type ConfirmedWhere = {
+  main: string;
+  sub: string;
+  available: number;
+  po?: { id: string; number: string } | null;
+  orderIn?: number;
+  late?: boolean;
+  blocked?: boolean;
+  // Change answer belongs in the cell (a customer who chose to wait may change the answer).
+  answer?: boolean;
+  // A substitute's return-by date, after the sub: bold ink with the up arrow inside the last two days, never red.
+  due?: { text: string; late: boolean } | null;
+};
+
+// A held substitute's one date for the counter (agree by, two days before it must go back): "Agree by Thu 26 Nov";
+// from the day before, "↑ Agree by tomorrow" or "↑ Agree by today"; once passed, "↑ Agree by Wed 18 Nov" (the arrow
+// says it is late).
+export function substituteDueWords(returnBy: string | null, now: string): { text: string; late: boolean } | null {
+  if (!returnBy) return null;
+  const agreeBy = agreeByDate(returnBy);
+  const days = daysFromToday(agreeBy, now);
+  if (days < 0) return { text: `↑ Agree by ${dateWords(agreeBy)}`, late: true };
+  if (days === 0) return { text: '↑ Agree by today', late: true };
+  if (days === 1) return { text: '↑ Agree by tomorrow', late: true };
+  return { text: `Agree by ${dateWords(agreeBy)}`, late: false };
+}
+
+// The one date the counter works to for a substitute: the customer agrees by two days before it must go back to the
+// supplier, so there is time to send it (the message offers to hold it until then).
+export function agreeByDate(returnBy: string): string {
+  const at = new Date(`${returnBy.slice(0, 10)}T12:00:00Z`);
+  at.setUTCDate(at.getUTCDate() - 2);
+  return at.toISOString().slice(0, 10);
+}
 
 export function confirmedLineWhere(
   part: OrderLinePart,
   group: OrderLineGroup['key'],
   shelf: SalesOrderDetail['shelf'],
   now: string,
+  failures: LineFailure[] = [],
 ): ConfirmedWhere {
   const line = part.line;
-  if (group === 'cancelled') return { main: 'Cancelled', sub: '', available: 0 };
-  if (group === 'put_aside') return { main: `Put aside${line.place ? ` · ${line.place}` : ''}`, sub: 'Collection and delivery shelf', available: 0 };
+  if (group === 'removed') return { main: '', sub: '', available: 0 };
+  if (group === 'substitute') {
+    const f = failures.find((x) => x.lineId === line.id && substituteToAgree(x));
+    const sub = f?.substitute;
+    if (!sub) return { main: 'Substitute to agree', sub: '', available: 0 };
+    const fit = sub.fit ? PART_FIT_WORDS[sub.fit] : null;
+    return {
+      main: `${sub.part} held${sub.place ? ` · ${sub.place}` : ''}`,
+      sub: [`Substitute for ${line.brand} ${line.number}`, fit?.label ?? null].filter(Boolean).join(' · '),
+      available: 0,
+      due: substituteDueWords(sub.returnBy, now),
+    };
+  }
+  if (group === 'cannot_supply') {
+    const open = failures.filter((f) => f.lineId === line.id && f.step != null);
+    const [first] = open;
+    if (!first) return { main: 'Cannot supply', sub: '', available: 0 };
+    // The group says Cannot supply; the cell says why, in red, and from whom.
+    return { main: first.reason == null ? 'Closed short' : (first.reasonLabel ?? 'Cannot supply'), po: { id: first.poId, number: first.poNumber }, sub: first.supplier ?? '', available: 0, blocked: true };
+  }
+  if (group === 'put_aside') {
+    const how = line.picked > 0 && line.picked >= line.onShelf ? 'Picked' : 'Put aside';
+    return { main: `${how}${line.place ? ` · ${line.place}` : ''}`, sub: 'Collection and delivery shelf', available: 0 };
+  }
   if (group === 'to_order' || group === 'on_order') {
     const placed = group === 'on_order';
     const links = line.supplyLinks.filter((link) => isPlacedLink(link) === placed && (link.units > 0 || link.arrived > 0));
@@ -1443,7 +1829,7 @@ export function confirmedLineWhere(
       const arrived = link.state === 'ordered' && link.arrived > 0 ? `${quantityWords(link.arrived)} arrived · ` : '';
       const available = link.arrived > 0 ? line.canSetAside : 0;
       if (still > 0) {
-        return { main: `${quantityWords(link.units + link.arrived)} ${where.state.toLowerCase()}`, po: { id: link.poId, number: link.poNumber }, sub: `${quantityWords(still)} more to order`, orderIn: still, available };
+        return { main: `${quantityWords(link.units + link.arrived)} ${where.state.toLowerCase()}`, po: { id: link.poId, number: link.poNumber }, sub: `${quantityWords(still)} more to order`, orderIn: line.cannotSupply > 0 ? 0 : still, available };
       }
       return { main: where.state, po: { id: link.poId, number: link.poNumber }, sub: `${arrived}${where.sub}`, late: where.late, available };
     }
@@ -1453,7 +1839,7 @@ export function confirmedLineWhere(
       return {
         main: `${quantityWords(on)} on ${links.length} purchase orders`,
         sub: [links.map((link) => `${link.poNumber} ${supplyWhere(link, now).state.toLowerCase()}`).join(' · '), still > 0 ? `${quantityWords(still)} more to order` : null].filter(Boolean).join(' · '),
-        orderIn: still > 0 ? still : 0,
+        orderIn: still > 0 && line.cannotSupply === 0 ? still : 0,
         late: links.some((link) => supplyWhere(link, now).late),
         available: links.some((link) => link.arrived > 0) ? line.canSetAside : 0,
       };
@@ -1464,11 +1850,27 @@ export function confirmedLineWhere(
       const why = shelf ? (shelf.reason === 'other' && shelf.note ? shelf.note : SHELF_REASON_LABELS[shelf.reason].toLowerCase()) : null;
       return { main: line.place ?? 'This branch', sub: `Set aside without stock${why ? ` · Reason: ${why}` : ''}`, available: 0 };
     }
+    // A short pick still open says so, not what the books say the bin holds (critique r1: "holds 1" under "not found").
+    if (line.notFound) return { main: line.place ?? 'This branch', sub: notFoundWords(line.notFound), available: 0 };
     const holds = line.bin && line.binQty != null ? `Bin ${line.bin} holds ${quantityWords(line.binQty)}` : `${quantityWords(line.onHand)} on hand`;
     return { main: line.place ?? 'This branch', sub: holds, available: 0 };
   }
-  if (line.canSetAside > 0) return { main: 'To order', sub: `${quantityWords(line.canSetAside)} now available at ${line.place ?? 'this branch'}`, available: line.canSetAside, orderIn: line.stillToOrder };
-  return { main: 'To order', sub: line.sourceId != null ? `${line.supplier ?? 'Supplier'} · ${ifOrderedWords(line, now)}` : '', available: 0, orderIn: line.stillToOrder };
+  // Only suppliers on hold list the part (slice three a): "Calder Parts on hold · since Mon 16 Nov · no other supplier",
+  // and once the customer chose to wait, "Calder Parts on hold · since Mon 16 Nov · customer waiting · ask again Tue 24
+  // Nov". The line can't move either way: red, as Cannot supply's is.
+  const held = failures.find((f) => f.lineId === line.id && f.step != null && f.step !== 'reorder' && onSupplierHold(f));
+  if (held && line.canSetAside === 0) {
+    const supplier = held.hold?.supplier ?? held.supplier ?? 'The supplier';
+    const since = held.hold?.since ? `since ${nearDayWords(held.hold.since, now)}` : null;
+    if (held.step === 'wait') {
+      // The customer may change the answer at any time: Record answer sits in the cell.
+      const again = held.askAgainOn ? `ask again ${dateWords(held.askAgainOn)}` : null;
+      return { main: `${supplier} on hold`, sub: [since, 'customer waiting', again].filter(Boolean).join(' · '), available: 0, orderIn: 0, blocked: true, answer: true };
+    }
+    return { main: `${supplier} on hold`, sub: [since, 'no other supplier lists it'].filter(Boolean).join(' · '), available: 0, orderIn: 0, blocked: true };
+  }
+  if (line.canSetAside > 0) return { main: 'To order', sub: `${quantityWords(line.canSetAside)} now available at ${line.place ?? 'this branch'}`, available: line.canSetAside, orderIn: line.cannotSupply > 0 ? 0 : line.stillToOrder };
+  return { main: 'To order', sub: line.sourceId != null ? `${line.supplier ?? 'Supplier'} · ${ifOrderedWords(line, now)}` : '', available: 0, orderIn: line.cannotSupply > 0 ? 0 : line.stillToOrder };
 }
 
 // Where a line of a draft, or of an order on hold, would come from, in two lines. Nothing is set aside or ordered
@@ -1489,6 +1891,7 @@ export const ORDER_TRAIL_LABELS: Record<OrderTrailStage, string> = {
   confirmed: 'Confirmed',
   stock: 'Stock',
   picked: 'Picked',
+  packed: 'Packed',
   supplied: 'Supplied',
   invoiced: 'Invoiced',
   paid: 'Paid',
@@ -1504,6 +1907,8 @@ export function orderTrailSub(node: OrderTrailNode, now?: string): string {
       return (node.done ?? 0) > 0 ? `${count} set aside` : 'Nothing set aside';
     case 'picked':
       return (node.done ?? 0) > 0 ? `${count} on the shelf` : count;
+    case 'packed':
+      return node.state === 'done' ? 'Ready for delivery' : node.state === 'now' ? 'To pack' : 'Not yet';
     case 'supplied':
       return count;
     case 'invoiced':
@@ -1517,6 +1922,16 @@ export function orderTrailSub(node: OrderTrailNode, now?: string): string {
 export function orderEventText(event: string, detail: JsonRecord): string {
   const goodsIn = putAsideEventText(event, detail);
   if (goodsIn != null) return goodsIn;
+  const failed = cannotSupplyEventText(event, detail);
+  if (failed != null) return failed;
+  const late = lateEventText(event, detail);
+  if (late != null) return late;
+  const replaced = replaceEventText(event, detail);
+  if (replaced != null) return replaced;
+  const picking = pickingEventText(event, detail);
+  if (picking != null) return picking;
+  const packing = packingEventText(event, detail);
+  if (packing != null) return packing;
   const text = (key: string) => (typeof detail[key] === 'string' ? (detail[key] as string) : '');
   const count = (key: string) => (typeof detail[key] === 'number' ? (detail[key] as number) : null);
   const units = (n: number) => `${quantityWords(n)} ${n === 1 ? 'unit' : 'units'}`;
@@ -1558,7 +1973,8 @@ export function orderEventText(event: string, detail: JsonRecord): string {
       const plates = Array.isArray(detail.registrations) ? (detail.registrations as unknown[]).filter((item): item is string => typeof item === 'string') : [];
       const withs = [text('customer_po') ? `customer PO ${text('customer_po')}` : null, plates.length ? plates.join(', ') : null].filter(Boolean);
       const sentence = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : (parts[0] ?? 'Ordered in');
-      return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}${withs.length ? `, with ${withs.join(' and ')}` : ''}.`;
+      const from = text('via') === 'customer_lines' ? ' from Purchase orders › Customer lines' : '';
+      return `${sentence.charAt(0).toUpperCase()}${sentence.slice(1)}${withs.length ? `, with ${withs.join(' and ')}` : ''}${from}.`;
     }
     case 'order_in_undone': {
       const orders = Array.isArray(detail.orders) ? (detail.orders as JsonRecord[]) : [];

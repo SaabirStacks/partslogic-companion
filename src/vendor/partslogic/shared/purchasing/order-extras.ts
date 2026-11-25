@@ -78,3 +78,46 @@ export async function orderExtrasToDeal(supabase: Client, orderIds: string[]): P
     return out;
   });
 }
+
+// Accepting a part that wasn't ordered as a substitute for a line customers are waiting for (S4b part three b, board
+// 6r): the window says what happens for each customer, by the account's preference. An account that takes an
+// equivalent gets it at once at the lower of the two prices; one that takes parts off the order sends it to
+// Substitutes to return; any other is held for the customer to agree. The database does it; these are the words.
+type SubstituteFor = { number: string; customer: string | null; ifCannotSupply: 'same_part' | 'equivalent' | 'ask' | 'take_off' };
+
+export function substituteAcceptWords(
+  sub: { brand: string; number: string },
+  part: { brand: string; number: string },
+  customers: SubstituteFor[],
+): { title: string; description: string; lines: string[]; button: string } {
+  const name = `${sub.brand} ${sub.number}`;
+  const was = `${part.brand} ${part.number}`;
+  const line = (c: SubstituteFor): string => {
+    const who = c.customer ?? 'The customer';
+    if (c.ifCannotSupply === 'equivalent') return `${who} takes an equivalent that fits: it replaces ${was} on ${c.number} at the lower of the two prices, and the customer is told.`;
+    if (c.ifCannotSupply === 'take_off') return `${who} takes parts off the order: it goes to Substitutes to return, and the counter cancels the line on ${c.number}.`;
+    return `It is held for ${c.number}, set aside and not for sale, while ${who} is asked. If the answer is no, it goes to Substitutes to return.`;
+  };
+  const [only] = customers;
+  const single = customers.length === 1 && only ? only : null;
+  return {
+    title: single
+      ? single.ifCannotSupply === 'equivalent'
+        ? `Use ${name} for ${single.number}?`
+        : single.ifCannotSupply === 'take_off'
+          ? `Accept ${name} as a substitute?`
+          : `Hold ${name} for ${single.number}?`
+      : `Accept ${name} as a substitute?`,
+    description: single
+      ? `For ${single.number}${single.customer ? ` · ${single.customer}` : ''} · sent in place of ${was}`
+      : `Sent in place of ${was}, which ${customers.length} customer orders are waiting for`,
+    lines: customers.map(line),
+    button: single
+      ? single.ifCannotSupply === 'equivalent'
+        ? `Use for ${single.number}`
+        : single.ifCannotSupply === 'take_off'
+          ? 'Accept substitute'
+          : `Hold for ${single.number}`
+      : 'Accept substitute',
+  };
+}

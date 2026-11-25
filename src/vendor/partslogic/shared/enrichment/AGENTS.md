@@ -61,6 +61,10 @@ item for a catalogue feed (migration `20261113170000_enrichment_catalogue_only`,
   `enrichment_resolve_listing` (the part moves to the page's brand), `enrichment_apply_held` (the saved page applied
   after an answer); wrappers `getListingProduct`, `applyHeldPage` in `preview.ts`; `loadListingProduct` in
   `app/inventory/actions.ts`; `ListedProduct` in `enrich-panel.tsx` (SQL test `154_autodoc_brand_review.sql`).
+  A page that was for another part (target status `mismatch`) is not read again: `enrichment_begin` forgets it and
+  the run searches, and `enrichment_preview` offers no page, so its cost includes the search (owner, 24 November
+  2026; migration 20261124150000, SQL test `185_enrichment_wrong_page.sql`). A part skipped because a part on the same
+  OE number was filled is named through `ingest.oe_sibling_enriched_part`, which the skip rule reads too.
   SQL tests: `supabase/tests/93_enrichment_sources.sql`, `94_onlinecarparts.sql`, `110_number_matching.sql`,
   `111_ean_matching.sql`, `112_glued_brand_code.sql`.
 - Tests: `tests/enrichment/` (chain, job, run, web), `tests/piloterr/autodoc.test.ts`.

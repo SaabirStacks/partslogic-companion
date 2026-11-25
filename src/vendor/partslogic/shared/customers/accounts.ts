@@ -19,6 +19,8 @@ import {
   type PaymentTermsKind,
   isPaymentTermsKind,
 } from './discounts';
+import { isCannotSupplyPreference, type CannotSupplyPreference } from './cannot-supply';
+import type { StatusState } from '../core/status';
 
 // Trade accounts: the list, an account's page, opening and saving one, its status, and the check before a sale on
 // account. The database checks every rule and role; these only shape what is sent and read back.
@@ -41,6 +43,10 @@ export function isTradeType(value: unknown): value is TradeType {
 
 export const CUSTOMER_STATUSES = ['active', 'on_stop', 'closed'] as const;
 export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number];
+
+// An account's badge state (docs/design-checks/status-colours.md): active can trade, on stop stops work, closed has
+// ended. A list shows no badge for Active (owner, 23 November 2026): only the exceptions stand out.
+export const CUSTOMER_STATUS_STATES: Record<CustomerStatus, StatusState> = { active: 'ready', on_stop: 'blocked', closed: 'ended' };
 
 export function isCustomerStatus(value: unknown): value is CustomerStatus {
   return typeof value === 'string' && (CUSTOMER_STATUSES as readonly string[]).includes(value);
@@ -132,6 +138,8 @@ export type CustomerDetail = {
   invoiceEmail: string | null;
   statementEmail: string | null;
   counterNote: string | null;
+  // What to do when a supplier can't supply a part (S4b part three): same_part, equivalent, ask or take_off.
+  ifCannotSupply: CannotSupplyPreference;
   contacts: PartyContact[];
   addresses: PartyAddress[];
   // Where deliveries go.
@@ -347,6 +355,7 @@ export function readCustomerDetail(value: Json): CustomerDetail | null {
     invoiceEmail: readString(row.invoice_email),
     statementEmail: readString(row.statement_email),
     counterNote: readString(row.counter_note),
+    ifCannotSupply: isCannotSupplyPreference(row.if_cannot_supply) ? row.if_cannot_supply : 'ask',
     contacts: readContacts(row.contacts),
     addresses: readAddresses(row.addresses),
     sites: readSites(row.addresses),
@@ -396,7 +405,8 @@ export function readCustomerSaleCheck(value: Json): CustomerSaleCheck {
   };
 }
 
-function requireDetail(what: string) {
+// Shared by the account's setters, which all hand back the account as it now stands.
+export function requireDetail(what: string) {
   return (data: Json): CustomerDetail => {
     const detail = readCustomerDetail(data);
     if (!detail) throw new Error(`The account could not be read back after ${what}.`);

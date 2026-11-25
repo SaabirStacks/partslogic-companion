@@ -6,7 +6,11 @@ is the part modal.
 
 ## Files here
 - `part-detail.ts`: `getPartDetail` (one part with its inventory row, prices, OE numbers, images, barcodes,
-  enrichment state, tab counts and gaps) and its types; `ClaimState`.
+  enrichment state, tab counts, how many of the OE numbers, vehicles, specs and barcodes are confirmed, and gaps) and its
+  types; `ClaimState`, `PartConfirmed`.
+- `catalogue-data.ts`: the part window's catalogue data in words (`catalogueData`, `catalogueDetails`,
+  `runFailureReason`): the six details (each with how much is confirmed: "1 confirmed", "all confirmed"), the state
+  under the header's figure, the last run and the next action. The header and Overview's card both read it.
 - `part-tabs.ts`: the modal's tabs: `getPartAlternatives`, `getPartFitments`, `getPartVehicleTexts`,
   `getPartSpecs`, `getClaimSources` (where a fact or link came from).
 - `references.ts`: `getPartReferences` (OE and cross-references), `reviewLink` (a curator verifies or rejects).
@@ -21,8 +25,9 @@ is the part modal.
 
 ## Elsewhere
 - Part modal: `components/shadcn-studio/blocks/part-detail/` (`part-detail-dialog.tsx`, `part-header.tsx`, `part-store.tsx`, `bits.tsx`,
-  `claim-badge.tsx`, `gap-strip.tsx`, and `tabs/` overview, references, specs, vehicles, alternatives, kit).
-  The stock, pricing and enrich parts of the modal belong to inventory, pricing and enrichment.
+  `claim-badge.tsx`, `catalogue-card.tsx` (Overview's Catalogue data), `enrich-panel.tsx` (Fill gaps, docked), and `tabs/` overview, references, specs, vehicles, alternatives, kit).
+  The stock, pricing and enrich parts of the modal belong to inventory, pricing and enrichment. Every server action
+  the modal calls goes through `settled()` (lib/load-failure.ts); `tests/lib/part-window-settled.test.ts` fails on one that doesn't.
 - Brand picker: `components/shadcn-studio/blocks/add-part/brand-combobox.tsx`. Matching settings: `components/shadcn-studio/blocks/organisation-settings/matching-section.tsx`.
 - Server actions in `app/inventory/actions.ts`: `loadPartDetail`, `loadPartAlternatives`, `loadPartFitments`,
   `loadPartVehicleTexts`, `loadPartReferences`, `loadPartSpecs`, `loadPartKit`, `loadClaimSources`, `findParts`,
@@ -53,7 +58,7 @@ is the part modal.
   filled, differs) are written only by `public.vrm_heal`, which runs from a trigger when a registration lookup is
   matched and `public.vrm_like_for_like` agrees; `vehicle_heal_log` reads the log (editors and up). SQL test
   `164_vehicle_healing.sql`.
-  SQL tests: `supabase/tests/40_read_model.sql`, `50_part_modal.sql`, `115_vehicle_matching.sql`, `116_vehicle_applications.sql`.
+  SQL tests: `supabase/tests/40_read_model.sql`, `50_part_modal.sql`, `184_part_detail_confirmed.sql` (the confirmed counts), `185_enrichment_wrong_page.sql` (`enrichment.covered_by`), `115_vehicle_matching.sql`, `116_vehicle_applications.sql`.
 - Tests: `tests/shared/references.test.ts`, `tests/imports/codes.test.ts` (barcodes and SKUs).
 - Docs: `docs/PLAN.md` (catalogue and linking sections), `.cursor/plans/part-detail-modal.plan.md` (history).
 

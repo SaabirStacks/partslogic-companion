@@ -10,7 +10,7 @@ import { readArray, readNumber, readRecord, readString, readStrings, type JsonRe
 
 export type MergeParty = { supplierId: number; name: string };
 
-// A merge that has happened. A long price list moves in the background: left counts the prices, codes and cost lots
+// A merge that has happened. A long price sheet moves in the background: left counts the prices, codes and cost lots
 // still to move, and state is 'moving' until none are.
 export type SupplierMerge = {
   id: number;
@@ -128,7 +128,7 @@ export function readSupplierMergePreview(value: Json | undefined): SupplierMerge
 }
 
 // What moves with the duplicate, as the lines the confirmation lists: only the kinds there are any of, in the order
-// someone checks them (money first, then the price list, then the record itself).
+// someone checks them (money first, then the price sheet, then the record itself).
 export function mergeMoveLines(moves: MergeMoves): { label: string; count: number }[] {
   const lines: [string, number][] = [
     ['Purchase orders', moves.orders],

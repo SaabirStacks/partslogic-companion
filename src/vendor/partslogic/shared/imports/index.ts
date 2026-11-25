@@ -30,6 +30,7 @@ export {
   type PreviewRow,
   type QuarantinedRow,
 } from './batches';
+export { batchStage, type UploadStage } from './stage';
 export {
   decideCodeMove,
   getUploadChanges,

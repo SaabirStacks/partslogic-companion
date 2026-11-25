@@ -13,6 +13,8 @@ export const COUNT_REQUEST_REASON_LABELS: Record<string, string> = {
   other_bin: 'found in another bin',
   not_booked_in: 'delivered and not booked in',
   other: 'other',
+  // A Bin empty short pick (S5a-1): the bin is in the note.
+  not_in_bin: 'not found in its bin',
 };
 
 export type CountRequest = {
@@ -73,7 +75,22 @@ export function removeCountRequest(supabase: Client, id: number): Promise<void> 
   return call(supabase.rpc('count_request_remove', { p_id: id }), () => undefined);
 }
 
-// Why a part is on the list: "Reason: not counted yet", or the note typed for Other.
+// A row's first words: why the figure is wrong. A part a picker didn't find in its bin (Bin empty or Wrong part) says
+// where ("Not found in B-02"); every other request came from Confirm's set aside without stock (critique round 4: every
+// row began "Set aside without stock", a short pick's too). The reason follows only where it adds something.
+export function countRequestLine(request: Pick<CountRequest, 'reason' | 'note'>): { lead: string; reason: string | null } {
+  if (request.reason === 'not_in_bin') {
+    const where = request.note && request.note.trim().toUpperCase() !== 'UNBINNED' ? `Not found in ${request.note}` : 'Not found when picked';
+    return { lead: where, reason: null };
+  }
+  return { lead: 'Set aside without stock', reason: countRequestReason(request) };
+}
+
+// Why a part is on the list: "Reason: not counted yet", the note typed for Other, or the bin a picker found empty
+// ("Reason: not found in B-02"; stock not yet put away reads "not found when picked").
 export function countRequestReason(request: Pick<CountRequest, 'reason' | 'note'>): string {
+  if (request.reason === 'not_in_bin' && request.note) {
+    return `Reason: ${request.note.trim().toUpperCase() === 'UNBINNED' ? 'not found when picked' : `not found in ${request.note}`}`;
+  }
   return `Reason: ${request.reason === 'other' && request.note ? request.note : (COUNT_REQUEST_REASON_LABELS[request.reason] ?? request.reason)}`;
 }

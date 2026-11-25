@@ -5,7 +5,7 @@ import type { Client } from '../core/client';
 import { dataError } from '../core/errors';
 import type { Page } from '../core/page';
 import { readArray, readNumber, readRecord, readString, readStrings } from '../core/read';
-import { readInventoryRow, type FilterOption, type InventoryRow, type PartKind } from './items';
+import { placeWords, readInventoryRow, type FilterOption, type InventoryRow, type PartKind } from './items';
 
 // The Stock list, fast (docs/TABLES_AND_PERFORMANCE.md): a page for a set of filters, and what the filters offer.
 // The database does the filtering, sorting and counting (20261113230000: stock_list, stock_list_options); this
@@ -14,8 +14,21 @@ import { readInventoryRow, type FilterOption, type InventoryRow, type PartKind }
 export const STOCK_LIST_PAGE_SIZES = [25, 50, 100, 200] as const;
 export type StockListPageSize = (typeof STOCK_LIST_PAGE_SIZES)[number];
 
-// A leading "-" means highest (or newest) first.
-export const STOCK_LIST_SORTS = ['brand', 'number', 'sku', 'on_hand', '-on_hand', 'best_cost', '-best_cost', '-added'] as const;
+// A leading "-" means highest (or newest) first. available is on hand less set aside, what the Stock column shows.
+export const STOCK_LIST_SORTS = [
+  'brand',
+  'number',
+  'sku',
+  'available',
+  '-available',
+  // anything late first, then the soonest due
+  'due',
+  'on_hand',
+  '-on_hand',
+  'best_cost',
+  '-best_cost',
+  '-added',
+] as const;
 export type StockListSort = (typeof STOCK_LIST_SORTS)[number];
 
 const PART_KIND_VALUES = ['aftermarket', 'oe', 'oe_placeholder'] as const satisfies readonly PartKind[];
@@ -38,6 +51,8 @@ export type StockListFilters = {
   locations?: number[];
   bins?: number[];
   belowReorder?: boolean;
+  // Anything still due on an open purchase order.
+  onOrder?: boolean;
   costMin?: number;
   costMax?: number;
   belowMargin?: boolean;
@@ -63,7 +78,15 @@ export type StockListQuery = {
 export type StockBrandOption = FilterOption & { aliases: string[] };
 export type BinOption = FilterOption & { locationId: number | null };
 export type StockListOptions = {
-  totals: { all: number; inRange: number; inStock: number; outOfStock: number };
+  totals: {
+    all: number;
+    inRange: number;
+    inStock: number;
+    outOfStock: number;
+    belowReorder: number;
+    belowMargin: number;
+    onOrder: number;
+  };
   brands: StockBrandOption[];
   categories: FilterOption[];
   kinds: { id: PartKind; count: number }[];
@@ -81,7 +104,7 @@ export function isStockListSort(value: string): value is StockListSort {
 }
 
 const ID_LISTS = ['brands', 'categories', 'locations', 'bins', 'suppliers'] as const;
-const FLAGS = ['inRange', 'belowReorder', 'belowMargin', 'noSupplierPrice', 'delisted', 'hasBarcode', 'enriched'] as const;
+const FLAGS = ['inRange', 'belowReorder', 'onOrder', 'belowMargin', 'noSupplierPrice', 'delisted', 'hasBarcode', 'enriched'] as const;
 const NUMBERS = ['onHandMin', 'onHandMax', 'costMin', 'costMax'] as const;
 const DATES = ['addedFrom', 'addedTo'] as const;
 type IdList = (typeof ID_LISTS)[number];
@@ -135,6 +158,7 @@ export function stockListParams(query: StockListQuery): { [key: string]: Json } 
 const FLAG_PARAMS: Record<Flag, string> = {
   inRange: 'range',
   belowReorder: 'reorder',
+  onOrder: 'ordered',
   belowMargin: 'margin',
   noSupplierPrice: 'unpriced',
   delisted: 'delisted',
@@ -217,7 +241,8 @@ const FLAG_WORDS: Record<Flag, { yes: string; no: string; group: StockFilterBadg
   inRange: { yes: 'In range', no: 'Not in range', group: 'part' },
   hasBarcode: { yes: 'Has a barcode', no: 'No barcode', group: 'part' },
   enriched: { yes: 'Looked up online', no: 'Not looked up online', group: 'part' },
-  belowReorder: { yes: 'Below reorder level', no: 'Not below reorder level', group: 'stock' },
+  belowReorder: { yes: 'Below reorder', no: 'Not below reorder', group: 'stock' },
+  onOrder: { yes: 'On order', no: 'Nothing on order', group: 'stock' },
   belowMargin: { yes: 'Below margin', no: 'Not below margin', group: 'cost' },
   noSupplierPrice: { yes: 'No supplier price', no: 'Has a supplier price', group: 'cost' },
   delisted: { yes: 'No longer listed', no: 'No longer listed', group: 'cost' },
@@ -365,6 +390,9 @@ export function readStockListOptions(data: Json): StockListOptions {
       inRange: count(totals.in_range),
       inStock: count(totals.in_stock),
       outOfStock: count(totals.out_of_stock),
+      belowReorder: count(totals.below_reorder),
+      belowMargin: count(totals.below_margin),
+      onOrder: count(totals.on_order),
     },
     brands: readArray(record.brands).flatMap((item) => {
       const option = readOption(item);
@@ -379,7 +407,8 @@ export function readStockListOptions(data: Json): StockListOptions {
     locations: readOptionList(record.locations),
     bins: readArray(record.bins).flatMap((item) => {
       const option = readOption(item);
-      return option ? [{ ...option, locationId: readNumber(readRecord(item)?.location_id) }] : [];
+      // the bin in words ("LEEDS · Unbinned"), never its system code, wherever a filter shows it
+      return option ? [{ ...option, label: placeWords(option.label), locationId: readNumber(readRecord(item)?.location_id) }] : [];
     }),
     suppliers: readOptionList(record.suppliers),
   };

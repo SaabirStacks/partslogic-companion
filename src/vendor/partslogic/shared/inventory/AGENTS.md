@@ -8,10 +8,23 @@ location, stock cost lots, adding a part to your range and a supplier's code for
   model (`StockListFilters`, `tidyStockFilters`, `stockListParams`), filters in a page address
   (`stockFiltersToParams`, `stockFiltersFromParams`) and the active-filter badges (`stockFilterBadges`).
 - Set aside (sales orders, docs/SALES.md 13.8): an inventory row carries `setAside`, units confirmed sales orders hold
-  (`stock_list` reads it through `stock_set_aside_of`); the Stock column leads with what is available, the In stock
-  filter and reorder (`purchasing.reorder_lines`) work from it, and the part window's Stock tab lists the orders
-  holding the part (`getPartSetAside`, in the sales domain).
-- `items.ts`: `listInventory`, `inventoryFilterOptions`, `updateInventoryItem`, `readInventoryRow`, the page
+  and substitutes held for a customer (`sales.set_aside_lines`, read by `stock_set_aside_of`, `sales.set_aside_at` and
+  `part_set_aside` alike); the Available column leads with what can be sold (`availableOf`), the In stock filter and
+  reorder (`purchasing.reorder_lines`) work from it, and the part window's Stock tab lists what holds it
+  (`getPartSetAside`, in the sales domain).
+- Below reorder is one rule (20261124090000): `purchasing.stock_position` (free at a place, on order, on drafts) judged
+  by `purchasing.needs_reorder`; `public.part_below_reorder` and `purchasing.parts_below_reorder` give it to
+  `inventory_rows`, `stock_list` and `stock_list_options`, so the list, the part window and the Reorder sheet agree.
+- On order: each Stock list row and the part window's row carry `onOrder`, `onOrderDue` and `onOrderLate`
+  (`purchasing.parts_due`, from `purchasing.back_orders`; `part_detail` reads them through `part_stock_extras`);
+  `onOrderFigure` gives the column's figure.
+- `stock-glance.ts`: `getStockGlance` (`part_stock_glance`): places, bins with when each was counted, stock in no place,
+  what holds it, what is coming and the last delivery, for the Available popover and the part beside the list.
+- `saved-views.ts`: `listSavedViews`, `saveView`, `renameView`, `deleteView` (`saved_views` and its four functions;
+  each person's own). `stock-views.ts`: the Stock list's views (`STOCK_BUILT_IN_VIEWS`, `builtInViewOf`,
+  `withBuiltInView`), saved view settings (`stockViewParams`, `readStockViewSettings`, `sameStockView`,
+  `savedViewState`) and the quick chips' words (`chipValue`, `chipNames`, `stockChipValue`, `toggleStockChoice`).
+- `items.ts`: `stockBadgeWord` (Out or Reorder, for the Stock list and the part window), `listInventory`, `inventoryFilterOptions`, `updateInventoryItem`, `readInventoryRow`, the page
   sizes and sorts, `PartKind`.
 - `stock.ts`: `setStockCount`, `adjustStock`, `transferStock`, `listMovements`.
 - `levels.ts`: `listLocationLevels`, `setLocationLevel` (min/max per location).
@@ -33,9 +46,13 @@ location, stock cost lots, adding a part to your range and a supplier's code for
 - API: `app/api/v1/inventory/` (list, filters, item, levels, movements), `app/api/v1/stock/` (adjustments,
   counts, transfers).
 - Screen: `components/shadcn-studio/blocks/inventory-table/` (`inventory-table.tsx` the Stock list screen,
-  `stock-columns.tsx`, `stock-filter-dialog.tsx`, `scope-switch.tsx`) on the shared data table
+  `stock-columns.tsx`, `stock-views-bar.tsx` the views and saved views, `stock-filter-bar.tsx` the search and quick
+  chips, `available-popover.tsx` the Available cell and its popover, `part-peek.tsx` the part beside the list,
+  `stock-filter-sheet.tsx` the Filters panel (`figure-tone.ts` the state colours of stock figures), `scope-switch.tsx`) on the shared data table
   (`components/shadcn-studio/blocks/data-table/`); server actions `loadStockList`, `loadStockListOptions`
-  (`app/inventory/actions.ts`); tests `tests/shell/stock-list-screen.test.ts`.
+  (`app/inventory/actions.ts`, with `loadStockGlance`, `loadStockViews`, `saveStockView`, `renameStockView`,
+  `deleteStockView`); tests `tests/shell/stock-list-screen.test.ts`, `tests/shared/stock-views.test.ts`; SQL test
+  `183_stock_list_rework.sql`; design checks `scripts/design-checks/inventory.mjs` (docs/design-checks/inventory.md).
 - Helpers: `lib/api/inventory-query.ts`, `lib/api/add-part-input.ts`, `lib/inventory-display.ts` (formatters
   the companion also copies), `lib/sku.ts`.
 - Database: `stock_list`, `stock_list_options` (the web's Stock list; `public.inventory_index` is its index table,
