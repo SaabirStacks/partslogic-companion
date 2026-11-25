@@ -14,7 +14,7 @@ import { quantityWords } from '@/vendor/partslogic/shared/sales/words';
 import { boxTotals, full, inBox, type Box } from './pack';
 import { PackScanCard, ParcelsSheet } from './pack-views';
 import type { PackCard } from './use-pack';
-import { boxCount, boxProgress, LEAVE_NOTE, linePart, packingDetail } from './words';
+import { boxProgress, LEAVE_NOTE, linePart, packingDetail, toGo } from './words';
 
 // Packing one delivery: the order (large) and where it goes, the camera, the last scan's card, how much is in the box,
 // each part with − and + for one that won't scan, and Packed in the thumb zone, which asks how many parcels. Drawn
@@ -61,7 +61,7 @@ export function PackJobView({
         }>
         <Tally
           items={[
-            { value: quantityWords(total.inBox), label: `In the box of ${quantityWords(total.units)}` },
+            { value: quantityWords(total.inBox), label: `In the box of\u00a0${quantityWords(total.units)}` },
             { value: box.lines.length, label: box.lines.length === 1 ? 'Part' : 'Parts' },
           ]}
         />
@@ -71,7 +71,7 @@ export function PackJobView({
             key={line.lineId}
             name={linePart(line)}
             code={line.part.description}
-            status={full(line) ? { text: boxCount(line), icon: 'sent', tone: 'ok' } : { text: boxCount(line), icon: 'waiting', tone: 'neutral' }}
+            status={full(line) ? { text: 'All in the box', icon: 'sent', tone: 'ok' } : { text: toGo(line), icon: 'waiting', tone: 'neutral' }}
             quantity={null}>
             <View className="items-end">
               <Quantity total={inBox(line)} name={linePart(line)} onStep={(change) => onStep(line.lineId, change)} onSet={(target) => onSet(line.lineId, target)} />

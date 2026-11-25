@@ -18,7 +18,7 @@ import type { PickReceipt } from './receipt';
 import type { PickCard as Card } from './scan-card';
 import { bannerDetail, bannerTitle, finishLabel, goBack, PICK_OFFLINE, refusedLine, STOP } from './words';
 
-type SheetState = { key: string; start: 'menu' | 'short' } | null;
+type SheetState = { key: string; start: 'menu' | 'cant' | 'short' } | null;
 
 // A running pick job, as the picker sees it: the bin to go to (large) with what follows, the camera, the last scan's
 // card, the totals, any pick PartsLogic refused, the rows by bin, and Finish in the thumb zone. Drawn from its props,
@@ -83,7 +83,8 @@ export function PickJobView({
         }>
         <Tally
           items={[
-            { value: quantityWords(totals.picked), label: `Units of ${quantityWords(totals.units)}` },
+            // The number stays with "of" if the label wraps (never a lone figure, P7).
+            { value: quantityWords(totals.picked), label: `Units of\u00a0${quantityWords(totals.units)}` },
             { value: totals.orders, label: totals.orders === 1 ? 'Order' : 'Orders' },
             ...(totals.short > 0 ? [{ value: quantityWords(totals.short), label: 'Short', tone: 'warn' as const }] : []),
           ]}

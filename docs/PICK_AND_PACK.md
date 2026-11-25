@@ -34,7 +34,12 @@ last. Packed sent twice finds the order packed, which counts as done.
 | Can't scan starts at 1 unit | A tap stands in for a scan, which adds one; the deck's "− 0 +" would need a step before Add works |
 | A short pick on the phone is recorded as the phone's (scan) | The units found in it move as the web's short pick moves them; only scans and taps say how a unit was confirmed |
 | The receipt names stages in the web's words | `fulfilmentLabel`: "Ready for collection", not the deck's "Ready to collect"; the database has no "Part ready" stage (an order part picked is still To pick) |
-| A scanned bin label, and a code the phone can't check offline, have their own cards | "A bin label · Scan the part"; "Not checked · No signal · use Can't scan on its row" (words not in the deck) |
+| A scanned bin label, and a code the phone can't check offline, have their own cards | "A bin label · Scan the part"; "Not checked · No signal · scan it again when it's back, or use Can't scan" (words not in the deck). The phone keeps every part's codes, so a known part scans offline; this card is for a code it has never seen |
+| Not on this pick leads with Scan again, not Short pick | A misread or a neighbour's part is commoner than a missing one; Short pick is the second button, and stays on the row's menu |
+| Pack's list needs signal; Packed is queued | Which deliveries are ready changes as others pick and pack; a list from earlier could send a packer to an order already packed. Packed itself is saved and sent when the signal is back |
+| Undo the last scan is the square icon beside Finish, named for screen readers | As Receive's, so both jobs undo alike |
+| Start picking and Carry on sit in the empty state, not a pinned bar | As every job's first screen (Notice) |
+| A short pick on the phone is recorded as a scan | Units found in it are counted, not scanned; the record keeps the short and its reason, which is what the owner asked to see |
 | Stop picking sits at the foot of the rows | The job's only other action; the native header holds no menu on any job screen |
 | Rows sit under the bin they're in | The walk reads bin by bin; picked rows and rows needing a count follow |
 | Finish says what's picked | "Finish · 9 units"; units not picked are said in its sheet before anything ends |

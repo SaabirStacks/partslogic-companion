@@ -58,7 +58,7 @@ export const spareLine = (want: number) => `All ${quantityWords(want)} picked`;
 export const SPARE_BACK = 'Put the spare back';
 export const NOT_ON_PICK = 'Not on this pick';
 // A code this phone has never seen, with no signal to ask: every part's codes are kept on the phone, so this is rare.
-export const OFFLINE_UNKNOWN = 'Not on this phone’s list · scan it again with signal, or use Can’t scan';
+export const OFFLINE_UNKNOWN = 'No signal · scan it again when it’s back, or use Can’t scan';
 export const thisBin = (row: Pick<JobRow, 'part'> | null) => (row ? `This bin: ${partName(row)}` : null);
 
 // Finish and Stop.

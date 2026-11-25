@@ -92,7 +92,7 @@ export function PackScanCard({ card }: { card: PackCard }) {
     case 'spare':
       return <ScanResultCard tone="warn" status={{ icon: 'warning', label: allInBox(card.line.qty) }} title={linePart(card.line)} detail="Put the spare back" />;
     case 'not_on_order':
-      return <ScanResultCard tone="warn" status={{ icon: 'warning', label: NOT_ON_ORDER }} title={card.scanned} />;
+      return <ScanResultCard tone="warn" status={{ icon: 'warning', label: NOT_ON_ORDER }} title={card.scanned} detail="Put it back" />;
     case 'bin':
       return <ScanResultCard tone="warn" status={{ icon: 'bin', label: 'A bin label' }} title={binLabel(card.bin)} detail="Scan the part" />;
     case 'offline':
@@ -109,7 +109,7 @@ export function ParcelsSheet({ visible, onPacked, onClose }: { visible: boolean;
   return (
     <Sheet visible={visible} title={PARCELS_QUESTION} onClose={onClose}>
       <View className="items-center">
-        <Quantity total={parcels} name="parcels" onStep={(change) => setParcels((now) => clamp(now + change))} onSet={(target) => setParcels(clamp(target))} />
+        <Quantity total={parcels} name="parcels" min={PARCELS_MIN} max={PARCELS_MAX} onStep={(change) => setParcels((now) => clamp(now + change))} onSet={(target) => setParcels(clamp(target))} />
       </View>
       <View className="gap-2">
         <Button label="Packed" icon="check" onPress={() => onPacked(parcels)} />

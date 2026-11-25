@@ -1,6 +1,5 @@
 import { Pressable, View } from 'react-native';
 
-import { BinChip } from '@/ui/bin-chip';
 import { Icon } from '@/ui/icon';
 import { LineRow } from '@/ui/line-row';
 import { SectionLabel } from '@/ui/section-label';
@@ -22,8 +21,12 @@ export function PickRows({ rows, onRow }: { rows: JobRow[]; onRow: (row: JobRow)
     <>
       {groupByBin(toPick).map(([bin, group]) => (
         <View key={bin} className="gap-2">
-          <View className="flex-row">
-            <BinChip code={binLabel(bin)} />
+          {/* A heading for the bin, not a chip: nothing to press (critique A, round 2). */}
+          <View accessible accessibilityRole="header" accessibilityLabel={`Bin ${binLabel(bin)}`} className="mt-1 flex-row items-center gap-2 px-1">
+            <Icon name="bin" size={18} colour="control" />
+            <Txt variant="title" className="font-extrabold">
+              {unbroken(binLabel(bin))}
+            </Txt>
           </View>
           {group.map((row) => (
             <Row key={row.key} row={row} onMenu={() => onRow(row)} />

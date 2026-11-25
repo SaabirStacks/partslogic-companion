@@ -15,6 +15,8 @@ export const packingDetail = (order: PackingOrder) => [pickingCustomer(order.cus
 
 export const boxCount = (line: BoxLine) => `${quantityWords(inBox(line))} of ${quantityWords(line.qty)} in the box`;
 export const linePart = (line: Pick<BoxLine, 'part'>) => partNumber(line.part);
+// A row not yet all in the box: "1 to go in" (the − n + beside it shows how many are in).
+export const toGo = (line: BoxLine) => `${quantityWords(Math.max(0, line.qty - inBox(line)))} to go in`;
 export const allInBox = (qty: number) => `All ${quantityWords(qty)} in the box`;
 export const NOT_ON_ORDER = 'Not on this order';
 // Packed's place until every unit is in: "1 of 3 in the box".

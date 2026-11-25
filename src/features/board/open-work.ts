@@ -72,7 +72,7 @@ export function resumeText(work: OpenWork): { title: string; detail: string; hre
     };
   }
   if (work.kind === 'pick') {
-    return { title: 'Pick job', detail: `${work.picked} of ${plural(work.units, 'unit', 'units')} · started ${clock(work.startedAt)}`, href: '/pick' };
+    return { title: 'Pick job', detail: `${work.picked} of ${plural(work.units, 'unit', 'units')} picked`, href: '/pick' };
   }
   const detail = `${plural(work.units, 'unit', 'units')} · started ${clock(work.startedAt)}`;
   return work.kind === 'delivery'

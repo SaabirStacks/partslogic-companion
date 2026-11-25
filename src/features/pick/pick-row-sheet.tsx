@@ -100,7 +100,7 @@ function RowSheet({
           <Txt variant="label" className="font-bold">
             Units
           </Txt>
-          <Quantity total={qty} name={partName(row)} onStep={(change) => setQty((now) => clamp(now + change, rest))} onSet={(target) => setQty(clamp(target, rest))} />
+          <Quantity total={qty} name={partName(row)} min={1} max={rest} onStep={(change) => setQty((now) => clamp(now + change, rest))} onSet={(target) => setQty(clamp(target, rest))} />
         </View>
         {missingUnits ? <StatusStrip tone="stop" icon="stop" text="Add at least 1." /> : null}
         <View className="gap-2">
@@ -126,7 +126,7 @@ function RowSheet({
         <Txt variant="label" className="flex-1 font-bold">
           How many are here?
         </Txt>
-        <Quantity total={qty} name={partName(row)} onStep={(change) => setQty((now) => clamp(now + change, most))} onSet={(target) => setQty(clamp(target, most))} />
+        <Quantity total={qty} name={partName(row)} max={most} onStep={(change) => setQty((now) => clamp(now + change, most))} onSet={(target) => setQty(clamp(target, most))} />
       </View>
       <View className="gap-2" accessibilityRole="radiogroup" accessibilityLabel="Why?">
         <SectionLabel>Why?</SectionLabel>

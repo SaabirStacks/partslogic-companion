@@ -76,7 +76,7 @@ function Pick({ job, card = null, refused = [], sheet = null, confirming = null,
   job: LocalPickJob;
   card?: PickCard | null;
   refused?: { key: string; order: string; reason: string }[];
-  sheet?: { key: string; start: 'menu' | 'short' } | null;
+  sheet?: { key: string; start: 'menu' | 'cant' | 'short' } | null;
   confirming?: 'finish' | 'stop' | null;
   online?: boolean;
 }) {
@@ -203,6 +203,12 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
   'pick-offline': () => <Pick job={midway()} online={false} card={{ kind: 'offline', code: '4011558726304' }} />,
   'pick-row-menu': () => <Pick job={midway()} sheet={{ key: '1:2', start: 'menu' }} />,
   'pick-short': () => <Pick job={midway()} sheet={{ key: '1:2', start: 'short' }} />,
+  'pick-cant-scan': () => <Pick job={midway()} sheet={{ key: '4:3', start: 'cant' }} />,
+  // A small job, so its foot (Stop picking) is in view.
+  'pick-job-foot': () => {
+    const job = fromServerJob({ ...SERVER_JOB, orders: SERVER_JOB.orders.slice(0, 1), rows: SERVER_JOB.rows.slice(0, 1) }, 'u1');
+    return <Pick job={job} />;
+  },
   'pick-near-end': () => <Pick job={nearlyDone()} />,
   'pick-refused': () => (
     <Pick job={nearlyDone()} refused={[{ key: 'r', order: 'SO-000019', reason: 'Only 0 in D-01 on the books. Count the bin, then pick.' }]} />
@@ -212,6 +218,11 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
   'pick-receipt-sending': () => (
     <Screen title="Pick">
       <PickReceipt receipt={{ state: 'sending', line: '12 picked · 1 short · 4 orders', orders: ORDER_STAGES.map((order) => ({ ...order, stage: null })), refused: [] }} onPack={noop} onDone={noop} />
+    </Screen>
+  ),
+  'pick-receipt-sent': () => (
+    <Screen title="Pick">
+      <PickReceipt receipt={{ state: 'sent', line: '11 picked · 1 short · 4 orders', orders: ORDER_STAGES, refused: [] }} onPack={noop} onDone={noop} />
     </Screen>
   ),
   'pick-receipt': () => (
@@ -245,6 +256,7 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
   ),
   'pack-job': () => <PackJob box={halfBox()} card={{ kind: 'added', line: halfBox().lines[0], complete: false }} />,
   'pack-not-on-order': () => <PackJob box={halfBox()} card={{ kind: 'not_on_order', scanned: 'NGK BKR6E' }} />,
+  'pack-ready': () => <PackJob box={fullBox()} />,
   'pack-parcels': () => <PackJob box={fullBox()} asking />,
   'pack-receipt': () => (
     <Screen title="Pack">
