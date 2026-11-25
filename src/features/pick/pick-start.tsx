@@ -44,7 +44,7 @@ export function PickStart({
     );
   }
   return (
-    <Notice icon="pick" title={readyToPick(status.toPick, status.orders, status.location)}>
+    <Notice icon="pick" title={readyToPick(status.toPick, status.freeOrders)}>
       {failed}
       <Button label="Start picking" icon="pick" busy={busy} onPress={onStart} />
     </Notice>

@@ -1,7 +1,7 @@
 import type { PickJob } from '@/vendor/partslogic/shared/sales/pick-jobs';
 
 import { bins, done, fromServerJob, left, scanPart, shortRow, tapRow, totals, unscanRow } from '../job';
-import { bannerDetail, bannerTitle, countOf, goBack, pickCardWords, receiptLine, refusedLine, rowState } from '../words';
+import { bannerDetail, bannerTitle, countOf, goBack, pickCardWords, readyToPick, receiptLine, refusedLine, rowState } from '../words';
 
 const part = (id: number, number: string) => ({ id, brand: 'MANN-FILTER', number, description: null });
 const row = (over: Partial<PickJob['rows'][number]>) => ({
@@ -102,6 +102,11 @@ describe('words that must read whole', () => {
     expect(refusedLine('SO-000021', 'Only 0 in D-01 on the books. Count the bin, then pick.')).toBe(
       'Not picked · SO\u2011000021 · Only 0 in D\u201101 on the books. Count the bin, then pick.',
     );
+  });
+
+  it('counts the orders Start picking can claim, without the branch', () => {
+    expect(readyToPick(20, 9)).toBe('20 units for 9 orders');
+    expect(readyToPick(1, 1)).toBe('1 unit for 1 order');
   });
 
   it('says the scan card for VoiceOver', () => {
