@@ -36,5 +36,9 @@ export function streamKeyOf(item: QueueItem): string {
       return pickJobStream(item.jobId);
     case 'pack_order':
       return `pack:${item.orderId}`;
+    // One drop: Delivered or Not delivered, in the order the driver chose them.
+    case 'deliver_signed':
+    case 'not_delivered':
+      return `deliver:${item.orderId}`;
   }
 }

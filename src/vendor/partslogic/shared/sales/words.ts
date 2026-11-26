@@ -73,6 +73,13 @@ export function daysFromToday(date: string, now: string): number {
   return Math.round((Date.parse(date.slice(0, 10)) - Date.parse(dayKey(new Date(now)))) / 86_400_000);
 }
 
+// Whole days (in London) from a moment to now: 0 the same day, 2 two days later.
+export function londonDaysAgo(at: string, now: string): number {
+  const then = new Date(at);
+  if (Number.isNaN(then.getTime())) return 0;
+  return Math.round((Date.parse(dayKey(new Date(now))) - Date.parse(dayKey(then))) / 86_400_000);
+}
+
 // A day near today in words: "today", "yesterday", "tomorrow", else "Mon 16 Nov".
 export function nearDayWords(date: string, now: string): string {
   const days = daysFromToday(date, now);

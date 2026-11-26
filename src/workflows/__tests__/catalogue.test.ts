@@ -31,7 +31,7 @@ describe('boardFor', () => {
         ['parts', ['lookup', 'add-part']],
         ['inbound', ['receive', 'put-away']],
         ['stock', ['stock-count', 'stock-take', 'transfer']],
-        ['outbound', ['pick', 'pack']],
+        ['outbound', ['pick', 'pack', 'deliver']],
       ]);
     }
   });

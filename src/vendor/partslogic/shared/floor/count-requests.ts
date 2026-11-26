@@ -3,6 +3,7 @@ import type { Json } from '@partslogic/db-types';
 import { call } from '../core/call';
 import type { Client } from '../core/client';
 import { readArray, readBoolean, readNumber, readRecord, readString } from '../core/read';
+import { NO_STOCK_ON_RECORD } from '../sales/picking';
 
 // Parts to count because a stock figure was found to be wrong: today, a sales order line confirmed as in stock
 // here when the system showed none (docs/SALES.md 13.8). A request leaves the list when the part is next counted
@@ -83,7 +84,7 @@ export function countRequestLine(request: Pick<CountRequest, 'reason' | 'note'>)
     const where = request.note && request.note.trim().toUpperCase() !== 'UNBINNED' ? `Not found in ${request.note}` : 'Not found when picked';
     return { lead: where, reason: null };
   }
-  return { lead: 'Set aside without stock', reason: countRequestReason(request) };
+  return { lead: NO_STOCK_ON_RECORD, reason: countRequestReason(request) };
 }
 
 // Why a part is on the list: "Reason: not counted yet", the note typed for Other, or the bin a picker found empty

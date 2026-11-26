@@ -3,7 +3,7 @@
     "name": "PartsLogic",
     "slug": "partslogic-mobile",
     "owner": "prodz",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "runtimeVersion": {
       "policy": "appVersion"
     },

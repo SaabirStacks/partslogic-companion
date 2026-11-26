@@ -13,6 +13,8 @@ export * from './photos';
 export * from './picking';
 export * from './pick-jobs';
 export * from './packing';
+export * from './handover';
+export * from './delivery';
 export * from './put-aside';
 export * from './replace';
 export * from './substitutes';

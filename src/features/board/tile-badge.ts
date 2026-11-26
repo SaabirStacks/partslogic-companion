@@ -1,14 +1,16 @@
 import type { BadgeState } from '@/ui/badge';
+import { withYouWords } from '@/vendor/partslogic/shared/sales/delivery';
 import type { LiveWorkflowId } from '@/workflows/catalogue';
 
 import type { OpenWork } from './open-work';
 
-// What waits for the outbound jobs at this branch (pick_job_status): units to pick, orders to pack.
-export type Outbound = { toPick: number; toPack: number };
+// What waits for the outbound jobs at this branch (pick_job_status): units to pick, orders to pack; and the
+// deliveries out with this driver (driver_deliveries), when known.
+export type Outbound = { toPick: number; toPack: number; withYou?: number | null };
 
 // The badge in a job's corner: its open work on this phone (amber; its Resume row says more), else what's
 // waiting for it (blue). Put away counts what's in Unbinned (unbinned, null when not known); Pick the units to
-// pick and Pack the orders to pack (outbound, null when not known). A stock take and an opening-stock run both
+// pick, Pack the orders to pack and Deliver the deliveries with you (outbound, null when not known). A stock take and an opening-stock run both
 // start from Stock take, so both show there. null for nothing to say.
 export function tileBadge(id: LiveWorkflowId, openWork: OpenWork[], unbinned: number | null, outbound: Outbound | null = null): BadgeState | null {
   for (const work of openWork) {
@@ -27,6 +29,10 @@ export function tileBadge(id: LiveWorkflowId, openWork: OpenWork[], unbinned: nu
   }
   if (id === 'pack' && outbound && outbound.toPack > 0) {
     return { label: `${count(outbound.toPack)} ${outbound.toPack === 1 ? 'order' : 'orders'}`, tone: 'action', spoken: `${outbound.toPack} ${outbound.toPack === 1 ? 'order' : 'orders'} to pack` };
+  }
+  const withYou = withYouWords(outbound?.withYou ?? 0);
+  if (id === 'deliver' && withYou) {
+    return { label: withYou, tone: 'action', spoken: `${outbound!.withYou} ${outbound!.withYou === 1 ? 'delivery' : 'deliveries'} with you` };
   }
   if (id === 'put-away' && unbinned !== null && unbinned > 0) {
     return { label: `${new Intl.NumberFormat('en-GB').format(unbinned)} waiting`, tone: 'action', spoken: `${unbinned} units waiting in Unbinned` };

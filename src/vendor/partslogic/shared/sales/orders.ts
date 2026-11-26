@@ -43,8 +43,9 @@ import {
 } from './cannot-supply';
 import { lateEventText, readLateLines, readOrderLateSummary, type LateLine, type OrderLateSummary } from './late';
 import { addressLines, deliveryPlace, readSalesOrderAddress, type SalesOrderAddress } from './address';
-import { notFoundWords, pickingEventText, readNotFound, type NotFound, type PackingOrder } from './picking';
-import { packingEventText, parcelsWords, readOrderPack, type OrderPack } from './packing';
+import { NO_STOCK_ON_RECORD, notFoundWords, pickingEventText, readNotFound, type NotFound, type PackingOrder, type PickingOrder, type PickingRow } from './picking';
+import { NOT_PACKED, packingEventText, parcelsWords, readOrderPack, type OrderPack } from './packing';
+import { handoverEventText, readHandover, readHandovers, type Handover } from './handover';
 import { replaceEventText } from './replace';
 import { clockTime, dateWords, dayAndTime, daysFromToday, deliveryWords, moneyWords, nearDayWords, PART_FIT_WORDS, quantityWords } from './words';
 
@@ -52,7 +53,9 @@ import { clockTime, dateWords, dayAndTime, daysFromToday, deliveryWords, moneyWo
 // and starts as a draft, which holds no stock. Confirming it runs the credit check and sets stock aside; what is
 // short is to order. The database makes every decision; these wrappers hand it the words and read its answers.
 
-export const SALES_ORDER_VIEWS = ['mine', 'drafts', 'to_order', 'to_pick', 'to_pack', 'on_hold', 'action_required', 'all_open', 'completed'] as const;
+export const SALES_ORDER_VIEWS = [
+  'mine', 'drafts', 'to_order', 'to_pick', 'to_pack', 'ready_collection', 'ready_delivery', 'out_for_delivery', 'on_hold', 'action_required', 'all_open', 'completed',
+] as const;
 export type SalesOrderView = (typeof SALES_ORDER_VIEWS)[number];
 export function isSalesOrderView(value: string): value is SalesOrderView {
   return (SALES_ORDER_VIEWS as readonly string[]).includes(value);
@@ -64,6 +67,10 @@ export const SALES_ORDER_VIEW_LABELS: Record<SalesOrderView, string> = {
   to_pick: 'To pick',
   // Deliveries with every unit picked, not yet packed (S5b-1).
   to_pack: 'To pack',
+  // Handover (S5a-2a): the pill's own words, each row with its one button.
+  ready_collection: 'Ready for collection',
+  ready_delivery: 'Ready for delivery',
+  out_for_delivery: 'Out for delivery',
   on_hold: 'On hold',
   // The orders where the counter must act now on a part a supplier let down (Faire's "Action required").
   action_required: 'Action required',
@@ -110,7 +117,8 @@ export type OrderCancelled = { outcome: CancelOutcome; reason: string | null; en
 // the next working day); awaiting_reply: asked, and the reply isn't due yet; waiting: the customer chose to wait for a
 // supplier on hold. An order with an answer due is never Ready, nor Ordered.
 // to_pack (S5b-1): a delivery or courier order with every unit on the shelf and not yet packed; packed, it is Ready.
-export const ORDER_FULFILMENTS = ['to_order', 'drafted', 'ordered', 'arrived', 'to_agree', 'awaiting_reply', 'waiting', 'to_pick', 'to_pack', 'ready'] as const;
+// out (S5a-2a): everything still held is with the driver or the courier.
+export const ORDER_FULFILMENTS = ['to_order', 'drafted', 'ordered', 'arrived', 'to_agree', 'awaiting_reply', 'waiting', 'to_pick', 'to_pack', 'ready', 'out'] as const;
 export type OrderFulfilment = (typeof ORDER_FULFILMENTS)[number];
 export const ORDER_FULFILMENT_LABELS: Record<OrderFulfilment, string> = {
   to_order: 'To order',
@@ -127,6 +135,7 @@ export const ORDER_FULFILMENT_LABELS: Record<OrderFulfilment, string> = {
   to_pick: 'To pick',
   to_pack: 'To pack',
   ready: 'Ready',
+  out: 'Out for delivery',
 };
 
 // Each stage's badge state (docs/design-checks/status-colours.md): our move blue, waiting on a supplier or the
@@ -142,11 +151,22 @@ export const ORDER_FULFILMENT_STATES: Record<OrderFulfilment, StatusState> = {
   to_pick: 'active',
   to_pack: 'active',
   ready: 'ready',
+  out: 'active',
 };
 
 // The stage pill's words: a ready order says how it reaches the customer.
 export function fulfilmentLabel(fulfilment: OrderFulfilment, method: DeliveryMethod): string {
   return fulfilment === 'ready' ? readyLabel(method) : ORDER_FULFILMENT_LABELS[fulfilment];
+}
+
+// Part supplied (S5a-2a, the copy deck): part of the order reached the customer and the rest is still on its way to
+// the shelf. The pill says so; the line after it says what the rest waits on. Ready, To pack and Out for delivery keep
+// their own words, as their next move is a handover.
+export const PART_SUPPLIED = 'Part supplied';
+
+export function orderStageWords(fulfilment: OrderFulfilment, method: DeliveryMethod, supplied: number): { label: string; tone: StatusState } {
+  if (supplied > 0 && fulfilment !== 'ready' && fulfilment !== 'to_pack' && fulfilment !== 'out') return { label: PART_SUPPLIED, tone: 'active' };
+  return { label: fulfilmentLabel(fulfilment, method), tone: ORDER_FULFILMENT_STATES[fulfilment] };
 }
 
 // Why a confirmed order cannot move. The credit check sets on_stop and over_limit; a person sets customer (waiting
@@ -205,6 +225,14 @@ export type SalesOrderRow = {
   toPick: number;
   onShelf: number;
   picked: number;
+  // Handed over (S5a-2a): out for delivery and supplied units, when a collection became ready, and the latest handover.
+  sentOut: number;
+  supplied: number;
+  readySince: string | null;
+  handover: Handover | null;
+  // A delivery's place ("Leeds LS11") and its standing pack's parcels, for the delivery views' line (S5a-2a).
+  deliverTo: string | null;
+  parcels: number | null;
   urgent: boolean;
   hold: OrderHold | null;
   registrations: string[];
@@ -236,7 +264,11 @@ export type SalesOrderList = {
   // Units still to pick across the list's branch (or every branch), counted as the Picking page counts them (S5a-1).
   toPickUnits: number;
   // The rows in each view, whatever is typed in the filter.
-  views: { mine: number; drafts: number; toOrder: number; toPick: number; toPack: number; onHold: number; actionRequired: number; allOpen: number };
+  views: {
+    mine: number; drafts: number; toOrder: number; toPick: number; toPack: number;
+    readyCollection: number; readyDelivery: number; outForDelivery: number;
+    onHold: number; actionRequired: number; allOpen: number;
+  };
   summary: { open: number; needsAction: number; drafts: number; onHold: number; withCustomer: number; actionRequired: number };
   locations: { id: number; name: string }[];
   // The people who own an open order, for the Owner filter.
@@ -282,8 +314,11 @@ export type SalesOrderLine = {
   binQty: number | null;
   // Units of a line that is to order which the shelf can now give it.
   canSetAside: number;
-  // Of the set-aside units, those on the collection and delivery shelf: goods in's (S4b) and picked (S5a-1).
+  // Of the set-aside units, those on the collection and delivery shelf now: goods in's (S4b) and picked (S5a-1). Set
+  // aside and on the shelf leave out what was supplied or is out for delivery (S5a-2a), which these say.
   onShelf: number;
+  supplied: number;
+  sentOut: number;
   // Of those, the units picked from bins, and a short pick still open (S5a-1).
   picked: number;
   notFound: NotFound | null;
@@ -302,7 +337,8 @@ export type SalesOrderLine = {
 // Packed (S5b-1) is on a delivery's or courier order's trail only; a collection has no such step.
 export const ORDER_TRAIL_STAGES = ['confirmed', 'stock', 'picked', 'packed', 'supplied', 'invoiced', 'paid'] as const;
 export type OrderTrailStage = (typeof ORDER_TRAIL_STAGES)[number];
-export type OrderTrailNode = { key: OrderTrailStage; state: 'done' | 'now' | 'todo'; done: number | null; of: number | null; at: string | null };
+// out: on the handover stage (S5a-2a), the units with the driver or the courier.
+export type OrderTrailNode = { key: OrderTrailStage; state: 'done' | 'now' | 'todo'; done: number | null; of: number | null; at: string | null; out?: number | null };
 
 export type SalesOrderDetail = {
   id: string;
@@ -337,8 +373,10 @@ export type SalesOrderDetail = {
     lineCount: number;
     units: number;
     setAside: number;
-    // Of those, on the collection and delivery shelf (S4b).
+    // Of those, on the collection and delivery shelf now (S4b); handed over (S5a-2a): out for delivery, and supplied.
     onShelf: number;
+    sentOut: number;
+    supplied: number;
     toOrder: number;
     withoutStock: number;
     // Of the units to order: still to order, on draft purchase orders, ordered, and arrived waiting to be set aside.
@@ -399,6 +437,9 @@ export type SalesOrderDetail = {
   // Packed (S5b-1): the standing pack, and who holds the order in a pick job on a phone.
   pack: OrderPack | null;
   picker: string | null;
+  // Handover (S5a-2a): the order's handovers, newest first, and whether this viewer may hand over or take one back.
+  handovers: Handover[];
+  canHandOver: boolean;
   canOrderIn: boolean;
   // Units the counter may order in: still to order, leaving out parts that can't be supplied (purchasing reorders those).
   orderInUnits: number;
@@ -559,8 +600,14 @@ export function readSalesOrderRow(value: Json | undefined): SalesOrderRow | null
     fulfilment: readFulfilment(row.fulfilment),
     toOrder: readNumber(row.to_order) ?? 0,
     toPick: readNumber(row.to_pick) ?? 0,
-    onShelf: readNumber(row.on_shelf) ?? 0,
+    onShelf: readNumber(row.here) ?? readNumber(row.on_shelf) ?? 0,
     picked: readNumber(row.picked) ?? 0,
+    sentOut: readNumber(row.sent_out) ?? 0,
+    supplied: readNumber(row.supplied) ?? 0,
+    readySince: readString(row.ready_since),
+    handover: readHandover(row.handover),
+    deliverTo: row.address != null || row.address_text != null ? deliveryPlace(readSalesOrderAddress(row.address), readString(row.address_text)) || null : null,
+    parcels: readNumber(row.parcels),
     urgent: readBoolean(row.urgent) ?? false,
     hold: readHold(row.hold),
     registrations: readStrings(row.registrations),
@@ -597,6 +644,9 @@ export function readSalesOrderList(data: Json): SalesOrderList {
       toOrder: readNumber(views.to_order) ?? 0,
       toPick: readNumber(views.to_pick) ?? 0,
       toPack: readNumber(views.to_pack) ?? 0,
+      readyCollection: readNumber(views.ready_collection) ?? 0,
+      readyDelivery: readNumber(views.ready_delivery) ?? 0,
+      outForDelivery: readNumber(views.out_for_delivery) ?? 0,
       onHold: readNumber(views.on_hold) ?? 0,
       actionRequired: readNumber(views.action_required) ?? 0,
       allOpen: readNumber(views.all_open) ?? 0,
@@ -641,7 +691,8 @@ function readLine(value: Json | undefined): SalesOrderLine | null {
     fit: typeof row.fit === 'string' && (PART_FITS as readonly string[]).includes(row.fit) ? (row.fit as PartFit) : null,
     registration: readString(row.registration),
     requestId: readNumber(row.request_id),
-    setAside: readNumber(row.set_aside) ?? 0,
+    // still with us: set aside less what left the shelf (S5a-2a)
+    setAside: (readNumber(row.set_aside) ?? 0) - (readNumber(row.supplied) ?? 0) - (readNumber(row.sent_out) ?? 0),
     toOrder: readNumber(row.to_order) ?? 0,
     withoutStock: readNumber(row.without_stock) ?? 0,
     cancelled: readBoolean(row.cancelled) ?? false,
@@ -652,7 +703,9 @@ function readLine(value: Json | undefined): SalesOrderLine | null {
     bin: readString(row.bin),
     binQty: readNumber(row.bin_qty),
     canSetAside: readNumber(row.can_set_aside) ?? 0,
-    onShelf: readNumber(row.on_shelf) ?? 0,
+    onShelf: readNumber(row.here) ?? readNumber(row.on_shelf) ?? 0,
+    supplied: readNumber(row.supplied) ?? 0,
+    sentOut: readNumber(row.sent_out) ?? 0,
     picked: readNumber(row.picked) ?? 0,
     notFound: readNotFound(row.not_found),
     onPo: readNumber(row.on_po) ?? 0,
@@ -710,7 +763,7 @@ export function readSalesOrderDetail(data: Json): SalesOrderDetail | null {
       const node = readRecord(item);
       const key = node ? oneOf(ORDER_TRAIL_STAGES, node.key, 'confirmed') : null;
       if (!node || !key || node.key !== key) return [];
-      return [{ key, state: oneOf(['done', 'now', 'todo'] as const, node.state, 'todo'), done: readNumber(node.done), of: readNumber(node.of), at: readString(node.at) }];
+      return [{ key, state: oneOf(['done', 'now', 'todo'] as const, node.state, 'todo'), done: readNumber(node.done), of: readNumber(node.of), at: readString(node.at), out: readNumber(node.out) }];
     }),
     figures: {
       subtotal: readNumber(figures.subtotal) ?? 0,
@@ -720,8 +773,10 @@ export function readSalesOrderDetail(data: Json): SalesOrderDetail | null {
       invoiced: readNumber(figures.invoiced) ?? 0,
       lineCount: readNumber(figures.line_count) ?? 0,
       units: readNumber(figures.units) ?? 0,
-      setAside: readNumber(figures.set_aside) ?? 0,
-      onShelf: readNumber(figures.on_shelf) ?? 0,
+      setAside: (readNumber(figures.set_aside) ?? 0) - (readNumber(figures.supplied) ?? 0) - (readNumber(figures.sent_out) ?? 0),
+      onShelf: readNumber(figures.here) ?? readNumber(figures.on_shelf) ?? 0,
+      sentOut: readNumber(figures.sent_out) ?? 0,
+      supplied: readNumber(figures.supplied) ?? 0,
       toOrder: readNumber(figures.to_order) ?? 0,
       withoutStock: readNumber(figures.without_stock) ?? 0,
       stillToOrder: readNumber(figures.still_to_order) ?? readNumber(figures.to_order) ?? 0,
@@ -772,6 +827,8 @@ export function readSalesOrderDetail(data: Json): SalesOrderDetail | null {
     urgent: readBoolean(body.urgent) ?? false,
     pack: readOrderPack(body.pack),
     picker: readString(body.picker),
+    handovers: readHandovers(body.handovers),
+    canHandOver: readBoolean(body.can_hand_over) ?? false,
     canOrderIn: readBoolean(body.can_order_in) ?? false,
     orderInUnits: readNumber(body.order_in_units) ?? readNumber(figures.still_to_order) ?? 0,
     canOrderInUnpaid: readBoolean(body.can_order_in_unpaid) ?? false,
@@ -1301,13 +1358,14 @@ export function orderStateWords(
 }
 
 // The line after the pills on a ready order (board 6n): a collection asks for the customer to be told until the
-// message is copied; a delivery waits for the run (S5). customerName is the name the page shows.
+// message is copied; a delivery waits for the run (S5). customerName is the name the page shows, or null for a cash
+// sale with no name ("tell the customer", not "tell Cash sale": critique round 2).
 export function readyStateWords(
   order: Pick<SalesOrderDetail, 'fulfilment' | 'delivery' | 'location' | 'putAsideAt' | 'readyMessageAt'> & { pack?: OrderPack | null },
-  customerName: string,
+  customerName: string | null,
 ): string {
   if (order.delivery.method === 'collection') {
-    return readyToTell(order) ? `Needs action · tell ${customerName}` : readyNeedWords(order.location).replace(/\.$/, '');
+    return readyToTell(order) ? `Needs action · tell ${customerName ?? 'the customer'}` : readyNeedWords(order.location).replace(/\.$/, '');
   }
   const summary = deliverySummary(order);
   const to = summary.indexOf(' to ');
@@ -1389,10 +1447,24 @@ export function summariseFailures(failures: LineFailure[], lines: Pick<SalesOrde
 }
 
 export function orderStepParts(
-  row: Pick<SalesOrderRow, 'status' | 'cancelled' | 'toOrder' | 'toPick' | 'hold'> & { onShelf?: number; picked?: number; cannotSupply?: OrderFailureSummary | null },
+  row: Pick<SalesOrderRow, 'status' | 'cancelled' | 'toOrder' | 'toPick' | 'hold'> & {
+    onShelf?: number;
+    picked?: number;
+    cannotSupply?: OrderFailureSummary | null;
+    fulfilment?: OrderFulfilment | null;
+    method?: DeliveryMethod;
+    parcels?: number | null;
+    deliverTo?: string | null;
+  },
   now?: string,
 ): OrderStepParts {
   if (row.status === 'draft') return { lead: '', tone: null, rest: 'Not confirmed' };
+  // A delivery ready or out says where it goes, and a packed one its parcels, as Picking's To pack does ("1 parcel ·
+  // Leeds LS11"); it is loaded by parcel, not by what was picked (critique round 1).
+  if (row.status === 'open' && row.method && row.method !== 'collection' && (row.fulfilment === 'ready' || row.fulfilment === 'out')) {
+    const parcels = row.fulfilment === 'ready' && row.parcels ? parcelsWords(row.parcels) : null;
+    return { lead: '', tone: null, rest: [parcels, row.deliverTo].filter(Boolean).join(' · ') };
+  }
   if (row.status === 'open') {
     const shelf = row.onShelf ?? 0;
     const failed = row.cannotSupply;
@@ -1587,7 +1659,7 @@ export function orderOpenedWords(number: string, opened: Extract<OrderOpened, { 
 // across them shows in each group, with the quantity on each side.
 export type OrderLinePart = { line: SalesOrderLine; quantity: number; lineTotal: number };
 export type OrderLineGroup = {
-  key: 'cannot_supply' | 'substitute' | 'to_pick' | 'to_order' | 'on_order' | 'put_aside' | 'removed';
+  key: 'cannot_supply' | 'substitute' | 'to_pick' | 'to_order' | 'on_order' | 'put_aside' | 'out' | 'supplied' | 'removed';
   label: string;
   sub: string;
   parts: OrderLinePart[];
@@ -1603,7 +1675,7 @@ function onOrderUnits(line: SalesOrderLine): number {
   return line.supplyLinks.filter(isPlacedLink).reduce((sum, link) => sum + link.units + link.arrived, 0);
 }
 
-export function orderLineGroups(lines: SalesOrderLine[], failures: LineFailure[] = []): OrderLineGroup[] {
+export function orderLineGroups(lines: SalesOrderLine[], failures: LineFailure[] = [], method: DeliveryMethod = 'collection'): OrderLineGroup[] {
   const part = (line: SalesOrderLine, quantity: number): OrderLinePart => ({ line, quantity, lineTotal: Math.round(quantity * line.unitPrice * 100) / 100 });
   const live = lines.filter((line) => !line.cancelled);
   // units waiting on the customer to agree to a substitute held for them
@@ -1615,6 +1687,9 @@ export function orderLineGroups(lines: SalesOrderLine[], failures: LineFailure[]
   const order = live.filter((line) => toOrder(line) > 0).map((line) => part(line, toOrder(line)));
   const onOrder = live.filter((line) => Math.min(onOrderUnits(line), line.toOrder) > 0).map((line) => part(line, Math.min(onOrderUnits(line), line.toOrder)));
   const shelf = live.filter((line) => line.onShelf > 0).map((line) => part(line, line.onShelf));
+  // Handed over (S5a-2a): with the driver or the courier, and supplied (collected or delivered).
+  const out = live.filter((line) => line.sentOut > 0).map((line) => part(line, line.sentOut));
+  const supplied = live.filter((line) => line.supplied > 0).map((line) => part(line, line.supplied));
   const removed = [...lines.filter((line) => line.cancelled).map((line) => part(line, line.quantity)), ...live.filter((line) => line.removed > 0).map((line) => part(line, line.removed))];
   const units = (parts: OrderLinePart[]) => {
     const n = parts.reduce((sum, row) => sum + row.quantity, 0);
@@ -1649,6 +1724,8 @@ export function orderLineGroups(lines: SalesOrderLine[], failures: LineFailure[]
     const allPicked = shelf.every((row) => row.line.picked > 0 && row.line.picked >= row.line.onShelf);
     groups.push({ key: 'put_aside', label: allPicked ? 'Picked' : 'Put aside', sub: `${units(shelf)} on the collection and delivery shelf${shelves.length === 1 ? ` at ${shelves[0]}` : ''}`, parts: shelf });
   }
+  if (out.length) groups.push({ key: 'out', label: 'Out for delivery', sub: units(out), parts: out });
+  if (supplied.length) groups.push({ key: 'supplied', label: method === 'collection' ? 'Collected' : 'Delivered', sub: units(supplied), parts: supplied });
   if (removed.length) groups.push({ key: 'removed', label: 'Removed', sub: units(removed), parts: removed });
   return groups;
 }
@@ -1675,6 +1752,44 @@ export function orderToPack(order: Pick<SalesOrderDetail, 'id' | 'number' | 'urg
     lines: order.lines
       .filter((line) => !line.cancelled && line.onShelf > 0)
       .map((line) => ({ lineId: line.id, part: { id: line.partId, brand: line.brand, number: line.number, description: line.description }, qty: line.onShelf })),
+  };
+}
+
+// Who an order or enquiry is for, by name: a sales order with nobody named is a cash sale. Shared by the pages and the
+// printed notes, so both name the customer alike.
+export function customerName(customer: EnquiryCustomer, none = 'No customer yet'): string {
+  if (customer.kind === 'erased') return 'Erased customer';
+  if (customer.kind === 'none') return none;
+  return customer.name ?? customer.phone ?? 'No name';
+}
+
+export function orderCustomerName(customer: EnquiryCustomer): string {
+  return customerName(customer, 'Cash sale');
+}
+
+// The order as the handover windows show it (S5a-2a): what is on the shelf now, line by line, and how much of the order
+// is still to hand over, so Mark collected and Send out can say when only part of it is there.
+export type HandOverOrder = PackingOrder & {
+  method: DeliveryMethod;
+  // units not yet supplied or out, across the order's lines
+  toHandOver: number;
+  // the standing pack's parcels, or null when it goes loose
+  parcels: number | null;
+  // what a customer who pays before taking the parts still owes, or null (the Mark collected window's warning)
+  toPay: number | null;
+};
+
+export function orderToHandOver(
+  order: Pick<SalesOrderDetail, 'id' | 'number' | 'urgent' | 'delivery' | 'lines' | 'figures' | 'pack'> & { paymentTaken?: SalesOrderDetail['paymentTaken'] },
+  customer: string,
+): HandOverOrder {
+  const live = order.lines.filter((line) => !line.cancelled);
+  return {
+    ...orderToPack(order, customer),
+    method: order.delivery.method,
+    toHandOver: live.reduce((sum, line) => sum + Math.max(line.quantity - line.supplied - line.sentOut, 0), 0),
+    parcels: order.pack?.covers ? order.pack.parcels : null,
+    toPay: order.paymentTaken?.required && order.paymentTaken.short > 0 ? order.paymentTaken.short : null,
   };
 }
 
@@ -1726,11 +1841,36 @@ export function addressOneLine(address: SalesOrderAddress): string {
   return [address.name, ...addressLines(address)].filter(Boolean).join(', ');
 }
 
+// The printed pick list, one page per order (owner, 25 November 2026): the orders in the order To pick lists them,
+// urgent first, then the oldest (by number), each with its rows in the walking order the list already has.
+export function pickSheetOrders(rows: readonly PickingRow[]): { orderId: string; order: string; customer: string | null; urgent: boolean; rows: PickingRow[] }[] {
+  const byOrder = new Map<string, { orderId: string; order: string; customer: string | null; urgent: boolean; rows: PickingRow[] }>();
+  for (const row of rows) {
+    const sheet = byOrder.get(row.orderId) ?? { orderId: row.orderId, order: row.order, customer: row.customer, urgent: row.urgent, rows: [] };
+    sheet.rows.push(row);
+    byOrder.set(row.orderId, sheet);
+  }
+  return [...byOrder.values()].sort((a, b) => Number(b.urgent) - Number(a.urgent) || a.order.localeCompare(b.order, 'en-GB', { numeric: true }));
+}
+
+// An order's page heading lines: how it goes ("Our delivery to Leeds LS10", "Collection from Leeds branch") and its
+// references ("Customer PO HSG-4410 · YJ20 KLM"), each empty when there is nothing to say.
+export function pickSheetLines(order: PickingOrder | null, location: string | null): { how: string; refs: string } {
+  const how = order ? howItGoes(order.method, order.deliverTo, location) : '';
+  // The registration labelled, so it isn't read as part of the PO (owner, 25 November 2026).
+  const refs = order ? [order.customerPo ? `Customer PO ${order.customerPo}` : null, ...order.registrations.map((reg) => `Reg ${reg}`)].filter(Boolean).join(' · ') : '';
+  return { how, refs };
+}
+
 // How the order reaches the customer, in the header: "Our delivery to Leeds LS12", "Collection from Central".
 export function deliverySummary(order: Pick<SalesOrderDetail, 'delivery' | 'location'>): string {
   const { method, address, addressText } = order.delivery;
-  if (method === 'collection') return order.location ? `Collection from ${order.location.name}` : 'Collection';
-  const place = deliveryPlace(address, addressText);
+  return howItGoes(method, deliveryPlace(address, addressText), order.location?.name ?? null);
+}
+
+// The one wording of how an order goes, for the order's header and the pick sheet alike.
+function howItGoes(method: DeliveryMethod, place: string | null, location: string | null): string {
+  if (method === 'collection') return location ? `Collection from ${location}` : 'Collection';
   return place ? `${DELIVERY_METHOD_LABELS[method]} to ${place}` : DELIVERY_METHOD_LABELS[method];
 }
 
@@ -1795,7 +1935,8 @@ export function confirmedLineWhere(
   failures: LineFailure[] = [],
 ): ConfirmedWhere {
   const line = part.line;
-  if (group === 'removed') return { main: '', sub: '', available: 0 };
+  // removed, and handed over: the group's own label says it (Out for delivery, Collected, Delivered)
+  if (group === 'removed' || group === 'out' || group === 'supplied') return { main: '', sub: '', available: 0 };
   if (group === 'substitute') {
     const f = failures.find((x) => x.lineId === line.id && substituteToAgree(x));
     const sub = f?.substitute;
@@ -1848,7 +1989,7 @@ export function confirmedLineWhere(
   if (group === 'to_pick') {
     if (line.withoutStock > 0) {
       const why = shelf ? (shelf.reason === 'other' && shelf.note ? shelf.note : SHELF_REASON_LABELS[shelf.reason].toLowerCase()) : null;
-      return { main: line.place ?? 'This branch', sub: `Set aside without stock${why ? ` · Reason: ${why}` : ''}`, available: 0 };
+      return { main: line.place ?? 'This branch', sub: `${NO_STOCK_ON_RECORD}${why ? ` · Reason: ${why}` : ''}`, available: 0 };
     }
     // A short pick still open says so, not what the books say the bin holds (critique r1: "holds 1" under "not found").
     if (line.notFound) return { main: line.place ?? 'This branch', sub: notFoundWords(line.notFound), available: 0 };
@@ -1898,7 +2039,17 @@ export const ORDER_TRAIL_LABELS: Record<OrderTrailStage, string> = {
 };
 
 // The line under a trail stage: a state only, never a step.
-export function orderTrailSub(node: OrderTrailNode, now?: string): string {
+// A stage's name on the trail: the handover stage is Collected or Delivered by the order's method (S5a-2a).
+export function orderTrailLabel(key: OrderTrailStage, method?: DeliveryMethod): string {
+  if (key === 'supplied' && method) return method === 'collection' ? 'Collected' : 'Delivered';
+  return ORDER_TRAIL_LABELS[key];
+}
+
+// packed: what is packed on the shelf, or what went once handed over (out for delivery or delivered): Packed says the
+// parcels, or Not packed for a delivery sent loose, never the pill's Ready for delivery again (S5a-2a, critique round 2).
+// handed: something has left the shelf (collected, out or delivered), so Picked says what was picked rather than what
+// is on the shelf (critique round 1).
+export function orderTrailSub(node: OrderTrailNode, now?: string, method?: DeliveryMethod, packed?: { parcels: number | null } | null, handed = false): string {
   const count = node.of != null ? `${quantityWords(node.done ?? 0)} of ${quantityWords(node.of)}` : '';
   switch (node.key) {
     case 'confirmed':
@@ -1906,11 +2057,16 @@ export function orderTrailSub(node: OrderTrailNode, now?: string): string {
     case 'stock':
       return (node.done ?? 0) > 0 ? `${count} set aside` : 'Nothing set aside';
     case 'picked':
-      return (node.done ?? 0) > 0 ? `${count} on the shelf` : count;
+      return (node.done ?? 0) > 0 ? `${count} ${handed ? 'picked' : 'on the shelf'}` : count;
     case 'packed':
+      if (packed) return node.state === 'done' && packed.parcels ? parcelsWords(packed.parcels) : NOT_PACKED;
       return node.state === 'done' ? 'Ready for delivery' : node.state === 'now' ? 'To pack' : 'Not yet';
-    case 'supplied':
-      return count;
+    case 'supplied': {
+      // Out for delivery is the stage under way (the copy deck); then how much reached the customer.
+      if ((node.out ?? 0) > 0) return 'Out for delivery';
+      const done = method === 'collection' ? 'collected' : method ? 'delivered' : 'supplied';
+      return (node.done ?? 0) > 0 ? `${count} ${done}` : count;
+    }
     case 'invoiced':
       return 'Nothing yet';
     case 'paid':
@@ -1932,6 +2088,8 @@ export function orderEventText(event: string, detail: JsonRecord): string {
   if (picking != null) return picking;
   const packing = packingEventText(event, detail);
   if (packing != null) return packing;
+  const handover = handoverEventText(event, detail);
+  if (handover != null) return handover;
   const text = (key: string) => (typeof detail[key] === 'string' ? (detail[key] as string) : '');
   const count = (key: string) => (typeof detail[key] === 'number' ? (detail[key] as number) : null);
   const units = (n: number) => `${quantityWords(n)} ${n === 1 ? 'unit' : 'units'}`;

@@ -71,6 +71,9 @@ export function unpackOrder(supabase: Client, orderId: string): Promise<{ orderI
 // ------------------------------------------------------------------------------------------------ the words
 // The copy deck (docs/design-checks/phone-picking.md, signed off 25 November 2026).
 
+// A delivery handed over without a pack (sent loose from To pack): what the Packed stage and the note say.
+export const NOT_PACKED = 'Not packed';
+
 export function parcelsWords(parcels: number): string {
   return `${parcels} ${parcels === 1 ? 'parcel' : 'parcels'}`;
 }
@@ -102,7 +105,7 @@ export const PACKED_TOAST = 'Order packed';
 export const UNPACKED_TOAST = 'Order unpacked';
 
 export function packFailedLine(reason: string): string {
-  return `Not packed · ${reason}`;
+  return `${NOT_PACKED} · ${reason}`;
 }
 
 // The order's history lines for packing, or null for an event that is not packing's.

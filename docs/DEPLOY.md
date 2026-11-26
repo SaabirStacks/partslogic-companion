@@ -258,6 +258,7 @@ in `app.json`. It also decides which builds an update can reach (see above).
 |---|---|---|
 | `1.0.0` | The first builds (Expo SDK 57) | — |
 | `1.1.0` | Expo SDK 58, and sounds (`expo-audio`) | Keep working, but get no more updates. Install the `1.1.0` build: a new APK on Android, the new TestFlight build on iPhone |
+| `1.2.0` | The customer's signature on Deliver (`react-native-svg`) | Keep working, but get no more updates. Install the `1.2.0` build: a new APK on Android, the new TestFlight build on iPhone |
 
 ## Later: the stores
 
