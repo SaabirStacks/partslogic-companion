@@ -107,6 +107,16 @@ export type PickingLocation = { id: number; code: string; name: string };
 // Units for each view, except To pack, which counts orders: a delivery is packed whole (owner, 25 November 2026).
 export type PickingCounts = { toPick: number; orders: number; notFound: number; toPack: number; pickedToday: number };
 
+// Each order on the pick list, for the printed list's one page per order (owner, 25 November 2026): how it goes and
+// where, the customer's PO and the vehicles.
+export type PickingOrder = {
+  id: string;
+  method: 'collection' | 'delivery' | 'courier';
+  customerPo: string | null;
+  registrations: string[];
+  deliverTo: string | null;
+};
+
 export type PickingList = {
   view: PickingView;
   locationId: number | null;
@@ -116,6 +126,7 @@ export type PickingList = {
   locations: PickingLocation[];
   counts: PickingCounts;
   rows: PickingRow[];
+  orders: PickingOrder[];
   picked: PickedRow[];
   packing: PackingOrder[];
   canPick: boolean;
@@ -252,6 +263,21 @@ export function readPickingList(value: Json): PickingList {
       pickedToday: readNumber(counts.picked_today) ?? 0,
     },
     rows: resolved === 'to_pick' || resolved === 'not_found' ? rows.flatMap(readPickingRow) : [],
+    orders: readArray(list.orders).flatMap((item): PickingOrder[] => {
+      const order = readRecord(item);
+      const id = readString(order?.id);
+      if (!order || !id) return [];
+      const method = order.method === 'delivery' || order.method === 'courier' ? order.method : 'collection';
+      return [
+        {
+          id,
+          method,
+          customerPo: readString(order.customer_po),
+          registrations: readArray(order.registrations).flatMap((r) => (typeof r === 'string' && r ? [r] : [])),
+          deliverTo: method === 'collection' ? null : deliveryPlace(readSalesOrderAddress(order.address), readString(order.address_text)) || null,
+        },
+      ];
+    }),
     picked: resolved === 'picked_today' ? rows.flatMap(readPicked) : [],
     packing: resolved === 'to_pack' ? rows.flatMap(readPacking) : [],
     canPick: readBoolean(list.can_pick) ?? false,
@@ -348,8 +374,12 @@ export function pickingViewSubline(view: PickingView, counts: PickingCounts): st
 
 // A bin as the picker reads it: its code; Unbinned is "Not in a bin"; no bin at all is a part set aside without stock
 // (Confirm's In stock here), worded as the order page and the To count list word it (DESIGN.md).
+// A part set aside with nothing in any bin here: the books show none to pick until it is counted (owner, 25 November
+// 2026: "No stock on record", replacing "Set aside without stock", which read as a contradiction).
+export const NO_STOCK_ON_RECORD = 'No stock on record';
+
 export function binLabel(code: string | null): string {
-  if (code == null || code.trim() === '') return 'Set aside without stock';
+  if (code == null || code.trim() === '') return NO_STOCK_ON_RECORD;
   return code.trim().toUpperCase() === UNBINNED_CODE ? 'Not in a bin' : code;
 }
 
@@ -502,13 +532,28 @@ export function pickingEmptyWords(view: PickingView): string {
 
 // The printed pick list's title, in UK time: "Pick list · Leeds · 22 Nov 2026 14:05".
 export function pickListTitle(location: string | null, at: string, order: string | null = null): string {
+  // One order printed alone names it: "Pick list · SO-000021 · Leeds · …" (critique round 3).
+  return ['Pick list', order, location, printedWhen(at)].filter(Boolean).join(' · ');
+}
+
+function printedWhen(at: string): string {
   const then = new Date(at);
-  const when = Number.isNaN(then.getTime())
+  return Number.isNaN(then.getTime())
     ? ''
     : `${new Intl.DateTimeFormat('en-GB', { timeZone: LONDON, day: 'numeric', month: 'short', year: 'numeric' }).format(then)} ${new Intl.DateTimeFormat('en-GB', { timeZone: LONDON, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(then)}`;
-  // One order printed alone names it: "Pick list · SO-000021 · Leeds · …" (critique round 3).
-  return ['Pick list', order, location, when].filter(Boolean).join(' · ');
 }
+
+// The pick sheet's corner: when it was printed and where, "Printed 25 Nov 2026 19:08 · Leeds branch" (owner, 25 November
+// 2026: the time alone didn't say it was the printing time).
+export function pickSheetPrinted(location: string | null, at: string): string {
+  const when = printedWhen(at);
+  return [when ? `Printed ${when}` : null, location].filter(Boolean).join(' · ');
+}
+
+// The pick sheet's write-in column and its one instruction (owner, 25 November 2026: "Here" read as a place). A tick
+// when every unit is there; a number only when the bin is short.
+export const PICK_SHEET_FOUND = 'Found';
+export const PICK_SHEET_HOW = 'Tick each part as you pick it. Short? Write how many you found.';
 
 // The order's history lines for picking, or null for an event that is not picking's.
 export function pickingEventText(event: string, detail: JsonRecord): string | null {

@@ -224,6 +224,65 @@ of `docs/SALES.md` is built. On the module pattern: its own `sales` schema behin
   `sales_order_list`, `sales_order_detail` and `sales.order_facts` changed). Migration
   `20261125200000_sales_pick_jobs_packing.sql`; SQL test `187_sales_pick_jobs_packing.sql`; unit test
   `tests/shared/sales/packing.test.ts`; demo seed `23-pick-jobs-packing.sql`.
+- Handover (S5a-2a, docs/SALES.md 13.23, sheet `docs/design-checks/handover.md`): `handover.ts`: `collectOrder`
+  (Mark collected; who collected, optional), `sendOutOrder` (a member as driver, a typed driver name, or a courier's
+  carrier and tracking number), `deliverOrder`, `markNotDelivered` (reason `NOT_DELIVERED_REASONS`; Other needs a
+  note), `markNotCollected` (today's collections), `undoHandover` (the toast's Undo: `HANDOVER_STEPS`); readers
+  `readHandover`, `readHandovers` (`handovers` and `canHandOver` on the detail, `handover` on a list row); words
+  `handoverLine` (the line after the pills), `notDeliveredWords` (the need row), `partHereWords`, `lineHandedWords`,
+  `shelfAge` (a collection's wait, amber from `SHELF_AGE_WARN_DAYS`), `noteTitle`, `handoverTime`, `carrierWords`,
+  `notDeliveredProblem`, the labels and toasts, `handoverEventText` (history `collected`, `sent_out`, `delivered`,
+  `not_delivered`, `not_collected`, `send_out_undone`, `delivery_undone`, `not_delivered_undone`, `completed`,
+  `reopened`). `orders.ts`: the views `ready_collection`, `ready_delivery`, `out_for_delivery`; the stage `out`;
+  rows' `sentOut`, `supplied`, `readySince`, `handover`; lines and figures read set aside and on the shelf as what is
+  still with us (less supplied and out), with `supplied` and `sentOut` beside them; the line groups `out` and
+  `supplied` (Collected or Delivered, by method); `orderToHandOver`; `customerName` and `orderCustomerName` (moved
+  here from the web so the printed notes say them alike). `words.ts`: `londonDaysAgo`. Actions
+  `app/sales-orders/handover-actions.ts`; the note `app/sales-orders/[id]/note/route.ts` with
+  `lib/documents/handover-note-pdf.tsx`. Screens `blocks/sales/handover-dialogs.tsx` (Mark collected, Send out, Not
+  delivered; one-press Mark delivered and Not collected; each keeps its contents while closing with
+  `hooks/use-last-shown.ts`), the order page's next step, More actions and Print note, the
+  Sales orders list's three views with a row button, the Available popover naming Out for delivery. Database: tables
+  `sales.handovers`, `sales.handover_lines`; `order_lines.supplied`, `sent_out` (kept by `sales.handover_recount`,
+  which also completes and reopens the order); the `OUT` system bin per branch; `sales.handover_state`, `line_here`,
+  `order_here`, `order_sent_out`, `order_supplied`, `order_ready_since`, `lines_keep_handed` (a line never gives back
+  units that left the shelf), `shelf_keeps`, `handover_shift`, `handover_sell` (a `sale` movement; taken back as a
+  positive one on the day), `handover_start`, `handovers_json`; entry points `sales_order_collect`,
+  `sales_order_send_out`, `sales_order_deliver`, `sales_order_not_delivered`, `sales_order_not_collected`,
+  `sales_order_undo_handover` (and `set_aside_lines`, `order_facts`, `order_lines_json`, `sales_order_detail`,
+  `sales_order_list`, `sales_order_undo_pick`, `pick_job_unscan`, `sales_order_unpack`, `sales_order_cancel`,
+  `part_stock_glance` changed). Migration `20261125230000_sales_handover.sql`; SQL test `188_sales_handover.sql`;
+  unit test `tests/shared/sales/handover.test.ts`; demo seed `24-handover.sql`. Critique round 1 added: `orderStageWords`
+  (Part supplied once part has gone) with its pill `blocks/sales/order-stage-pill.tsx`; `orderStepParts`' parcels and
+  place for a ready delivery; `orderTrailSub`'s "N of M picked" after a handover; `notPaidWords` and
+  `PRINT_COLLECTION_NOTE` in Mark collected (`orderToHandOver` reads `toPay`); `deliverTo` and `parcels` on a list row
+  (`sales_order_list` returns `address`, `address_text`, `parcels`). The pick sheet (owner, 25 November 2026) is one
+  page per order: `pickSheetOrders` (urgent first, then by number) and `pickSheetLines` (how it goes, through the
+  same `howItGoes` as the order's header, and the customer PO with registrations) in `orders.ts`; `picking_list`
+  returns `orders` (each order's method, PO, registrations and address), read as `PickingList.orders`
+  (`PickingOrder`). Round 2 added: `canPrintNote` (the order page and the list's preview print by one rule),
+  `handoverLineWords` ("part × 2" in the windows), `NO_STOCK_ON_RECORD` (`picking.ts`, for `binLabel`, the order's
+  Where cell and Stock counts' requests), `pickSheetPrinted`, `PICK_SHEET_FOUND` and `PICK_SHEET_HOW` (the sheet's
+  write-in column and its instruction); `orderTrailSub`'s fourth argument is what is packed or what went.
+- Proof of delivery (S5a-2c, docs/SALES.md 13.26, sheet `docs/design-checks/proof-of-delivery.md`): `delivery.ts`:
+  the signature (`SIGN_PAD`, 1000 by 400 whatever the phone; `padStrokes` scales a finger's points to it,
+  `signaturePath` draws strokes as one SVG path for the phone, the web and the note), `signingProblem` (the name first,
+  then the signature, in the database's words `NAME_NEEDED`, `SIGNATURE_NEEDED`), the driver's list
+  (`getDriverDeliveries`, `readDriverDeliveries`, `deliverySections`: theirs, then the branch's), `deliverSigned` (with
+  a client id, so a phone's second send is the same delivery), the note's proofs (`getDeliveryProofs`,
+  `readStrokes`), and the signed-off words (`DELIVER`, `WITH_YOU`, `GET_SIGNATURE`, `outFromWords`, `withYouWords`,
+  `deliveryRowLine`, `deliverySentWords`, `signTitle`, `signLine`, `deliveryLineWords`, `signedReceiptWords`,
+  `receivedByWords`). `handover.ts`: `signedBy` and `signedAt` on a handover; `handoverLine` says "Signed by …" or
+  `NO_SIGNATURE` for our own delivery (not a courier's); history `delivered` says who signed or "no signature". The
+  note draws the signature under "Received by" (`lib/documents/handover-note-pdf.tsx`, `proof`). The Sales orders
+  views strip folds what doesn't fit into More (`lib/fit-views.ts`, `fitViews`, tested in `tests/lib`). Database:
+  table `sales.handover_proofs` (no grants; read through the functions); `sales.strokes_ok`; `sales.deliver(order,
+  proof)`, the one path to Delivered (`sales_order_deliver` passes no proof); `handovers_json` adds `signed_by`,
+  `signed_at`; entry points `sales_order_deliver_signed` (counter), `driver_deliveries` (counter; delivery, not
+  courier, the signed-in member's first), `sales_order_delivery_proof` (viewer). Migration
+  `20261126090000_sales_proof_of_delivery.sql`; SQL test `189_sales_proof_of_delivery.sql`; unit tests
+  `tests/shared/sales/delivery.test.ts`, `tests/lib/fit-views.test.ts`; demo seed `24-handover.sql` (a signed
+  delivery, two out with the demo user, one delivered in the office). The phone's Deliver is in the companion app.
 
 ## Elsewhere
 - Pages: `app/enquiries/page.tsx` (the worklist; view, filter, group and page live in the address; `?new=1` opens

@@ -17,6 +17,9 @@ export const ICONS = {
   // Outbound: picking customers' orders off the shelves, packing deliveries for the van.
   pick: symbol('basket.fill', 'shopping_basket'),
   pack: symbol('box.truck.fill', 'local_shipping'),
+  // At the door: the customer signs; the driver rings the customer.
+  deliver: symbol('signature', 'signature'),
+  call: symbol('phone.fill', 'call'),
   sync: symbol('arrow.triangle.2.circlepath', 'sync'),
   account: symbol('person.crop.circle.fill', 'account_circle'),
   // Scanning

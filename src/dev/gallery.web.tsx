@@ -63,6 +63,7 @@ import { useBinBrowse } from '@/features/bins/use-bin-browse';
 import type { SharedRun } from '@/vendor/partslogic/shared/floor';
 import { NetworkContext } from '@/lib/network';
 
+import { DELIVER_SCREENS } from './deliver-screens';
 import { OUTBOUND_SCREENS } from './outbound-screens';
 import { StackHeader } from './stack-header';
 import { DEVELOPER, DEVELOPER_MEMBER, Fixtures, OIL_FILTER, PEOPLE, OIL_FILTER_LOW, OIL_FILTER_OUT, OIL_FILTER_STATUSES, OUTBOX_ITEMS, RECENT } from './fixtures';
@@ -1048,6 +1049,7 @@ const SCREENS: Record<string, () => ReactNode> = {
     />
   ),
   ...OUTBOUND_SCREENS,
+  ...DELIVER_SCREENS,
 };
 
 export function Gallery() {

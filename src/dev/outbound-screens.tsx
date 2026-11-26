@@ -163,7 +163,7 @@ export const OUTBOUND_SCREENS: Record<string, () => ReactNode> = {
       sections={boardFor('counter')}
       openWork={[]}
       unbinned={24}
-      outbound={{ toPick: 20, toPack: 2 }}
+      outbound={{ toPick: 20, toPack: 2, withYou: 2 }}
       location="Leeds branch"
       sync={syncState({ waiting: 0, needsAttention: 0, online: true })}
       onJob={noop}

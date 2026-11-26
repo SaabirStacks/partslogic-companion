@@ -5,6 +5,7 @@ import { BoardView } from '@/features/board/board-view';
 import { resumeText } from '@/features/board/open-work';
 import { syncState } from '@/features/board/sync-state';
 import { useOpenWork } from '@/features/board/use-open-work';
+import { useDriverList } from '@/features/deliver/use-deliver';
 import { useOnline } from '@/lib/network';
 import { recentPartsPref } from '@/lib/prefs';
 import { useAppUpdate } from '@/lib/use-app-update';
@@ -38,8 +39,12 @@ export default function Board() {
   const outbound = useRemote(online && roleAtLeast(role, 'counter') ? `pick-status:${locationId}` : null, () =>
     getPickJobStatus(supabase, { locationId }),
   );
+  // The deliveries out with this driver, for Deliver's tile (the list Deliver itself shows, kept on the phone).
+  const drives = useDriverList(roleAtLeast(role, 'counter'));
+  const withYou = drives.deliveries ? drives.deliveries.filter((delivery) => delivery.mine).length : null;
   const reloadUnbinned = unbinned.reload;
   const reloadOutbound = outbound.reload;
+  const reloadDrives = drives.reload;
   // A viewer's board lists the parts looked up lately (Look up keeps them); read again on each return.
   const [recent, setRecent] = useState(() => recentPartsPref.get() ?? []);
   const firstFocus = useRef(true);
@@ -52,7 +57,8 @@ export default function Board() {
       }
       reloadUnbinned();
       reloadOutbound();
-    }, [reloadUnbinned, reloadOutbound]),
+      reloadDrives();
+    }, [reloadUnbinned, reloadOutbound, reloadDrives]),
   );
 
   return (
@@ -61,7 +67,7 @@ export default function Board() {
       notice={<PreviewStrip />}
       openWork={openWork}
       unbinned={unbinned.data?.qty ?? null}
-      outbound={outbound.data ? { toPick: outbound.data.toPick, toPack: outbound.data.toPack } : null}
+      outbound={outbound.data ? { toPick: outbound.data.toPick, toPack: outbound.data.toPack, withYou } : withYou ? { toPick: 0, toPack: 0, withYou } : null}
       update={update}
       location={location?.name ?? null}
       sync={syncState({ waiting, needsAttention, online })}
@@ -77,6 +83,7 @@ export default function Board() {
           ? () => {
               reloadUnbinned();
               reloadOutbound();
+              reloadDrives();
             }
           : undefined
       }

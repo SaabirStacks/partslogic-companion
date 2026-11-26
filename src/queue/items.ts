@@ -1,4 +1,6 @@
 import type { QueueItem as FloorQueueItem } from '@/vendor/partslogic/shared/bin-session';
+import type { SignatureStroke } from '@/vendor/partslogic/shared/sales/delivery';
+import type { NotDeliveredReason } from '@/vendor/partslogic/shared/sales/handover';
 import type { CantScanReason, ShortPickReason } from '@/vendor/partslogic/shared/sales/picking';
 
 // Everything the phone queues: PartsLogic's floor work (bin counts, deliveries, new parts), and the outbound jobs
@@ -23,5 +25,11 @@ export type PickQueueItem =
 // Packed on the phone: how many parcels, and whether every part was scanned into the box or some were tapped.
 export type PackQueueItem = { kind: 'pack_order'; clientId: string; orderId: string; parcels: number; method: 'scan' | 'tap' };
 
-export type QueueItem = FloorQueueItem | PickQueueItem | PackQueueItem;
+// At the drop (S5a-2c): signed for, with the name, the strokes on the 1000 by 400 pad and when it was signed (the
+// client id makes a second send the same delivery); or Not delivered, with why.
+export type DeliverQueueItem =
+  | { kind: 'deliver_signed'; clientId: string; orderId: string; name: string; strokes: SignatureStroke[]; signedAt: string }
+  | { kind: 'not_delivered'; clientId: string; orderId: string; reason: NotDeliveredReason; note?: string };
+
+export type QueueItem = FloorQueueItem | PickQueueItem | PackQueueItem | DeliverQueueItem;
 export type QueueKind = QueueItem['kind'];

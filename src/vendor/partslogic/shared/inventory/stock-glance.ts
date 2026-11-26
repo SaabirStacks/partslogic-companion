@@ -18,7 +18,8 @@ export type GlanceBin = {
   code: string;
   description: string | null;
   qty: number;
-  kind: 'bin' | 'unbinned' | 'collection' | 'system';
+  // out (S5a-2a): the branch's Out for delivery bin, parts with a driver or a courier, still on the books
+  kind: 'bin' | 'unbinned' | 'collection' | 'out' | 'system';
   counted: GlanceCount | null;
 };
 
@@ -64,7 +65,7 @@ export type StockGlance = {
   lastReceived: { at: string; qty: number; documentId: string | null; number: string | null } | null;
 };
 
-const BIN_KINDS: readonly GlanceBin['kind'][] = ['bin', 'unbinned', 'collection', 'system'];
+const BIN_KINDS: readonly GlanceBin['kind'][] = ['bin', 'unbinned', 'collection', 'out', 'system'];
 
 function readCount(value: Json | undefined): GlanceCount | null {
   const count = readRecord(value);

@@ -52,3 +52,9 @@ export const soundsPref = pref<boolean>('sounds');
 // The delivery being packed on this phone, with what is in the box so far (src/features/pack/pack.ts), so leaving the
 // screen or closing the app loses nothing. Kept as plain JSON so this file needs no feature's types.
 export const packBoxPref = pref<unknown>('pack-box');
+// The driver's list as last read with signal (src/features/deliver), so the drop, its address and its parts are
+// there at a door with none. Plain JSON, as packBoxPref.
+export const deliveriesPref = pref<unknown>('deliveries');
+// The drop open on this phone and what's been signed for it (src/features/deliver), so leaving Deliver, going back a
+// step or the app closing loses neither the name nor the customer's signature (critique, D5).
+export const deliverDropPref = pref<unknown>('deliver-drop');

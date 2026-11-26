@@ -77,9 +77,12 @@ const LIVE = {
     onBoard: false,
   },
   transfer: { family: 'stock', label: 'Transfer stock', minRole: 'counter', availability: 'live', icon: 'move', href: '/move' },
-  // Outbound (S5b): a claimed batch of confirmed orders picked by scanning each unit, then the deliveries packed.
+  // Outbound (S5b): a claimed batch of confirmed orders picked by scanning each unit, then the deliveries packed and
+  // delivered.
   pick: { family: 'outbound', label: 'Pick', minRole: 'counter', availability: 'live', icon: 'pick', href: '/pick' },
   pack: { family: 'outbound', label: 'Pack', minRole: 'counter', availability: 'live', icon: 'pack', href: '/pack' },
+  // Proof of delivery (S5a-2c): the orders out with the driver, then the branch's; the customer signs at the door.
+  deliver: { family: 'outbound', label: 'Deliver', minRole: 'counter', availability: 'live', icon: 'deliver', href: '/deliver' },
 } as const satisfies Record<string, LiveWorkflow>;
 
 const FUTURE = {

@@ -12,7 +12,7 @@ describe('boardLayout', () => {
     expect(ids(layout)).toEqual([
       ['inbound', ['receive', 'put-away']],
       ['stock', ['stock-count', 'stock-take', 'transfer']],
-      ['outbound', ['pick', 'pack']],
+      ['outbound', ['pick', 'pack', 'deliver']],
       ['parts', ['add-part']],
     ]);
   });

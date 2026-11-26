@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { sendDeliverSigned, sendNotDelivered } from '@/features/deliver/deliver-queue';
 import { sendPackOrder } from '@/features/pack/pack-queue';
 import { sendPickJobEnd, sendPickRow, sendPickShort } from '@/features/pick/pick-queue';
 import { conflictMessage } from '@/features/quick-add/wording';
@@ -61,6 +62,10 @@ export function sendQueued(item: QueueItem): Promise<unknown> {
       return sendPickJobEnd(supabase, item);
     case 'pack_order':
       return sendPackOrder(supabase, item);
+    case 'deliver_signed':
+      return sendDeliverSigned(supabase, item);
+    case 'not_delivered':
+      return sendNotDelivered(supabase, item);
   }
 }
 

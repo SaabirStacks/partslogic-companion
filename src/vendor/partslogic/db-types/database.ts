@@ -5340,6 +5340,15 @@ export type Database = {
       pick_job_unscan: { Args: { p: Json }; Returns: Json }
       sales_order_pack: { Args: { p: Json }; Returns: Json }
       sales_order_unpack: { Args: { p_order: string }; Returns: Json }
+      sales_order_collect: { Args: { p: Json }; Returns: Json }
+      sales_order_send_out: { Args: { p: Json }; Returns: Json }
+      sales_order_deliver: { Args: { p_order: string }; Returns: Json }
+      sales_order_not_delivered: { Args: { p: Json }; Returns: Json }
+      sales_order_not_collected: { Args: { p_order: string }; Returns: Json }
+      sales_order_undo_handover: { Args: { p: Json }; Returns: Json }
+      sales_order_deliver_signed: { Args: { p: Json }; Returns: Json }
+      driver_deliveries: { Args: { p?: Json }; Returns: Json }
+      sales_order_delivery_proof: { Args: { p_order: string }; Returns: Json }
       sales_order_set_cannot_supply: { Args: { p_id: string; p_value: string | null }; Returns: Json }
       part_set_aside: { Args: { p_part: number }; Returns: Json }
       part_stock_glance: { Args: { p_part: number }; Returns: Json }
