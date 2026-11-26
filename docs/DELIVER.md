@@ -9,10 +9,10 @@ suite 189). This file records the phone's build: what it does, where it departs 
 
 | Job | How |
 |---|---|
-| Board | Deliver, in copper with Pick and Pack, says "3 with you": the orders out for delivery with the signed-in driver (`driver_deliveries`, `mine`) |
+| Board | Deliver, in copper with Pick and Pack, says "3 drops": the orders out for delivery with the signed-in driver (`driver_deliveries`, `mine`); a screen reader hears "3 deliveries with you" |
 | The list | With you first, then Out from the branch: each row the customer, where and the parcels (or Not packed), the order and when it was sent. Couriers' orders aren't listed; the office marks those |
 | The drop | The order large, the customer, the address, Call (when the order or account has a number), what's in the van for it, then Get signature and Not delivered in the thumb zone |
-| Sign | Sign for SO-000043 · 3 units · 2 parcels; Name; the pad (Sign here, a line to sign on); Clear; Delivered. Delivered says what is missing, the name first, in the database's own words, instead of sending |
+| Sign | Sign for SO-000043 · 3 units · 2 parcels; the customer and "Received in good condition"; Name; the pad (Sign here, a line to sign on); Clear; Delivered. Delivered says what is missing, the name first, in the database's own words, instead of sending. Back, the list, leaving Deliver or the app closing keep the name and the signature (`deliverDropPref`); Android's back steps Sign, drop, list |
 | Not delivered | The web's reasons (No one in, Closed, Address not found, Ran out of time, Other with a note); the parts come back to the shelf when it's sent |
 | Receipt | Delivered · SO-000043 · Signed by Jo Smith · 14:05, or Waiting for signal with "Sends when back online."; the chip sweeps to Delivered when PartsLogic has it. Next delivery, Done |
 
@@ -35,7 +35,7 @@ draws it alike and it stays small.
 | Not delivered is blue, not red | Red is only for what blocks; the parts come back and the order can go out again |
 | "Another delivery" on the drop | Pack's "Another order"; back to the list without leaving Deliver (not in the deck) |
 | "No address on the order" when the order has none | The drop still works from the parts and Call (not in the deck) |
-| A refused Not delivered says "Check in Sync" | As Pack's receipt; a refused Delivered says "Not delivered" with PartsLogic's reason, as the deck asks |
+| A refused send says Not recorded | Owner, 26 November 2026: the record didn't happen, not the delivery. Then PartsLogic's reason and "Ring the office." |
 | Not delivered sent twice (an answer lost) waits in Sync | `sales_order_not_delivered` has no client id; its second answer ("Nothing is out for delivery on this order.") can't be told from the office marking it delivered, so the phone doesn't guess |
 
 ## Checks
