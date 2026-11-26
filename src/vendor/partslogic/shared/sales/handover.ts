@@ -264,7 +264,8 @@ export function carrierWords(h: Pick<Handover, 'carrier' | 'tracking'>): string 
 // "Collected by Sam Patel · 10:42", "Collected by Sam Patel · 2 of 3 units · 10:42", "Sent out with Dave Hughes · 10:42",
 // "Sent out by DPD · 1Z999AA10123456784 · 10:42", "Delivered · 14:05".
 // short: the list row's line, without the tracking number (it is on the order page).
-export function handoverLine(h: Handover, now: string, orderUnits?: number, short = false): string | null {
+// signature: false leaves who signed off (the printed note, where the signature or the lines to sign say it).
+export function handoverLine(h: Handover, now: string, orderUnits?: number, short = false, signature = true): string | null {
   const when = handoverTime(h.at, now);
   const part = orderUnits != null && h.units < orderUnits ? `${quantityWords(h.units)} of ${units(orderUnits)}` : null;
   switch (h.state) {
@@ -276,7 +277,7 @@ export function handoverLine(h: Handover, now: string, orderUnits?: number, shor
     }
     case 'delivered':
       // Our own delivery says who signed, or that nobody did (marked on the web); a courier's proof is the courier's.
-      return ['Delivered', h.how === 'delivery' ? signedWords(h.signedBy) : null, part, when].filter(Boolean).join(' · ');
+      return ['Delivered', h.how === 'delivery' && signature ? signedWords(h.signedBy) : null, part, when].filter(Boolean).join(' · ');
     case 'not_delivered':
       return null;
   }

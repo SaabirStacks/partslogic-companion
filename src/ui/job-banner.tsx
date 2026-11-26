@@ -31,7 +31,7 @@ export function JobBanner({
         {title}
       </Txt>
       {detail ? (
-        <Txt variant="caption" numberOfLines={1}>
+        <Txt variant="caption" numberOfLines={2}>
           {detail}
         </Txt>
       ) : null}

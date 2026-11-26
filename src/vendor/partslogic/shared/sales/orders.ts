@@ -53,8 +53,10 @@ import { clockTime, dateWords, dayAndTime, daysFromToday, deliveryWords, moneyWo
 // and starts as a draft, which holds no stock. Confirming it runs the credit check and sets stock aside; what is
 // short is to order. The database makes every decision; these wrappers hand it the words and read its answers.
 
+// All open (where the list lands) and Action required first, so they never fold under More (owner, 26 November 2026),
+// then the flow of an order left to right.
 export const SALES_ORDER_VIEWS = [
-  'mine', 'drafts', 'to_order', 'to_pick', 'to_pack', 'ready_collection', 'ready_delivery', 'out_for_delivery', 'on_hold', 'action_required', 'all_open', 'completed',
+  'all_open', 'action_required', 'mine', 'drafts', 'to_order', 'to_pick', 'to_pack', 'ready_collection', 'ready_delivery', 'out_for_delivery', 'on_hold', 'completed',
 ] as const;
 export type SalesOrderView = (typeof SALES_ORDER_VIEWS)[number];
 export function isSalesOrderView(value: string): value is SalesOrderView {

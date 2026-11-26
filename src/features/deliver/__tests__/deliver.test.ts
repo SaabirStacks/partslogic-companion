@@ -7,7 +7,22 @@ import type { QueueItem } from '@/queue/items';
 import { streamKeyOf } from '@/queue/stream';
 import { tileBadge } from '@/features/board/tile-badge';
 
-import { handledOrders, readSavedList, sendState, stillOut } from '../drop';
+import {
+  clearSignature,
+  closeDrop,
+  drawSignature,
+  handledOrders,
+  nameSigner,
+  NO_DROP,
+  openDrop,
+  readOpenDrop,
+  readSavedList,
+  sendState,
+  startSigning,
+  stillOut,
+  stopSigning,
+  type OpenDrop,
+} from '../drop';
 
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 jest.mock('@/vendor/partslogic/shared/sales/delivery', () => ({
@@ -53,7 +68,7 @@ describe('the driver’s list on the phone', () => {
   });
 
   it('puts the deliveries with you on the board’s Deliver tile', () => {
-    expect(tileBadge('deliver', [], null, { toPick: 0, toPack: 0, withYou: 3 })).toEqual({ label: '3 with you', tone: 'action', spoken: '3 deliveries with you' });
+    expect(tileBadge('deliver', [], null, { toPick: 0, toPack: 0, withYou: 3 })).toEqual({ label: '3 drops', tone: 'action', spoken: '3 deliveries with you' });
     expect(tileBadge('deliver', [], null, { toPick: 0, toPack: 0, withYou: 0 })).toBeNull();
     expect(tileBadge('deliver', [], null, null)).toBeNull();
   });
@@ -78,5 +93,36 @@ describe('sending from the drop', () => {
   it('leaves a refusal for Sync to show, in PartsLogic’s words', async () => {
     jest.mocked(deliverSigned).mockRejectedValue(new Error('This order was already marked delivered.'));
     await expect(sendQueued(SIGNED)).rejects.toThrow('This order was already marked delivered.');
+  });
+});
+
+describe('the open drop, kept on the phone (D5)', () => {
+  const drop = (orderId: string) => ({ ...delivery(orderId), lines: [] });
+  const signed = (now: OpenDrop) =>
+    drawSignature(nameSigner(startSigning(now), 'Jo Smith'), (strokes) => [...strokes, [[10, 10], [20, 20]]], { width: 358, height: 200 });
+
+  it('keeps the name and the signature when going back from Sign and signing again', () => {
+    const atSign = signed(openDrop(NO_DROP, drop('o1')));
+    const again = startSigning(stopSigning(atSign));
+    expect(again.signingOpen).toBe(true);
+    expect(again.signing).toMatchObject({ orderId: 'o1', name: 'Jo Smith', strokes: [[[10, 10], [20, 20]]] });
+  });
+
+  it('keeps them for the same drop after the list, and starts afresh for another', () => {
+    const atSign = signed(openDrop(NO_DROP, drop('o1')));
+    expect(openDrop(closeDrop(atSign), drop('o1')).signing?.name).toBe('Jo Smith');
+    expect(openDrop(closeDrop(atSign), drop('o2')).signing).toBeNull();
+  });
+
+  it('Clear empties the pad and keeps the name', () => {
+    const cleared = clearSignature(signed(openDrop(NO_DROP, drop('o1'))));
+    expect(cleared.signing).toMatchObject({ name: 'Jo Smith', strokes: [] });
+  });
+
+  it('reads a saved drop back only when its signature belongs to it', () => {
+    const atSign = signed(openDrop(NO_DROP, drop('o1')));
+    expect(readOpenDrop(JSON.parse(JSON.stringify(atSign)))).toEqual(atSign);
+    expect(readOpenDrop({ ...atSign, signing: { ...atSign.signing, orderId: 'o9' } })).toEqual({ drop: atSign.drop, signingOpen: false, signing: null });
+    expect(readOpenDrop(null)).toEqual(NO_DROP);
   });
 });

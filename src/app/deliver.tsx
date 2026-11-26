@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
+import { useStepBack } from '@/features/bins/use-step-back';
 import { DeliverList, DeliverReceipt, DropView, NotDeliveredSheet, SignView } from '@/features/deliver/deliver-views';
 import { useDeliver } from '@/features/deliver/use-deliver';
 
@@ -10,6 +11,9 @@ import { useDeliver } from '@/features/deliver/use-deliver';
 export default function Deliver() {
   const deliver = useDeliver();
   const [asking, setAsking] = useState(false);
+  // Android's back button goes back a step: Sign to the drop, the drop to the list (critique). Nothing signed is lost
+  // either way: the drop and its signature are kept on the phone.
+  useStepBack(deliver.handed ? null : deliver.signing ? deliver.back : deliver.drop ? deliver.close : null);
 
   if (deliver.handed) {
     return (

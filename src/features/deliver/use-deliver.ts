@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 import { feel } from '@/feel/feel';
 import { useOnline } from '@/lib/network';
-import { deliveriesPref } from '@/lib/prefs';
+import { deliverDropPref, deliveriesPref } from '@/lib/prefs';
 import { supabase } from '@/lib/supabase';
 import { useRemote } from '@/lib/use-remote';
 import { useOutbox } from '@/queue/outbox-provider';
@@ -18,7 +18,26 @@ import {
 } from '@/vendor/partslogic/shared/sales/delivery';
 import { NOT_DELIVERED_REASON_LABELS, notDeliveredProblem, type NotDeliveredReason } from '@/vendor/partslogic/shared/sales/handover';
 
-import { handledOrders, readSavedList, sendState, stillOut } from './drop';
+import {
+  clearSignature,
+  closeDrop,
+  drawSignature,
+  emptySigning,
+  handledOrders,
+  nameSigner,
+  NO_DROP,
+  openDrop,
+  readOpenDrop,
+  readSavedList,
+  sendState,
+  startSigning,
+  stillOut,
+  stopSigning,
+  type OpenDrop,
+  type Signing,
+} from './drop';
+
+export type { Signing };
 
 // The branch's deliveries out with our drivers (driver_deliveries), the signed-in driver's first. Read with signal and
 // kept on the phone (deliveriesPref), so the list, the address and the parts are there at a door with none; what this
@@ -51,13 +70,10 @@ export function useDriverList(enabled = true) {
   };
 }
 
-export type Signing = { name: string; strokes: SignatureStroke[]; size: { width: number; height: number } };
 export type SigningProblem = ReturnType<typeof signingProblem>;
 export type Handed =
   | { kind: 'delivered'; delivery: DriverDelivery; clientId: string; name: string; signedAt: string }
   | { kind: 'not_delivered'; delivery: DriverDelivery; clientId: string; reason: NotDeliveredReason };
-
-const EMPTY_SIGNING: Signing = { name: '', strokes: [], size: { width: 0, height: 0 } };
 
 // Delivering on the phone (S5a-2c): the list, one drop at a time, Sign (a name and a finger's signature, both needed),
 // then the receipt. Delivered and Not delivered go into the outbox and are sent as soon as there's signal; the receipt
@@ -65,9 +81,15 @@ const EMPTY_SIGNING: Signing = { name: '', strokes: [], size: { width: 0, height
 export function useDeliver() {
   const outbox = useOutbox();
   const list = useDriverList();
-  const [drop, setDrop] = useState<DriverDelivery | null>(null);
-  const [signingOpen, setSigningOpen] = useState(false);
-  const [signing, setSigning] = useState<Signing>(EMPTY_SIGNING);
+  const [open, setOpenState] = useState<OpenDrop>(() => readOpenDrop(deliverDropPref.get()));
+  const setOpen = (change: (now: OpenDrop) => OpenDrop) =>
+    setOpenState((now) => {
+      const next = change(now);
+      deliverDropPref.set(next.drop ? next : null);
+      return next;
+    });
+  const { drop, signingOpen } = open;
+  const signing = open.signing ?? emptySigning(drop?.orderId ?? '');
   const [problem, setProblem] = useState<SigningProblem>(null);
   const [handed, setHanded] = useState<Handed | null>(null);
 
@@ -80,37 +102,37 @@ export function useDeliver() {
     problem,
     handed: handed ? { ...handed, state: sendState(item, list.online), refusal: item?.status === 'attention' ? item.lastError : null } : null,
 
+    // Another drop starts with nothing signed; the same drop again keeps what was signed for it.
     open(delivery: DriverDelivery) {
       feel('press');
-      setDrop(delivery);
+      setOpen((now) => openDrop(now, delivery));
     },
     close() {
-      setDrop(null);
-      setSigningOpen(false);
+      setOpen(closeDrop);
     },
 
+    // Back from Sign, and Get signature again, keep the name and the signature (D5).
     sign() {
       feel('press');
-      setSigning(EMPTY_SIGNING);
       setProblem(null);
-      setSigningOpen(true);
+      setOpen(startSigning);
     },
     back() {
-      setSigningOpen(false);
+      setOpen(stopSigning);
       setProblem(null);
     },
     name(name: string) {
-      setSigning((now) => ({ ...now, name }));
+      setOpen((now) => nameSigner(now, name));
       setProblem((now) => (now?.field === 'name' ? null : now));
     },
     draw(change: (now: SignatureStroke[]) => SignatureStroke[], size: { width: number; height: number }) {
-      setSigning((now) => ({ ...now, strokes: change(now.strokes), size }));
+      setOpen((now) => drawSignature(now, change, size));
       setProblem((now) => (now?.field === 'signature' ? null : now));
     },
     // Clear empties the pad and keeps the name (D5).
     clear() {
       feel('tick');
-      setSigning((now) => ({ ...now, strokes: [] }));
+      setOpen(clearSignature);
     },
 
     // Delivered: held until a name and a signature, the name asked for first (D3).
@@ -131,9 +153,7 @@ export function useDeliver() {
       );
       feel('done');
       setHanded({ kind: 'delivered', delivery: drop, clientId, name, signedAt });
-      setDrop(null);
-      setSigningOpen(false);
-      setSigning(EMPTY_SIGNING);
+      setOpen(() => NO_DROP);
     },
 
     // Not delivered, with why (Other needs a note): the parts come back to the shelf once it's sent.
@@ -148,8 +168,7 @@ export function useDeliver() {
       );
       feel('done');
       setHanded({ kind: 'not_delivered', delivery: drop, clientId, reason });
-      setDrop(null);
-      setSigningOpen(false);
+      setOpen(() => NO_DROP);
       return null;
     },
 

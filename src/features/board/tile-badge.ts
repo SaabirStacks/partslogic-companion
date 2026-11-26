@@ -1,5 +1,5 @@
 import type { BadgeState } from '@/ui/badge';
-import { withYouWords } from '@/vendor/partslogic/shared/sales/delivery';
+import { dropsSpoken, dropsWords } from '@/vendor/partslogic/shared/sales/delivery';
 import type { LiveWorkflowId } from '@/workflows/catalogue';
 
 import type { OpenWork } from './open-work';
@@ -30,10 +30,8 @@ export function tileBadge(id: LiveWorkflowId, openWork: OpenWork[], unbinned: nu
   if (id === 'pack' && outbound && outbound.toPack > 0) {
     return { label: `${count(outbound.toPack)} ${outbound.toPack === 1 ? 'order' : 'orders'}`, tone: 'action', spoken: `${outbound.toPack} ${outbound.toPack === 1 ? 'order' : 'orders'} to pack` };
   }
-  const withYou = withYouWords(outbound?.withYou ?? 0);
-  if (id === 'deliver' && withYou) {
-    return { label: withYou, tone: 'action', spoken: `${outbound!.withYou} ${outbound!.withYou === 1 ? 'delivery' : 'deliveries'} with you` };
-  }
+  const drops = dropsWords(outbound?.withYou ?? 0);
+  if (id === 'deliver' && drops) return { label: drops, tone: 'action', spoken: dropsSpoken(outbound!.withYou!) };
   if (id === 'put-away' && unbinned !== null && unbinned > 0) {
     return { label: `${new Intl.NumberFormat('en-GB').format(unbinned)} waiting`, tone: 'action', spoken: `${unbinned} units waiting in Unbinned` };
   }

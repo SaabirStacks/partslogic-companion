@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Keyboard, Linking, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Keyboard, Linking, View } from 'react-native';
 
 import { unbroken } from '@/lib/format';
 import { ActionBar, BottomBar } from '@/ui/action-bar';
@@ -27,8 +27,11 @@ import {
   deliverySentWords,
   GET_SIGNATURE,
   NEXT_DELIVERY,
+  NOT_RECORDED,
   NOTHING_OUT,
   outFromWords,
+  RECEIVED_STATEMENT,
+  RING_THE_OFFICE,
   SENDS_WHEN_ONLINE,
   SIGN_HERE,
   SIGNED_NAME_LABEL,
@@ -42,6 +45,7 @@ import {
 } from '@/vendor/partslogic/shared/sales/delivery';
 import {
   NOT_DELIVERED,
+  NOT_DELIVERED_LINE,
   NOT_DELIVERED_NOTE_MAX,
   NOT_DELIVERED_REASON_LABELS,
   NOT_DELIVERED_REASONS,
@@ -90,7 +94,8 @@ export function DeliverList({
 
 function DeliveryRow({ delivery, now, onPress }: { delivery: DriverDelivery; now: string; onPress: () => void }) {
   const place = deliveryRowLine(delivery);
-  const sent = deliverySentWords(delivery, now);
+  // the branch's deliveries say whose van they're in (critique A)
+  const sent = [deliverySentWords(delivery, now), !delivery.mine ? delivery.driver : null].filter(Boolean).join(' · ');
   return (
     <PressableCard accessibilityLabel={`${deliveryCustomer(delivery)}, ${place}, ${sent}`} onPress={onPress} className="min-h-16 flex-row items-center gap-3 px-4 py-3">
       <View className="flex-1 gap-0.5">
@@ -100,7 +105,7 @@ function DeliveryRow({ delivery, now, onPress }: { delivery: DriverDelivery; now
         <Txt variant="caption" numbers>
           {place}
         </Txt>
-        <Txt variant="caption" numbers ink="text-quiet-ink">
+        <Txt variant="caption" ink="text-quiet-ink">
           {unbroken(sent)}
         </Txt>
       </View>
@@ -149,7 +154,7 @@ export function DropView({
         <SectionLabel>{signLine(delivery)}</SectionLabel>
         {delivery.lines.map((line) => (
           <View key={line.lineId} className="gap-0.5 rounded-card bg-surface px-4 py-3">
-            <Txt variant="label" numbers className="font-bold">
+            <Txt variant="label" className="font-bold">
               {deliveryLineWords(line)}
             </Txt>
             {line.part.description ? (
@@ -195,6 +200,13 @@ export function SignView({
     <View className="flex-1 bg-ground">
       <JobBanner size="headline" family="outbound" title={signTitle(delivery.order)} detail={signLine(delivery)} />
       <Scroll toEdge={false} scrollEnabled={!drawing} contentContainerClassName="gap-3 px-4 pt-3">
+        {/* What the customer agrees to: it's what the note prints over the signature (owner, 26 November 2026). */}
+        <View accessible className="gap-0.5">
+          <Txt variant="label" className="font-bold">
+            {deliveryCustomer(delivery)}
+          </Txt>
+          <Txt variant="body">{RECEIVED_STATEMENT}</Txt>
+        </View>
         <Field
           label={SIGNED_NAME_LABEL}
           value={signing.name}
@@ -236,6 +248,7 @@ export function NotDeliveredSheet({
   const [wrong, setWrong] = useState<string | null>(null);
   return (
     <Sheet visible={visible} title={notDeliveredTitle(unbroken(order))} onClose={onClose} keyboard={reason === 'other'}>
+      <Txt variant="caption">{NOT_DELIVERED_LINE}</Txt>
       <View className="gap-2" accessibilityRole="radiogroup" accessibilityLabel="Why?">
         {NOT_DELIVERED_REASONS.map((value) => (
           <Choice
@@ -267,7 +280,7 @@ export function DeliverReceipt({ handed, now, onNext, onDone }: { handed: NonNul
   const delivered = handed.kind === 'delivered';
   const chip =
     handed.state === 'refused'
-      ? ({ tone: 'stop', icon: 'stop', label: delivered ? NOT_DELIVERED : 'Check in Sync' } as const)
+      ? ({ tone: 'stop', icon: 'stop', label: NOT_RECORDED } as const)
       : handed.state === 'waiting'
         ? ({ tone: 'neutral', icon: 'offline', label: WAITING_FOR_SIGNAL } as const)
         : handed.state === 'sending'
@@ -276,6 +289,13 @@ export function DeliverReceipt({ handed, now, onNext, onDone }: { handed: NonNul
             ? ({ tone: 'ok', icon: 'sent', label: DELIVERED } as const)
             : ({ tone: 'warn', icon: 'warning', label: NOT_DELIVERED } as const);
   const units = handed.delivery.units;
+  // The chip sweeping to Delivered (or Not recorded) is said, not only shown (critique B).
+  const said = useRef(chip.label);
+  useEffect(() => {
+    if (said.current === chip.label) return;
+    said.current = chip.label;
+    AccessibilityInfo.announceForAccessibility(`${handed.delivery.order}: ${chip.label}`);
+  }, [chip.label, handed.delivery.order]);
   return (
     <View className="flex-1 bg-ground">
       <Scroll toEdge={false} contentContainerClassName="flex-grow justify-center gap-3 px-4 pt-6">
@@ -286,7 +306,7 @@ export function DeliverReceipt({ handed, now, onNext, onDone }: { handed: NonNul
           rows={[{ label: deliveryCustomer(handed.delivery), value: `${quantityWords(units)} ${units === 1 ? 'unit' : 'units'}` }]}
         />
         {handed.state === 'waiting' ? <StatusStrip tone="neutral" icon="offline" text={SENDS_WHEN_ONLINE} /> : null}
-        {handed.state === 'refused' && handed.refusal ? <StatusStrip tone="stop" icon="stop" text={handed.refusal} /> : null}
+        {handed.state === 'refused' ? <StatusStrip tone="stop" icon="stop" text={[handed.refusal, RING_THE_OFFICE].filter(Boolean).join(' ')} /> : null}
       </Scroll>
       <BottomBar className="gap-2">
         <Button label={NEXT_DELIVERY} icon="deliver" onPress={onNext} />

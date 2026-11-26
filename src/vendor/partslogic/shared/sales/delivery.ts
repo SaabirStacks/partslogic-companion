@@ -20,13 +20,16 @@ export const SIGN_PAD = { width: 1000, height: 400 } as const;
 export type SignaturePoint = [number, number];
 export type SignatureStroke = SignaturePoint[];
 
-// The points scaled to the pad and rounded, out-of-pad points pulled to its edge, empty strokes dropped.
+// The points scaled to the pad by one factor, so the signature keeps its shape whatever the phone's pad (critique:
+// scaling across and down apart stretched it 1.4 times wide at 390), and centred on the pad; rounded, out-of-pad
+// points pulled to its edge, empty strokes dropped.
 export function padStrokes(strokes: SignatureStroke[], size: { width: number; height: number }): SignatureStroke[] {
-  const sx = size.width > 0 ? SIGN_PAD.width / size.width : 1;
-  const sy = size.height > 0 ? SIGN_PAD.height / size.height : 1;
+  const scale = size.width > 0 && size.height > 0 ? Math.min(SIGN_PAD.width / size.width, SIGN_PAD.height / size.height) : 1;
+  const dx = size.width > 0 ? (SIGN_PAD.width - size.width * scale) / 2 : 0;
+  const dy = size.height > 0 ? (SIGN_PAD.height - size.height * scale) / 2 : 0;
   const clamp = (v: number, max: number) => Math.min(max, Math.max(0, Math.round(v)));
   return strokes
-    .map((stroke) => stroke.map(([x, y]): SignaturePoint => [clamp(x * sx, SIGN_PAD.width), clamp(y * sy, SIGN_PAD.height)]))
+    .map((stroke) => stroke.map(([x, y]): SignaturePoint => [clamp(x * scale + dx, SIGN_PAD.width), clamp(y * scale + dy, SIGN_PAD.height)]))
     .filter((stroke) => stroke.length > 0);
 }
 
@@ -201,15 +204,25 @@ export const CALL_CUSTOMER = 'Call';
 export const WAITING_FOR_SIGNAL = 'Waiting for signal';
 export const SENDS_WHEN_ONLINE = 'Sends when back online.';
 export const NOTHING_OUT = { title: 'Nothing out for delivery', description: 'Orders appear here once sent out.' } as const;
+// What the customer agrees to, above the pad and on the note under the signature (owner, 26 November 2026).
+export const RECEIVED_STATEMENT = 'Received in good condition';
+// A signed delivery PartsLogic refused (the office got there first, or undid it): the record, not the parts, didn't
+// happen, so not "Not delivered" (owner, 26 November 2026).
+export const NOT_RECORDED = 'Not recorded';
+export const RING_THE_OFFICE = 'Ring the office.';
 
 // "Out from Leeds branch"; just "Out" when the branch isn't known.
 export function outFromWords(location: string | null): string {
   return location ? `Out from ${location}` : 'Out';
 }
 
-// The board's tile: "3 with you"; nothing when there are none.
-export function withYouWords(count: number): string | null {
-  return count > 0 ? `${count} with you` : null;
+// The board's tile: "3 drops" (owner, 26 November 2026: "3 with you" was cut on phones 375 wide); nothing when there
+// are none. A screen reader hears dropsSpoken: "3 deliveries with you".
+export function dropsWords(count: number): string | null {
+  return count > 0 ? `${count} ${count === 1 ? 'drop' : 'drops'}` : null;
+}
+export function dropsSpoken(count: number): string {
+  return `${count} ${count === 1 ? 'delivery' : 'deliveries'} with you`;
 }
 
 // A row's second line: "Shipley BD18 · 2 parcels", or "Not packed" for one sent loose.

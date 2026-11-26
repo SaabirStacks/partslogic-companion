@@ -58,7 +58,7 @@ const STROKES: SignatureStroke[] = [
   Array.from({ length: 40 }, (_, t): [number, number] => [30 + t * 5, Math.round(105 - 55 * Math.sin(t / 4) * Math.exp(-t / 50))]),
   Array.from({ length: 28 }, (_, t): [number, number] => [240 + t * 3.5, Math.round(118 + 22 * Math.sin(t / 2))]),
 ];
-const signing = (over: Partial<Signing>): Signing => ({ name: '', strokes: [], size: { width: 358, height: 200 }, ...over });
+const signing = (over: Partial<Signing>): Signing => ({ orderId: 'o43', name: '', strokes: [], size: { width: 358, height: 200 }, ...over });
 
 function Screen({ title, children }: { title: string; children: ReactNode }) {
   return (

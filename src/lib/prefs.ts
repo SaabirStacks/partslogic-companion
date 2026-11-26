@@ -55,3 +55,6 @@ export const packBoxPref = pref<unknown>('pack-box');
 // The driver's list as last read with signal (src/features/deliver), so the drop, its address and its parts are
 // there at a door with none. Plain JSON, as packBoxPref.
 export const deliveriesPref = pref<unknown>('deliveries');
+// The drop open on this phone and what's been signed for it (src/features/deliver), so leaving Deliver, going back a
+// step or the app closing loses neither the name nor the customer's signature (critique, D5).
+export const deliverDropPref = pref<unknown>('deliver-drop');

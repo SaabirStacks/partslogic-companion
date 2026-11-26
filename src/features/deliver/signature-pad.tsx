@@ -55,7 +55,7 @@ export function SignaturePad({
         accessibilityLabel={empty ? `${SIGN_PAD_LABEL}, ${hint}` : `${SIGN_PAD_LABEL}, signed`}
         onLayout={(event: LayoutChangeEvent) => setSize({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })}
         style={{ height }}
-        className="overflow-hidden rounded-card border-[1.5px] border-edge bg-surface">
+        className="overflow-hidden rounded-card border-[1.5px] border-quiet-ink bg-surface">
         {empty ? (
           <View pointerEvents="none" className="absolute inset-x-0 bottom-6 items-center">
             <Txt variant="caption" ink="text-quiet-ink">
